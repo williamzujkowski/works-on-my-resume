@@ -6,13 +6,17 @@
  *   - A print-mode toggle: Conservative (default) vs. Current theme.
  *   - Download Markdown / HTML / theme CSS, wired to src/utils/export.ts.
  *
- * All exports are local file downloads — nothing is transmitted. The panel
- * traps focus minimally (Escape closes it; closing is also handled globally
- * by ResumeStudio).
+ * All exports are local file downloads — nothing is transmitted.
+ *
+ * Focus management (#57): the panel is genuinely NON-MODAL — `aria-modal` is
+ * false to match. On open it focuses the first *actionable* control (the
+ * first print-mode radio, not the Close button). It dismisses on Escape and
+ * on outside-click, and on close it restores focus to the Export trigger.
  */
 import { useEffect, useId, useRef } from 'react';
 import type { ParsedResume, PrintMode, ResumeTheme } from '../types';
 import { downloadMarkdown, downloadResumeHtml, downloadThemeCss } from '../utils/export';
+import Icon from './Icon';
 
 interface ExportPanelProps {
   /** The resume Markdown source (for Download Markdown). */
@@ -26,6 +30,8 @@ interface ExportPanelProps {
   onPrintModeChange: (mode: PrintMode) => void;
   /** Request the panel be closed. */
   onClose: () => void;
+  /** The trigger button that opened the panel — focus returns here on close. */
+  triggerRef: React.RefObject<HTMLButtonElement | null>;
 }
 
 export default function ExportPanel({
@@ -35,16 +41,38 @@ export default function ExportPanel({
   printMode,
   onPrintModeChange,
   onClose,
+  triggerRef,
 }: ExportPanelProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const firstControlRef = useRef<HTMLInputElement>(null);
   const headingId = useId();
   const hasResume = parsed !== null;
 
-  // Move focus into the panel when it opens, for keyboard users.
+  /* On open: focus the first actionable control (not the Close button). */
   useEffect(() => {
-    const firstButton = dialogRef.current?.querySelector('button');
-    firstButton?.focus();
+    firstControlRef.current?.focus();
   }, []);
+
+  /* On close: restore focus to the trigger that opened the panel. */
+  useEffect(() => {
+    const trigger = triggerRef.current;
+    return () => {
+      trigger?.focus();
+    };
+  }, [triggerRef]);
+
+  /* Non-modal dismissal: close on a pointer-down outside the panel and its
+     trigger. Escape is handled on the dialog's own keydown. */
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+      if (dialogRef.current?.contains(target)) return;
+      if (triggerRef.current?.contains(target)) return;
+      onClose();
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [onClose, triggerRef]);
 
   return (
     <div
@@ -70,7 +98,7 @@ export default function ExportPanel({
           onClick={onClose}
           aria-label="Close export panel"
         >
-          ✕
+          <Icon name="close" />
         </button>
       </div>
 
@@ -80,6 +108,7 @@ export default function ExportPanel({
           <legend className="visually-hidden">Print mode</legend>
           <label className="export-panel__radio">
             <input
+              ref={firstControlRef}
               type="radio"
               name="print-mode"
               checked={printMode === 'conservative'}

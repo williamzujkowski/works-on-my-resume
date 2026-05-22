@@ -14,9 +14,18 @@ import ResumeStudio from '../components/ResumeStudio.tsx';
 <BaseLayout>
   <a class="skip-link" href="#studio">Skip to the resume workbench</a>
   <div class="app-shell">
-    <AppHeader />
-    <PrivacyNotice />
-    <main id="studio">
+    {
+      /* Each direct child carries a --i index that drives the staggered
+        page-load reveal in global.css. Collapses to the final state
+        instantly under prefers-reduced-motion. */
+    }
+    <div class="reveal" style="--i: 0">
+      <AppHeader />
+    </div>
+    <div class="reveal" style="--i: 1">
+      <PrivacyNotice />
+    </div>
+    <main id="studio" class="reveal" style="--i: 2">
       <ResumeStudio client:load />
     </main>
   </div>

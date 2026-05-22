@@ -73,6 +73,8 @@
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+    /* Pin the document typeface so printed / exported PDFs are faithful. */
+    font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif;
     font-size: 11pt;
     line-height: 1.45;
   }

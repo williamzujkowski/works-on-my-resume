@@ -9,6 +9,12 @@
  */
 
 .resume-preview {
+  /* Resume-document type tokens. The document is set in Source Serif 4 to
+     stay impeccably professional; --resume-mono drives its monospace bits
+     (contact line, dates, inline code) so raw stacks are never repeated. */
+  --resume-serif: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif;
+  --resume-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
   /* The resume document is a self-contained "page". */
   width: 100%;
   max-width: 50rem;
@@ -17,11 +23,19 @@
   color: var(--resume-fg);
   border: 1px solid var(--resume-border);
   border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 
-  font-family: 'Charter', 'Georgia', 'Iowan Old Style', 'Palatino Linotype', serif;
+  /* A real soft "paper" drop shadow — the sheet floats on the editor desk. */
+  box-shadow:
+    0 1px 2px rgba(15, 17, 21, 0.16),
+    0 10px 28px -8px rgba(15, 17, 21, 0.32),
+    0 24px 60px -24px rgba(15, 17, 21, 0.28);
+
+  font-family: var(--resume-serif);
   font-size: 16px;
   line-height: 1.6;
+  font-feature-settings:
+    'kern' 1,
+    'liga' 1;
 
   /* Establish a containing block so descendant sizing is predictable. */
   overflow-wrap: break-word;
@@ -63,8 +77,8 @@
   flex-wrap: wrap;
   gap: 0.35rem 1rem;
   margin-top: 0.6rem;
-  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 0.82rem;
+  font-family: var(--resume-mono);
+  font-size: 0.8rem;
   color: var(--resume-muted);
 }
 
@@ -137,8 +151,9 @@
 .resume-preview h3 + p em,
 .resume-preview h4 + p em {
   font-style: normal;
-  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 0.82rem;
+  font-family: var(--resume-mono);
+  font-size: 0.8rem;
+  letter-spacing: -0.01em;
   color: var(--resume-muted);
 }
 
@@ -179,7 +194,7 @@
 }
 
 .resume-preview code {
-  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-family: var(--resume-mono);
   font-size: 0.85em;
   padding: 0.1rem 0.35rem;
   background: var(--resume-code-bg);

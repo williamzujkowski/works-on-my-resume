@@ -1,14 +1,29 @@
 /**
- * ThemePicker — a searchable, keyboard-navigable theme list.
+ * ThemePicker — a collapsed theme control that opens a search popover.
  *
- * Implemented as a listbox with an associated search input. The search input
- * carries a stable `id` (passed in by ResumeStudio) so the global `/`
- * shortcut can focus it. Filtering is delegated entirely to the shared
- * `filterThemes` utility, including the "resume-safe only" predicate.
+ * Collapsed, it is a single button showing the current theme's name and a
+ * color swatch. Activating it (or pressing the global `/` shortcut) opens a
+ * popover containing the search input and a results list. The popover closes
+ * on Escape, outside-click, and selection.
+ *
+ * ARIA: the trigger is a real `combobox`-less disclosure; inside the popover
+ * the search input is the `combobox` (`aria-expanded` tracks the open state,
+ * `aria-activedescendant` points at the active option's `id`). Each option
+ * carries a stable `id`. Arrow-key moves are announced via a polite live
+ * region so screen-reader users hear the highlighted theme.
+ *
+ * The full dataset is ~545 themes; only the first MAX_RENDERED matches are
+ * mounted, with a "refine your search" hint, so the option list never mounts
+ * 545 nodes at once.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ResumeTheme } from '../types';
+import { ACCENT_MIN_CONTRAST } from '../types';
 import { filterThemes } from '../utils/themes';
+import Icon from './Icon';
+
+/** Cap on rendered option nodes — keeps the popover light. */
+const MAX_RENDERED = 60;
 
 interface ThemePickerProps {
   /** All available themes. */
@@ -25,6 +40,9 @@ interface ThemePickerProps {
   onSelect: (theme: ResumeTheme) => void;
   /** DOM id for the search input, so the `/` shortcut can focus it. */
   searchInputId: string;
+  /** Whether the popover is open (controlled by ResumeStudio). */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export default function ThemePicker({
@@ -36,123 +54,247 @@ export default function ThemePicker({
   onResumeSafeOnlyChange,
   onSelect,
   searchInputId,
+  open,
+  onOpenChange,
 }: ThemePickerProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const filtered = filterThemes(themes, query, resumeSafeOnly);
+  const idBase = useId();
+  const listId = `${searchInputId}-list`;
+  const liveId = `${idBase}-live`;
+  const optionId = (slug: string) => `${idBase}-opt-${slug}`;
 
-  // Keep the active (keyboard-highlighted) index inside bounds as the
-  // filtered list changes.
-  useEffect(() => {
-    setActiveIndex((index) => (filtered.length === 0 ? 0 : Math.min(index, filtered.length - 1)));
-  }, [filtered.length]);
+  const allMatches = useMemo(
+    () => filterThemes(themes, query, resumeSafeOnly),
+    [themes, query, resumeSafeOnly],
+  );
+  const rendered = allMatches.slice(0, MAX_RENDERED);
+  const overflow = allMatches.length - rendered.length;
 
-  /** Scroll the active option into view when navigating by keyboard. */
+  /* Keep the active index inside bounds as the filtered list changes. */
   useEffect(() => {
+    setActiveIndex((index) => (rendered.length === 0 ? 0 : Math.min(index, rendered.length - 1)));
+  }, [rendered.length]);
+
+  /* `onOpen` reads the latest rendered list / current theme without making
+     the open-effect re-run on every keystroke (which would fight the caret).
+     A ref keeps the freshest snapshot; the effect depends only on `open`. */
+  const openSnapshotRef = useRef({ rendered, currentSlug: current.slug });
+  openSnapshotRef.current = { rendered, currentSlug: current.slug };
+
+  /* When the popover opens, focus the search input and reset the highlight to
+     the current theme if it is visible. */
+  useEffect(() => {
+    if (!open) return;
+    const { rendered: list, currentSlug } = openSnapshotRef.current;
+    const idx = list.findIndex((t) => t.slug === currentSlug);
+    setActiveIndex(idx === -1 ? 0 : idx);
+    // Defer so the input is mounted.
+    const id = window.setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [open]);
+
+  /* Scroll the active option into view while navigating by keyboard. */
+  useEffect(() => {
+    if (!open) return;
     const list = listRef.current;
-    if (!list) return;
-    const option = list.children[activeIndex] as HTMLElement | undefined;
+    const option = list?.children[activeIndex] as HTMLElement | undefined;
     option?.scrollIntoView({ block: 'nearest' });
-  }, [activeIndex]);
+  }, [activeIndex, open]);
+
+  /* Close on outside-click. */
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        onOpenChange(false);
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [open, onOpenChange]);
+
+  function close(restoreFocus = true) {
+    onOpenChange(false);
+    if (restoreFocus) triggerRef.current?.focus();
+  }
+
+  function choose(theme: ResumeTheme) {
+    onSelect(theme);
+    close();
+  }
 
   function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (filtered.length === 0) return;
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      close();
+      return;
+    }
+    if (rendered.length === 0) return;
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setActiveIndex((index) => (index + 1) % filtered.length);
+      setActiveIndex((index) => (index + 1) % rendered.length);
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      setActiveIndex((index) => (index - 1 + filtered.length) % filtered.length);
+      setActiveIndex((index) => (index - 1 + rendered.length) % rendered.length);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      setActiveIndex(0);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      setActiveIndex(rendered.length - 1);
     } else if (event.key === 'Enter') {
       event.preventDefault();
-      const theme = filtered[activeIndex];
-      if (theme) onSelect(theme);
+      const theme = rendered[activeIndex];
+      if (theme) choose(theme);
     }
   }
 
-  const listId = `${searchInputId}-list`;
+  const activeTheme = rendered[activeIndex];
+  const activeDescId = activeTheme ? optionId(activeTheme.slug) : undefined;
 
   return (
-    <div className="theme-picker">
-      <div className="theme-picker__search-row">
-        <label className="visually-hidden" htmlFor={searchInputId}>
-          Search themes
-        </label>
-        <input
-          id={searchInputId}
-          className="text-input"
-          type="search"
-          role="combobox"
-          aria-expanded="true"
-          aria-controls={listId}
-          aria-autocomplete="list"
-          placeholder="Search themes…  ( / )"
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          onKeyDown={handleSearchKeyDown}
+    <div className="theme-picker" ref={rootRef}>
+      <button
+        type="button"
+        ref={triggerRef}
+        className="theme-picker__trigger"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => onOpenChange(!open)}
+      >
+        <span
+          className="theme-picker__swatch theme-picker__swatch--trigger"
+          style={{ background: current.tokens.bg, borderColor: current.tokens.accent }}
+          aria-hidden="true"
         />
-      </div>
+        <span className="theme-picker__trigger-label">
+          <span className="theme-picker__trigger-kicker">theme</span>
+          <span className="theme-picker__trigger-name">{current.name}</span>
+        </span>
+        <Icon name="chevron-down" className="theme-picker__trigger-caret" />
+      </button>
 
-      <label className="theme-picker__checkbox">
-        <input
-          type="checkbox"
-          checked={resumeSafeOnly}
-          onChange={(event) => onResumeSafeOnlyChange(event.target.checked)}
-        />
-        Resume-safe themes only
-      </label>
+      {open && (
+        <div className="theme-picker__popover" role="dialog" aria-label="Choose a theme">
+          <div className="theme-picker__search-row">
+            <span className="theme-picker__search-icon" aria-hidden="true">
+              <Icon name="search" />
+            </span>
+            <label className="visually-hidden" htmlFor={searchInputId}>
+              Search themes
+            </label>
+            <input
+              id={searchInputId}
+              ref={inputRef}
+              className="text-input theme-picker__search"
+              type="text"
+              role="combobox"
+              aria-expanded={open}
+              aria-controls={listId}
+              aria-autocomplete="list"
+              aria-activedescendant={activeDescId}
+              placeholder="Search 545 themes…"
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              onKeyDown={handleSearchKeyDown}
+            />
+          </div>
 
-      {filtered.length === 0 ? (
-        <p className="theme-picker__empty" role="status">
-          No themes match “{query}”.
-        </p>
-      ) : (
-        <ul
-          ref={listRef}
-          id={listId}
-          className="theme-picker__list"
-          role="listbox"
-          aria-label="Themes"
-        >
-          {filtered.map((theme, index) => {
-            const isSelected = theme.slug === current.slug;
-            const isActive = index === activeIndex;
-            const classNames = ['theme-picker__option'];
-            if (isActive) classNames.push('theme-picker__option--active');
-            if (isSelected) classNames.push('theme-picker__option--selected');
-            return (
-              <li key={theme.slug} role="presentation">
-                <button
-                  type="button"
-                  className={classNames.join(' ')}
-                  role="option"
-                  aria-selected={isSelected}
-                  onClick={() => onSelect(theme)}
-                  onMouseEnter={() => setActiveIndex(index)}
-                >
-                  <span
-                    className="theme-picker__swatch"
-                    style={{
-                      background: theme.tokens.bg,
-                      borderColor: theme.tokens.accent,
-                    }}
-                    aria-hidden="true"
-                  />
-                  <span className="theme-picker__option-name">{theme.name}</span>
-                  <span className={theme.isDark ? 'badge badge--dark' : 'badge badge--light'}>
-                    {theme.isDark ? 'dark' : 'light'}
-                  </span>
-                  {theme.resumeSafe && (
-                    <span className="badge badge--safe" title="Resume-safe">
-                      ✓
+          <label className="theme-picker__checkbox">
+            <input
+              type="checkbox"
+              checked={resumeSafeOnly}
+              onChange={(event) => onResumeSafeOnlyChange(event.target.checked)}
+            />
+            Resume-safe themes only
+          </label>
+
+          {/* Polite live region — announces the keyboard-highlighted theme. */}
+          <p id={liveId} className="visually-hidden" aria-live="polite">
+            {activeTheme
+              ? `${activeTheme.name}, ${activeTheme.isDark ? 'dark' : 'light'} theme, ` +
+                `option ${activeIndex + 1} of ${rendered.length}`
+              : ''}
+          </p>
+
+          {rendered.length === 0 ? (
+            <p className="theme-picker__empty" role="status">
+              No themes match “{query}”.
+            </p>
+          ) : (
+            <ul
+              ref={listRef}
+              id={listId}
+              className="theme-picker__list"
+              role="listbox"
+              aria-label="Themes"
+            >
+              {rendered.map((theme, index) => {
+                const isSelected = theme.slug === current.slug;
+                const isActive = index === activeIndex;
+                const classNames = ['theme-picker__option'];
+                if (isActive) classNames.push('theme-picker__option--active');
+                if (isSelected) classNames.push('theme-picker__option--selected');
+                return (
+                  <li
+                    key={theme.slug}
+                    id={optionId(theme.slug)}
+                    className={classNames.join(' ')}
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => choose(theme)}
+                    onMouseEnter={() => setActiveIndex(index)}
+                  >
+                    <span
+                      className="theme-picker__swatch"
+                      style={{ background: theme.tokens.bg, borderColor: theme.tokens.accent }}
+                      aria-hidden="true"
+                    />
+                    <span className="theme-picker__option-name">{theme.name}</span>
+                    {theme.accentSynthesized && (
+                      <span className="badge" title="Accent adjusted for legible contrast">
+                        accent adj.
+                      </span>
+                    )}
+                    <span className={theme.isDark ? 'badge badge--dark' : 'badge badge--light'}>
+                      {theme.isDark ? 'dark' : 'light'}
                     </span>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                    {isSelected && (
+                      <span className="theme-picker__option-check" aria-hidden="true">
+                        <Icon name="check" size={14} />
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {overflow > 0 && (
+            <p className="theme-picker__refine" role="status">
+              Showing {rendered.length} of {allMatches.length} — refine your search to narrow it
+              down.
+            </p>
+          )}
+
+          <p className="theme-picker__accent-hint">
+            <span
+              className="theme-picker__accent-dot"
+              style={{ background: current.tokens.accent }}
+              aria-hidden="true"
+            />
+            Accent contrast {current.contrast.accentOnBg.toFixed(1)}:1
+            {current.contrast.accentOnBg >= ACCENT_MIN_CONTRAST ? ' — legible' : ''}
+          </p>
+        </div>
       )}
     </div>
   );

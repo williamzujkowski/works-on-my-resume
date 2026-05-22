@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ResumeTheme } from '../types';
 import { RESUME_SAFE_MIN_CONTRAST } from '../types';
+import Icon from './Icon';
 
 interface ThemeControlsProps {
   current: ResumeTheme;
@@ -51,36 +52,37 @@ export default function ThemeControls({
 
   return (
     <div className="theme-controls">
-      <button
-        type="button"
-        className="btn btn--icon"
-        onClick={onPrevious}
-        aria-label="Previous theme"
-        title="Previous theme (←)"
-      >
-        ‹
-      </button>
-      <button
-        type="button"
-        className="btn btn--icon"
-        onClick={onNext}
-        aria-label="Next theme"
-        title="Next theme (→)"
-      >
-        ›
-      </button>
-      <button
-        type="button"
-        className="btn btn--icon"
-        onClick={onRandom}
-        aria-label="Random theme"
-        title="Random theme (r)"
-      >
-        ⤮
-      </button>
+      <div className="theme-controls__nav" role="group" aria-label="Step through themes">
+        <button
+          type="button"
+          className="btn btn--icon"
+          onClick={onPrevious}
+          aria-label="Previous theme"
+          title="Previous theme (←)"
+        >
+          <Icon name="chevron-left" />
+        </button>
+        <button
+          type="button"
+          className="btn btn--icon"
+          onClick={onNext}
+          aria-label="Next theme"
+          title="Next theme (→)"
+        >
+          <Icon name="chevron-right" />
+        </button>
+        <button
+          type="button"
+          className="btn btn--icon"
+          onClick={onRandom}
+          aria-label="Random theme"
+          title="Random theme (r)"
+        >
+          <Icon name="shuffle" />
+        </button>
+      </div>
 
       <span className="theme-controls__current">
-        <span className="theme-controls__name">{current.name}</span>
         <span className={current.isDark ? 'badge badge--dark' : 'badge badge--light'}>
           {current.isDark ? 'dark' : 'light'}
         </span>
@@ -88,11 +90,11 @@ export default function ThemeControls({
           className={isSafe ? 'badge badge--safe' : 'badge badge--unsafe'}
           title={
             isSafe
-              ? 'Meets the resume-safe contrast threshold'
-              : 'Below the resume-safe contrast threshold'
+              ? `Body text contrast ${contrast}:1 — meets the resume-safe threshold`
+              : `Body text contrast ${contrast}:1 — below the resume-safe threshold`
           }
         >
-          {isSafe ? '✓ ' : '! '}
+          {isSafe ? <Icon name="check" size={12} /> : <Icon name="alert" size={12} />}
           {contrast}:1
         </span>
       </span>
@@ -102,7 +104,7 @@ export default function ThemeControls({
       </button>
       {copied && (
         <span className="theme-controls__copied" role="status">
-          ✓ Copied
+          <Icon name="check" size={13} /> Copied
         </span>
       )}
     </div>

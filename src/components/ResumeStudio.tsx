@@ -3,8 +3,14 @@
  *
  * Owns: the Markdown source string, the derived `ParsedResume` (recomputed
  * via `parseResume`, debounced on edits), the themes array, the current
- * theme, the theme search query, the resume-safe-only toggle, the
- * export-panel-open flag, and the print mode.
+ * theme, the theme search query / popover-open flag, the resume-safe-only
+ * toggle, the export-panel-open flag, and the print mode.
+ *
+ * Two-phase journey (#43, #51-53): with no resume loaded the upload + editor
+ * flow is the hero — the theme toolbar and shortcut legend are hidden, since
+ * they operate on a resume that does not exist yet. Once a resume is present
+ * the toolbar and legend are revealed, and the resume-acting shortcuts are
+ * enabled.
  *
  * PRIVACY: resume content lives only in component state. It is never written
  * to storage and never put in the URL. Only the theme slug is persisted (via
@@ -27,6 +33,7 @@ import ResumePreview from './ResumePreview';
 import ThemePicker from './ThemePicker';
 import ThemeControls from './ThemeControls';
 import ExportPanel from './ExportPanel';
+import Icon from './Icon';
 
 /** Debounce window for re-parsing Markdown as the user types. */
 const PARSE_DEBOUNCE_MS = 200;
@@ -38,23 +45,41 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
 }
 
+/** True when the user has not asked for reduced motion. */
+function motionOk(): boolean {
+  try {
+    return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return true;
+  }
+}
+
 export default function ResumeStudio() {
   /* ----- Resume content state (in-memory only, never persisted) ----- */
   const [markdown, setMarkdown] = useState('');
   const [parsed, setParsed] = useState<ParsedResume | null>(null);
+  const [sourceName, setSourceName] = useState('resume.md');
 
   /* ----- Theme state ----- */
   const themes = useMemo<ResumeTheme[]>(() => getAllThemes(), []);
   const [theme, setTheme] = useState<ResumeTheme | null>(null);
   const [themeQuery, setThemeQuery] = useState('');
+  const [themePickerOpen, setThemePickerOpen] = useState(false);
   const [resumeSafeOnly, setResumeSafeOnly] = useState(false);
 
   /* ----- UI state ----- */
   const [exportOpen, setExportOpen] = useState(false);
   const [printMode, setPrintMode] = useState<PrintMode>('conservative');
+  const [loadAnnouncement, setLoadAnnouncement] = useState('');
 
   const themeSearchInputId = useId();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const exportTriggerRef = useRef<HTMLButtonElement>(null);
+
+  /** A resume is present once Markdown has been entered. */
+  const hasResume = markdown.trim() !== '';
+  const lineCount = markdown.length === 0 ? 0 : markdown.split('\n').length;
 
   /* ---------------------------------------------------------------- *
    * Mount: resolve and apply the initial theme.                       *
@@ -95,11 +120,22 @@ export default function ResumeStudio() {
 
   /* ---------------------------------------------------------------- *
    * Theme change: apply to document, persist slug, reflect into URL.  *
+   * A brief opacity dip on the preview makes the switch feel designed *
+   * rather than a flicker (reduced-motion users get an instant swap). *
    * ---------------------------------------------------------------- */
   const changeTheme = useCallback((next: ResumeTheme) => {
     setTheme(next);
     applyThemeToDocument(next);
     setStoredThemeSlug(next.slug);
+
+    const preview = previewRef.current;
+    if (preview && motionOk()) {
+      preview.classList.remove('studio__pane--theming');
+      // Force a reflow so the animation restarts on rapid theme steps.
+      void preview.offsetWidth;
+      preview.classList.add('studio__pane--theming');
+    }
+
     try {
       const url = new URL(window.location.href);
       url.searchParams.set('theme', next.slug);
@@ -132,25 +168,18 @@ export default function ResumeStudio() {
     if (pick) changeTheme(pick);
   }, [themes, theme, changeTheme]);
 
-  const focusThemeSearch = useCallback(() => {
-    const input = document.getElementById(themeSearchInputId);
-    if (input instanceof HTMLInputElement) {
-      input.focus();
-      input.select();
-    }
-  }, [themeSearchInputId]);
-
   /* ---------------------------------------------------------------- *
    * Global keyboard shortcuts.                                        *
-   * Shortcuts (except Escape) are ignored when typing in a field.     *
+   * Escape always works. The resume-acting shortcuts (theme nav, /,   *
+   * print, export) are gated on a resume being present — they have no *
+   * meaning in the empty Phase 1 state.                               *
    * ---------------------------------------------------------------- */
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       // Escape always works: close panels, blur the active field.
       if (event.key === 'Escape') {
-        if (exportOpen) {
-          setExportOpen(false);
-        }
+        if (exportOpen) setExportOpen(false);
+        if (themePickerOpen) setThemePickerOpen(false);
         if (isEditableTarget(event.target)) {
           (event.target as HTMLElement).blur();
         }
@@ -160,6 +189,9 @@ export default function ResumeStudio() {
       // Never hijack typing, and never fight browser/OS chords.
       if (isEditableTarget(event.target)) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      // All remaining shortcuts act on a resume — ignore them in Phase 1.
+      if (!hasResume) return;
 
       switch (event.key) {
         case 'ArrowLeft':
@@ -172,7 +204,7 @@ export default function ResumeStudio() {
           break;
         case '/':
           event.preventDefault();
-          focusThemeSearch();
+          setThemePickerOpen(true);
           break;
         case 'r':
           event.preventDefault();
@@ -193,11 +225,34 @@ export default function ResumeStudio() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [exportOpen, stepTheme, randomTheme, focusThemeSearch]);
+  }, [exportOpen, themePickerOpen, hasResume, stepTheme, randomTheme]);
 
-  /* ----- Resume loaded from the uploader ----- */
-  const handleResumeLoaded = useCallback((text: string) => {
+  /* ---------------------------------------------------------------- *
+   * Resume loaded from the uploader. Track the source filename, then  *
+   * scroll the preview into view and announce the load (#53).         *
+   * ---------------------------------------------------------------- */
+  const handleResumeLoaded = useCallback((text: string, name: string) => {
     setMarkdown(text);
+    setSourceName(name || 'resume.md');
+    const lines = text.length === 0 ? 0 : text.split('\n').length;
+    setLoadAnnouncement(`Resume loaded — ${lines} ${lines === 1 ? 'line' : 'lines'}.`);
+    // Defer the scroll until the preview has rendered.
+    window.setTimeout(() => {
+      previewRef.current?.scrollIntoView({
+        behavior: motionOk() ? 'smooth' : 'auto',
+        block: 'start',
+      });
+    }, 60);
+  }, []);
+
+  /** Clear the resume — resets to the empty Phase 1 state. */
+  const handleClear = useCallback(() => {
+    setMarkdown('');
+    setParsed(null);
+    setSourceName('resume.md');
+    setExportOpen(false);
+    setThemePickerOpen(false);
+    setLoadAnnouncement('Resume cleared.');
   }, []);
 
   /* ---------------------------------------------------------------- *
@@ -214,72 +269,87 @@ export default function ResumeStudio() {
 
   return (
     <div className="studio">
-      {/* ----- Toolbar: theme + export controls ----- */}
-      <div className="studio__toolbar" data-print-hide>
-        <ThemePicker
-          themes={themes}
-          current={theme}
-          query={themeQuery}
-          onQueryChange={setThemeQuery}
-          resumeSafeOnly={resumeSafeOnly}
-          onResumeSafeOnlyChange={setResumeSafeOnly}
-          onSelect={changeTheme}
-          searchInputId={themeSearchInputId}
-        />
+      {/* Polite live region — announces resume load / clear (#53). */}
+      <p className="visually-hidden" aria-live="polite">
+        {loadAnnouncement}
+      </p>
 
-        <div className="studio__toolbar-spacer" />
+      {/* ----- Toolbar: theme + export controls. Phase 2 only (#43). ----- */}
+      {hasResume && (
+        <div className="studio__toolbar" data-print-hide>
+          <ThemePicker
+            themes={themes}
+            current={theme}
+            query={themeQuery}
+            onQueryChange={setThemeQuery}
+            resumeSafeOnly={resumeSafeOnly}
+            onResumeSafeOnlyChange={setResumeSafeOnly}
+            onSelect={changeTheme}
+            searchInputId={themeSearchInputId}
+            open={themePickerOpen}
+            onOpenChange={setThemePickerOpen}
+          />
 
-        <ThemeControls
-          current={theme}
-          onPrevious={() => stepTheme(-1)}
-          onNext={() => stepTheme(1)}
-          onRandom={randomTheme}
-        />
+          <div className="studio__toolbar-spacer" />
 
-        <div className="export-panel">
-          <button
-            type="button"
-            className="btn"
-            aria-haspopup="dialog"
-            aria-expanded={exportOpen}
-            onClick={() => setExportOpen((open) => !open)}
-          >
-            Export ▾
-          </button>
-          {exportOpen && (
-            <ExportPanel
-              markdown={markdown}
-              parsed={parsed}
-              theme={theme}
-              printMode={printMode}
-              onPrintModeChange={setPrintMode}
-              onClose={() => setExportOpen(false)}
-            />
-          )}
+          <ThemeControls
+            current={theme}
+            onPrevious={() => stepTheme(-1)}
+            onNext={() => stepTheme(1)}
+            onRandom={randomTheme}
+          />
+
+          <div className="export-panel">
+            <button
+              type="button"
+              ref={exportTriggerRef}
+              className="btn"
+              aria-haspopup="dialog"
+              aria-expanded={exportOpen}
+              onClick={() => setExportOpen((open) => !open)}
+            >
+              Export
+              <Icon name="chevron-down" size={14} />
+            </button>
+            {exportOpen && (
+              <ExportPanel
+                markdown={markdown}
+                parsed={parsed}
+                theme={theme}
+                printMode={printMode}
+                onPrintModeChange={setPrintMode}
+                onClose={() => setExportOpen(false)}
+                triggerRef={exportTriggerRef}
+              />
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* ----- Keyboard shortcut legend ----- */}
-      <div className="studio__shortcuts" data-print-hide aria-hidden="true">
-        <span>
-          <kbd>←</kbd> <kbd>→</kbd> theme
-        </span>
-        <span>
-          <kbd>r</kbd> random
-        </span>
-        <span>
-          <kbd>/</kbd> search themes
-        </span>
-        <span>
-          <kbd>p</kbd> print
-        </span>
-        <span>
-          <kbd>e</kbd> export
-        </span>
-        <span>
-          <kbd>Esc</kbd> close
-        </span>
-      </div>
+      {/* ----- Keyboard shortcut legend. Phase 2 only (#43). ----- */}
+      {hasResume && (
+        <div className="studio__shortcuts" data-print-hide>
+          <span className="studio__shortcuts-label">Shortcuts</span>
+          <span>
+            <kbd>←</kbd> <kbd>→</kbd> theme
+          </span>
+          <span>
+            <kbd>r</kbd> random
+          </span>
+          <span>
+            <kbd>/</kbd> search themes
+          </span>
+          <span>
+            <kbd>p</kbd> print
+          </span>
+          <span>
+            <kbd>e</kbd> export
+          </span>
+          <span>
+            <kbd>Esc</kbd> close
+          </span>
+        </div>
+      )}
 
       {/* ----- Split workbench: editor (left) / preview (right) ----- */}
       <div className="studio__split">
@@ -289,22 +359,35 @@ export default function ResumeStudio() {
           data-print-hide
         >
           <div className="studio__pane-header">
-            <span className="studio__pane-dot" aria-hidden="true" />
-            <span>edit · resume.md</span>
+            <span className="studio__pane-dots" aria-hidden="true">
+              <span className="studio__pane-dot" />
+              <span className="studio__pane-dot" />
+              <span className="studio__pane-dot" />
+            </span>
+            <span className="studio__pane-tab">{sourceName}</span>
           </div>
           <div className="studio__pane-body">
-            <MarkdownUploader onLoad={handleResumeLoaded} />
-            <div style={{ height: 'var(--space-3)' }} />
+            <MarkdownUploader
+              onLoad={handleResumeLoaded}
+              hasResume={hasResume}
+              lineCount={lineCount}
+              sourceName={sourceName}
+              onClear={handleClear}
+            />
             <MarkdownEditor value={markdown} onChange={setMarkdown} />
           </div>
         </section>
 
         <section className="studio__pane studio__pane--preview" aria-label="Resume preview">
           <div className="studio__pane-header">
-            <span className="studio__pane-dot" aria-hidden="true" />
-            <span>preview · {theme.name}</span>
+            <span className="studio__pane-dots" aria-hidden="true">
+              <span className="studio__pane-dot" />
+              <span className="studio__pane-dot" />
+              <span className="studio__pane-dot" />
+            </span>
+            <span className="studio__pane-tab">preview · {theme.name}</span>
           </div>
-          <div className="studio__pane-body">
+          <div className="studio__pane-body" ref={previewRef}>
             <ResumePreview parsed={parsed} />
           </div>
         </section>
