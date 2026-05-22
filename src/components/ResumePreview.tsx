@@ -95,8 +95,11 @@ export default function ResumePreview({ parsed }: ResumePreviewProps) {
 
   const { warnings } = parsed;
 
-  /** Build the metadata items for the contact line, joined by separators. */
-  const metaItems: React.ReactNode[] = [];
+  /** Build the metadata items for the contact line, joined by separators.
+      Each item carries a stable `key` derived from its own identity (the
+      field name, or the link URL) — never an array index, so React can
+      reconcile correctly if the frontmatter changes. */
+  const metaItems: React.ReactElement[] = [];
   if (location) metaItems.push(<span key="loc">{location}</span>);
   if (email) {
     metaItems.push(
@@ -124,7 +127,11 @@ export default function ResumePreview({ parsed }: ResumePreviewProps) {
             <strong>Heads up — the parser noted:</strong>
             <ul>
               {warnings.map((warning, index) => (
-                <li key={index}>{warning}</li>
+                // Warning strings are the natural stable key. They are
+                // usually unique; a `#index` suffix disambiguates the rare
+                // case of two identical warnings without falling back to a
+                // bare index key.
+                <li key={`${warning}#${index}`}>{warning}</li>
               ))}
             </ul>
           </div>
@@ -137,7 +144,10 @@ export default function ResumePreview({ parsed }: ResumePreviewProps) {
             {metaItems.length > 0 && (
               <p className="resume-preview__contact-meta">
                 {metaItems.map((item, index) => (
-                  <span key={index} style={{ display: 'contents' }}>
+                  // Key the wrapper by the item's OWN stable key ("loc",
+                  // "email", "link-…") rather than the array index, so an
+                  // index-keyed wrapper never shadows the item's identity.
+                  <span key={String(item.key)} style={{ display: 'contents' }}>
                     {index > 0 && (
                       <span className="resume-preview__contact-sep" aria-hidden="true">
                         ·

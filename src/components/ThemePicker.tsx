@@ -25,9 +25,15 @@
  */
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ResumeTheme } from '../types';
-import { ACCENT_MIN_CONTRAST } from '../types';
 import { applyThemeToDocument, filterThemes } from '../utils/themes';
 import Icon from './Icon';
+
+/** WCAG conformance level of a contrast ratio for normal-size text. */
+function wcagLevel(ratio: number): 'AAA' | 'AA' | 'fails AA' {
+  if (ratio >= 7) return 'AAA';
+  if (ratio >= 4.5) return 'AA';
+  return 'fails AA';
+}
 
 /** Cap on rendered option nodes — keeps the popover light. */
 const MAX_RENDERED = 60;
@@ -236,6 +242,15 @@ export default function ThemePicker({
   const activeTheme = rendered[activeIndex];
   const activeDescId = activeTheme ? optionId(activeTheme.slug) : undefined;
 
+  /* Honest, non-blocking signal on the always-visible trigger: when the
+     committed theme's body text falls below the resume-safe threshold, show
+     an alert glyph beside the name. The icon + aria-label carry the meaning,
+     so the warning is never conveyed by colour alone. */
+  const lowContrast = !current.resumeSafe;
+  const triggerContrastLabel = `Body text contrast ${current.contrastRatio.toFixed(
+    1,
+  )}:1 — WCAG ${wcagLevel(current.contrastRatio)}, below the resume-safe threshold`;
+
   return (
     <div className="theme-picker" ref={rootRef}>
       <button
@@ -255,6 +270,16 @@ export default function ThemePicker({
           <span className="theme-picker__trigger-kicker">theme</span>
           <span className="theme-picker__trigger-name">{current.name}</span>
         </span>
+        {lowContrast && (
+          <span
+            className="theme-picker__trigger-warning"
+            title={triggerContrastLabel}
+            aria-label={triggerContrastLabel}
+            role="img"
+          >
+            <Icon name="alert" size={14} />
+          </span>
+        )}
         <Icon name="chevron-down" className="theme-picker__trigger-caret" />
       </button>
 
@@ -340,6 +365,21 @@ export default function ThemePicker({
                         accent adj.
                       </span>
                     )}
+                    {!theme.resumeSafe && (
+                      <span
+                        className="badge badge--unsafe"
+                        title={`Body text contrast ${theme.contrastRatio.toFixed(
+                          1,
+                        )}:1 — WCAG ${wcagLevel(theme.contrastRatio)}, below the resume-safe threshold`}
+                        role="img"
+                        aria-label={`Low body-text contrast, ${theme.contrastRatio.toFixed(
+                          1,
+                        )} to 1`}
+                      >
+                        <Icon name="alert" size={11} />
+                        low contrast
+                      </span>
+                    )}
                     <span className={theme.isDark ? 'badge badge--dark' : 'badge badge--light'}>
                       {theme.isDark ? 'dark' : 'light'}
                     </span>
@@ -361,15 +401,45 @@ export default function ThemePicker({
             </p>
           )}
 
-          <p className="theme-picker__accent-hint">
-            <span
-              className="theme-picker__accent-dot"
-              style={{ background: current.tokens.accent }}
-              aria-hidden="true"
-            />
-            Accent contrast {current.contrast.accentOnBg.toFixed(1)}:1
-            {current.contrast.accentOnBg >= ACCENT_MIN_CONTRAST ? ' — legible' : ''}
-          </p>
+          {/* Legibility readout for the committed theme — body text and
+              accent contrast, each labelled with its WCAG level so the bare
+              ratio is self-explanatory. Mirrors the ThemeControls badges. */}
+          <div className="theme-picker__contrast">
+            <p
+              className="theme-picker__contrast-row"
+              title={`Body text contrast ${current.contrastRatio.toFixed(
+                1,
+              )}:1 — WCAG ${wcagLevel(current.contrastRatio)}`}
+            >
+              <span
+                className={
+                  current.resumeSafe
+                    ? 'theme-picker__contrast-icon theme-picker__contrast-icon--ok'
+                    : 'theme-picker__contrast-icon theme-picker__contrast-icon--warn'
+                }
+                aria-hidden="true"
+              >
+                <Icon name={current.resumeSafe ? 'check' : 'alert'} size={13} />
+              </span>
+              Body text {current.contrastRatio.toFixed(1)}:1 — WCAG{' '}
+              {wcagLevel(current.contrastRatio)}
+              {!current.resumeSafe && ', below resume-safe'}
+            </p>
+            <p
+              className="theme-picker__contrast-row"
+              title={`Accent contrast ${current.contrast.accentOnBg.toFixed(
+                1,
+              )}:1 — WCAG ${wcagLevel(current.contrast.accentOnBg)}`}
+            >
+              <span
+                className="theme-picker__accent-dot"
+                style={{ background: current.tokens.accent }}
+                aria-hidden="true"
+              />
+              Accent {current.contrast.accentOnBg.toFixed(1)}:1 — WCAG{' '}
+              {wcagLevel(current.contrast.accentOnBg)}
+            </p>
+          </div>
         </div>
       )}
     </div>

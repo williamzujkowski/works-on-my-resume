@@ -1165,14 +1165,35 @@ a {
   color: var(--ui-fg-subtle);
 }
 
-.theme-picker__accent-hint {
+/* Legibility readout at the foot of the popover: body-text + accent
+   contrast, each with its WCAG level. */
+.theme-picker__contrast {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--ui-border);
+}
+
+.theme-picker__contrast-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding-top: var(--space-1);
+  margin: 0;
   font-size: 0.72rem;
   color: var(--ui-fg-muted);
-  border-top: 1px solid var(--ui-border);
+}
+
+.theme-picker__contrast-icon {
+  display: inline-flex;
+}
+
+.theme-picker__contrast-icon--ok {
+  color: var(--ui-success);
+}
+
+.theme-picker__contrast-icon--warn {
+  color: var(--ui-warning);
 }
 
 .theme-picker__accent-dot {
@@ -1180,6 +1201,14 @@ a {
   height: 0.7rem;
   border-radius: 50%;
   border: 1px solid var(--ui-border-strong);
+  flex-shrink: 0;
+}
+
+/* Non-blocking low-contrast warning on the always-visible picker trigger. */
+.theme-picker__trigger-warning {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ui-warning);
 }
 
 .theme-picker__checkbox {
@@ -1234,6 +1263,15 @@ a {
   background: var(--ui-bg);
   border: 1px solid var(--ui-border);
   border-radius: var(--radius-sm);
+}
+
+/* Small swatch shown inside the accent-contrast badge. */
+.theme-controls__accent-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  border: 1px solid var(--ui-border-strong);
+  flex-shrink: 0;
 }
 
 .badge {

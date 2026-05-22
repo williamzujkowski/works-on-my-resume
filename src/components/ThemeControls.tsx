@@ -10,6 +10,17 @@ import type { ResumeTheme } from '../types';
 import { RESUME_SAFE_MIN_CONTRAST } from '../types';
 import Icon from './Icon';
 
+/**
+ * Map a WCAG contrast ratio to its conformance level for normal-size text.
+ * AAA ≥ 7:1, AA ≥ 4.5:1, otherwise it fails AA. Used to label contrast
+ * figures so a reader understands what a number like "15.8:1" means.
+ */
+function wcagLevel(ratio: number): 'AAA' | 'AA' | 'fails AA' {
+  if (ratio >= 7) return 'AAA';
+  if (ratio >= 4.5) return 'AA';
+  return 'fails AA';
+}
+
 interface ThemeControlsProps {
   current: ResumeTheme;
   onPrevious: () => void;
@@ -47,8 +58,19 @@ export default function ThemeControls({
     }
   }, [current.slug]);
 
-  const contrast = current.contrastRatio.toFixed(1);
+  const bodyContrast = current.contrastRatio.toFixed(1);
+  const accentContrast = current.contrast.accentOnBg.toFixed(1);
   const isSafe = current.contrastRatio >= RESUME_SAFE_MIN_CONTRAST;
+  const bodyLevel = wcagLevel(current.contrastRatio);
+  const accentLevel = wcagLevel(current.contrast.accentOnBg);
+
+  /* Full sentences used for both the visual `title` tooltip and the
+     `aria-label`, so the bare "15.8:1" figure is never the only context a
+     reader (sighted or screen-reader) gets. */
+  const bodyLabel = `Body text contrast ${bodyContrast}:1 — WCAG ${bodyLevel}${
+    isSafe ? '' : ', below the resume-safe threshold'
+  }`;
+  const accentLabel = `Accent contrast ${accentContrast}:1 — WCAG ${accentLevel}`;
 
   return (
     <div className="theme-controls">
@@ -86,16 +108,26 @@ export default function ThemeControls({
         <span className={current.isDark ? 'badge badge--dark' : 'badge badge--light'}>
           {current.isDark ? 'dark' : 'light'}
         </span>
+        {/* Body-text contrast — the canonical legibility figure. The icon
+            (check / alert) plus the explicit aria-label carry the meaning,
+            so the signal is never colour-only. */}
         <span
           className={isSafe ? 'badge badge--safe' : 'badge badge--unsafe'}
-          title={
-            isSafe
-              ? `Body text contrast ${contrast}:1 — meets the resume-safe threshold`
-              : `Body text contrast ${contrast}:1 — below the resume-safe threshold`
-          }
+          title={bodyLabel}
+          aria-label={bodyLabel}
         >
           {isSafe ? <Icon name="check" size={12} /> : <Icon name="alert" size={12} />}
-          {contrast}:1
+          {bodyContrast}:1
+        </span>
+        {/* Accent contrast — every theme's accent is engine-guaranteed to
+            clear WCAG AA, so this is informational rather than a warning. */}
+        <span className="badge" title={accentLabel} aria-label={accentLabel}>
+          <span
+            className="theme-controls__accent-dot"
+            style={{ background: current.tokens.accent }}
+            aria-hidden="true"
+          />
+          {accentContrast}:1
         </span>
       </span>
 
