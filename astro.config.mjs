@@ -11,4 +11,6 @@ export default defineConfig({
   output: 'static',
   integrations: [react()],
   // Resume content never touches a server; no SSR, no adapters, no analytics.
+  // The Content Security Policy is a static <meta> tag in BaseLayout.astro.
+  // See issue #38 for hardening it to script/style hashes post-MVP.
 });
