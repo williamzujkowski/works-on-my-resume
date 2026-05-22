@@ -1,0 +1,48 @@
+{
+  "name": "works-on-my-resume",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A static, local-first Markdown resume renderer with OKLCH terminal themes, print-friendly output, and no backend.",
+  "license": "MIT",
+  "homepage": "https://williamzujkowski.github.io/works-on-my-resume/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/williamzujkowski/works-on-my-resume.git"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/react": "^5.0.5",
+    "astro": "^6.3.7",
+    "dompurify": "^3.4.5",
+    "gray-matter": "^4.0.3",
+    "marked": "^18.0.4",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "@eslint/js": "^10.0.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^10.4.0",
+    "eslint-plugin-astro": "^1.7.0",
+    "globals": "^17.6.0",
+    "prettier": "^3.8.3",
+    "prettier-plugin-astro": "^0.14.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.4"
+  }
+}

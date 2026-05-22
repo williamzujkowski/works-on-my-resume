@@ -1,0 +1,57 @@
+---
+/**
+ * BaseLayout — the single HTML shell for Works on My Resume.
+ *
+ * Owns <head>, the Content Security Policy, metadata, and the global
+ * stylesheet import. Pages fill the <slot />.
+ *
+ * Privacy posture: this is a fully static site. There are no analytics,
+ * no third-party scripts, and no network calls that carry resume content.
+ */
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'Works on My Resume',
+  description = 'A static, local-first Markdown resume renderer with OKLCH terminal themes. Markdown in. Resume out. No servers harmed.',
+} = Astro.props;
+
+const base = import.meta.env.BASE_URL;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+
+    <!--
+      Content Security Policy. The site is static and local-first: resume
+      content is parsed and sanitized entirely in the browser and is never
+      transmitted. img-src allows data:/blob: so pasted/exported resumes can
+      render embedded images without leaking to a remote host.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none';"
+    />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
+
+    <!-- Open Graph: theme-only metadata, never resume content. -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

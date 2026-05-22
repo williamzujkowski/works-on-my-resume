@@ -1,0 +1,14 @@
+/*
+ * global.css — placeholder.
+ *
+ * Replaced during the build fan-out by the UI agent, which owns the full
+ * design system (UI custom properties, terminal-inspired chrome, layout).
+ */
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}

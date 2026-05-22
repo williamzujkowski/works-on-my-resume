@@ -1,0 +1,5 @@
+dist/
+node_modules/
+.astro/
+src/data/themes.json
+package-lock.json
