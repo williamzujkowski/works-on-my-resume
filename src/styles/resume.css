@@ -1,0 +1,252 @@
+/*
+ * resume.css — typography and layout for the rendered resume document.
+ *
+ * Everything here is scoped under `.resume-preview` (the exact class the
+ * React `ResumePreview` component renders). For color, this stylesheet
+ * consumes ONLY the `--resume-*` semantic variables defined in global.css
+ * and overridden at runtime by the theme engine — so any terminal theme
+ * can drive this layout without touching markup.
+ */
+
+.resume-preview {
+  /* The resume document is a self-contained "page". */
+  width: 100%;
+  max-width: 50rem;
+  padding: 3rem 3.25rem;
+  background: var(--resume-bg);
+  color: var(--resume-fg);
+  border: 1px solid var(--resume-border);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+
+  font-family: 'Charter', 'Georgia', 'Iowan Old Style', 'Palatino Linotype', serif;
+  font-size: 16px;
+  line-height: 1.6;
+
+  /* Establish a containing block so descendant sizing is predictable. */
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 640px) {
+  .resume-preview {
+    padding: 1.75rem 1.5rem;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Optional frontmatter contact line                                   */
+/* ------------------------------------------------------------------ */
+
+.resume-preview__contact {
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 2px solid var(--resume-border);
+}
+
+.resume-preview__contact-name {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--resume-accent);
+  letter-spacing: -0.01em;
+}
+
+.resume-preview__contact-role {
+  margin-top: 0.15rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--resume-accent-2);
+}
+
+.resume-preview__contact-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin-top: 0.6rem;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  color: var(--resume-muted);
+}
+
+.resume-preview__contact-meta a {
+  color: var(--resume-accent);
+  text-decoration: none;
+}
+
+.resume-preview__contact-meta a:hover {
+  text-decoration: underline;
+}
+
+.resume-preview__contact-sep {
+  color: var(--resume-border);
+  user-select: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Document body — rendered Markdown                                    */
+/* ------------------------------------------------------------------ */
+
+.resume-preview__body > :first-child {
+  margin-top: 0;
+}
+
+.resume-preview h1,
+.resume-preview h2,
+.resume-preview h3,
+.resume-preview h4 {
+  color: var(--resume-accent);
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+.resume-preview h1 {
+  font-size: 1.8rem;
+  margin-top: 0;
+  margin-bottom: 0.35rem;
+  letter-spacing: -0.01em;
+}
+
+.resume-preview h2 {
+  font-size: 1.15rem;
+  margin-top: 1.9rem;
+  margin-bottom: 0.7rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--resume-border);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.resume-preview h3 {
+  font-size: 1.02rem;
+  margin-top: 1.2rem;
+  margin-bottom: 0.2rem;
+  color: var(--resume-fg);
+}
+
+.resume-preview h4 {
+  font-size: 0.95rem;
+  margin-top: 0.9rem;
+  margin-bottom: 0.2rem;
+}
+
+.resume-preview p {
+  margin: 0.55rem 0;
+}
+
+/* The italic line directly after an h3 reads as a role/date subtitle. */
+.resume-preview h3 + p em,
+.resume-preview h4 + p em {
+  font-style: normal;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  color: var(--resume-muted);
+}
+
+.resume-preview a {
+  color: var(--resume-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.resume-preview strong {
+  color: var(--resume-accent-2);
+  font-weight: 700;
+}
+
+.resume-preview em {
+  color: var(--resume-muted);
+}
+
+.resume-preview ul,
+.resume-preview ol {
+  margin: 0.5rem 0;
+  padding-left: 1.4rem;
+}
+
+.resume-preview li {
+  margin: 0.3rem 0;
+}
+
+.resume-preview li::marker {
+  color: var(--resume-accent);
+}
+
+.resume-preview ul ul,
+.resume-preview ol ol,
+.resume-preview ul ol,
+.resume-preview ol ul {
+  margin: 0.2rem 0;
+}
+
+.resume-preview code {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  padding: 0.1rem 0.35rem;
+  background: var(--resume-code-bg);
+  border-radius: 4px;
+}
+
+.resume-preview pre {
+  margin: 0.8rem 0;
+  padding: 0.9rem 1rem;
+  background: var(--resume-code-bg);
+  border: 1px solid var(--resume-border);
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.resume-preview pre code {
+  padding: 0;
+  background: none;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.resume-preview blockquote {
+  margin: 0.9rem 0;
+  padding: 0.6rem 1.1rem;
+  background: var(--resume-card);
+  border-left: 3px solid var(--resume-accent);
+  border-radius: 0 4px 4px 0;
+  color: var(--resume-muted);
+  font-style: italic;
+}
+
+.resume-preview blockquote p {
+  margin: 0.2rem 0;
+}
+
+.resume-preview hr {
+  margin: 1.8rem 0;
+  border: none;
+  border-top: 1px solid var(--resume-border);
+}
+
+.resume-preview table {
+  width: 100%;
+  margin: 0.9rem 0;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.resume-preview th,
+.resume-preview td {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--resume-border);
+  text-align: left;
+}
+
+.resume-preview th {
+  background: var(--resume-card);
+  color: var(--resume-accent);
+  font-weight: 700;
+}
+
+.resume-preview tbody tr:nth-child(even) {
+  background: var(--resume-card);
+}
+
+.resume-preview img {
+  max-width: 100%;
+  border-radius: 4px;
+}

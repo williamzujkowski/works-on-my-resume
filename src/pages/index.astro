@@ -1,17 +1,23 @@
 ---
 /**
- * index.astro — placeholder home page.
+ * index.astro — the single page of Works on My Resume.
  *
- * Replaced during the build fan-out by the UI agent, which mounts the
- * ResumeStudio React island and the static Astro chrome.
+ * Renders the static Astro chrome (header, privacy notice) and mounts the
+ * `ResumeStudio` React island, which owns all interactive app state.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AppHeader from '../components/AppHeader.astro';
+import PrivacyNotice from '../components/PrivacyNotice.astro';
+import ResumeStudio from '../components/ResumeStudio.tsx';
 ---
 
 <BaseLayout>
-  <main>
-    <h1>Works on My Resume</h1>
-    <p>Markdown in. Resume out. No servers harmed.</p>
-    <p>Scaffold in place — UI build in progress.</p>
-  </main>
+  <a class="skip-link" href="#studio">Skip to the resume workbench</a>
+  <div class="app-shell">
+    <AppHeader />
+    <PrivacyNotice />
+    <main id="studio">
+      <ResumeStudio client:load />
+    </main>
+  </div>
 </BaseLayout>

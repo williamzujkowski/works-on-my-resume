@@ -1,0 +1,168 @@
+/*
+ * print.css — print / "Save as PDF" stylesheet.
+ *
+ * Two print modes, selected by `body[data-print-mode]` (set by ResumeStudio):
+ *
+ *   - "conservative" (DEFAULT): white background, black text, no decorative
+ *     color. The safe choice for a printed resume — ink-friendly and ATS
+ *     friendly. Applies when the attribute is "conservative" or absent.
+ *
+ *   - "theme": print using the currently selected theme's colors.
+ *
+ * In BOTH modes the app chrome is hidden and only the resume is printed.
+ *
+ * Loaded via `@import` in global.css, so it ships with every page.
+ */
+
+@media print {
+  /* --------------------------------------------------------------
+   * Hide all app chrome — print only the resume document.
+   * ------------------------------------------------------------ */
+  .app-header,
+  .privacy-notice,
+  .studio__toolbar,
+  .studio__shortcuts,
+  .skip-link,
+  .editor,
+  [data-print-hide],
+  .studio__pane--editor {
+    display: none !important;
+  }
+
+  /* Collapse the workbench framing so the resume fills the page. */
+  html,
+  body {
+    background: #fff;
+    margin: 0;
+    padding: 0;
+  }
+
+  .app-shell,
+  .studio,
+  .studio__split,
+  .studio__pane,
+  .studio__pane-body,
+  .preview-frame {
+    display: block !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .studio__pane-header {
+    display: none !important;
+  }
+
+  /* Letter-size friendly margins. */
+  @page {
+    size: letter;
+    margin: 0.6in;
+  }
+
+  /* --------------------------------------------------------------
+   * The resume document itself.
+   * ------------------------------------------------------------ */
+  .resume-preview {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+
+  /* Clean page breaks. */
+  .resume-preview h1,
+  .resume-preview h2,
+  .resume-preview h3,
+  .resume-preview h4 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  .resume-preview li,
+  .resume-preview blockquote,
+  .resume-preview pre,
+  .resume-preview table,
+  .resume-preview img {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .resume-preview p {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* --------------------------------------------------------------
+   * DEFAULT — conservative mode (also covers a missing attribute).
+   * White paper, black ink, readable links, no decorative color.
+   * ------------------------------------------------------------ */
+  body:not([data-print-mode='theme']) .resume-preview {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview :is(h1, h2, h3, h4),
+  body:not([data-print-mode='theme']) .resume-preview strong,
+  body:not([data-print-mode='theme']) .resume-preview li::marker,
+  body:not([data-print-mode='theme']) .resume-preview th {
+    color: #000 !important;
+    background: none !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview h2 {
+    border-bottom-color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview a {
+    color: #000 !important;
+    text-decoration: underline;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview :is(blockquote, hr) {
+    background: none !important;
+    border-color: #000 !important;
+    color: #222 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview :is(code, pre, table, th, td) {
+    background: #fff !important;
+    border-color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview__contact-name {
+    color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview__contact-role {
+    color: #222 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview
+    :is(.resume-preview__contact, .resume-preview__contact-meta) {
+    color: #222 !important;
+    border-color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview__contact-meta a {
+    color: #000 !important;
+  }
+
+  /* --------------------------------------------------------------
+   * THEME mode — print with the active theme colors. The resume
+   * already consumes --resume-* vars, so we only need to ask the
+   * browser to actually print background colors.
+   * ------------------------------------------------------------ */
+  body[data-print-mode='theme'] .resume-preview {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
