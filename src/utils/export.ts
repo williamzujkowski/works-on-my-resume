@@ -14,6 +14,26 @@
 import type { ResumeTheme, ResumeFrontmatter } from '../types';
 import { themeCssVariables } from './themes';
 
+/*
+ * Single source of truth for resume-document styling.
+ *
+ * `resume.css` styles the in-app preview (it is `@import`ed by global.css).
+ * The standalone-HTML export needs the SAME styling, so rather than keeping
+ * a hand-maintained copy here — which inevitably drifts — we import the
+ * exact same stylesheet as a raw string via Vite's `?raw` suffix and inline
+ * it into the exported document.
+ *
+ * `resume.css` is written to be self-contained for exactly this use: it is
+ * fully scoped under `.resume-preview`, carries its own `--resume-*` color
+ * fallbacks, its own type tokens, and a `box-sizing` reset, so it renders
+ * correctly embedded in a bare exported `<body>` with no other CSS.
+ *
+ * The only resume styling NOT in `resume.css` is `STANDALONE_EXPORT_CSS`
+ * below: the bare-document framing (page background, centering) and a print
+ * block that the export needs but the in-app build gets from `print.css`.
+ */
+import resumeCss from '../styles/resume.css?raw';
+
 /* ------------------------------------------------------------------ */
 /* Internal helpers                                                    */
 /* ------------------------------------------------------------------ */
@@ -82,179 +102,48 @@ function triggerDownload(content: string, filename: string, mimeType: string): v
 }
 
 /* ------------------------------------------------------------------ */
-/* Standalone resume stylesheet                                        */
+/* Export-only stylesheet supplement                                   */
 /* ------------------------------------------------------------------ */
 
 /**
- * Self-contained, print-friendly stylesheet for the exported resume.
+ * The SMALL slice of styling that the standalone export needs but the
+ * in-app build gets from elsewhere.
  *
- * It consumes ONLY the semantic `--resume-*` custom properties for color, so
- * the same markup renders correctly under any theme. There are no external
- * fonts, no imports, and no network requests — only system font stacks.
+ * The bulk of the resume styling is `resumeCss` (the shared `resume.css`).
+ * That file styles the `.resume-preview` document but deliberately says
+ * nothing about the page it sits on — in the app that framing comes from
+ * `global.css` / `.preview-frame`, and print handling comes from `print.css`.
+ *
+ * An exported document has neither, so this supplement provides exactly two
+ * things and nothing more:
+ *   - bare-document framing: a reset, a page background, and centering the
+ *     `.resume-preview` sheet on the page;
+ *   - a print block, so the downloaded HTML prints cleanly (drop the page
+ *     chrome, avoid awkward page breaks, keep links readable).
  */
-const STANDALONE_RESUME_CSS = `
+const STANDALONE_EXPORT_CSS = `
+/* Bare-document framing — the page the resume sheet rests on. */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-html {
-  /* Sensible fallbacks so the document is readable even without theme vars. */
-  --resume-bg: #ffffff;
-  --resume-fg: #1a1a1a;
-  --resume-muted: #555555;
-  --resume-accent: #0b5fff;
-  --resume-accent-2: #6b3df5;
-  --resume-border: #d8d8d8;
-  --resume-card: #f5f5f5;
-  --resume-code-bg: #f0f0f0;
-}
-
 body {
   margin: 0;
   padding: 2.5rem 1rem;
-  background: var(--resume-bg);
-  color: var(--resume-fg);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
-    Arial, sans-serif;
-  font-size: 16px;
-  line-height: 1.55;
+  background: var(--resume-bg, #ffffff);
+  color: var(--resume-fg, #1f2328);
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
+/* Center the resume sheet; resume.css owns the sheet's own appearance. */
 .resume-preview {
-  max-width: 50rem;
-  margin: 0 auto;
-  padding: 2.5rem;
-  background: var(--resume-card);
-  border: 1px solid var(--resume-border);
-  border-radius: 8px;
+  margin-inline: auto;
 }
 
-.resume-preview h1,
-.resume-preview h2,
-.resume-preview h3,
-.resume-preview h4,
-.resume-preview h5,
-.resume-preview h6 {
-  margin: 1.6em 0 0.5em;
-  line-height: 1.25;
-  font-weight: 700;
-}
-
-.resume-preview h1 {
-  margin-top: 0;
-  font-size: 2rem;
-  color: var(--resume-accent);
-}
-
-.resume-preview h2 {
-  font-size: 1.35rem;
-  padding-bottom: 0.25em;
-  border-bottom: 2px solid var(--resume-border);
-}
-
-.resume-preview h3 {
-  font-size: 1.1rem;
-  color: var(--resume-accent-2);
-}
-
-.resume-preview p,
-.resume-preview ul,
-.resume-preview ol,
-.resume-preview blockquote,
-.resume-preview table {
-  margin: 0 0 0.85em;
-}
-
-.resume-preview ul,
-.resume-preview ol {
-  padding-left: 1.4em;
-}
-
-.resume-preview li {
-  margin: 0.2em 0;
-}
-
-.resume-preview a {
-  color: var(--resume-accent);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.resume-preview strong {
-  font-weight: 700;
-}
-
-.resume-preview em {
-  font-style: italic;
-}
-
-.resume-preview small,
-.resume-preview .muted {
-  color: var(--resume-muted);
-}
-
-.resume-preview hr {
-  height: 1px;
-  margin: 1.6em 0;
-  border: 0;
-  background: var(--resume-border);
-}
-
-.resume-preview blockquote {
-  margin-left: 0;
-  padding: 0.4em 1em;
-  border-left: 3px solid var(--resume-accent);
-  color: var(--resume-muted);
-}
-
-.resume-preview code {
-  padding: 0.15em 0.4em;
-  background: var(--resume-code-bg);
-  border-radius: 4px;
-  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
-    'Liberation Mono', monospace;
-  font-size: 0.9em;
-}
-
-.resume-preview pre {
-  margin: 0 0 0.85em;
-  padding: 0.9em 1em;
-  background: var(--resume-code-bg);
-  border: 1px solid var(--resume-border);
-  border-radius: 6px;
-  overflow-x: auto;
-}
-
-.resume-preview pre code {
-  padding: 0;
-  background: none;
-}
-
-.resume-preview table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.resume-preview th,
-.resume-preview td {
-  padding: 0.4em 0.6em;
-  border: 1px solid var(--resume-border);
-  text-align: left;
-}
-
-.resume-preview th {
-  background: var(--resume-code-bg);
-}
-
-.resume-preview img {
-  max-width: 100%;
-  height: auto;
-}
-
-/* Print: drop the page chrome, keep the text crisp and ink-friendly. */
+/* Print: drop the page padding and the sheet chrome, keep breaks clean. */
 @media print {
   body {
     padding: 0;
@@ -268,23 +157,29 @@ body {
     background: #ffffff;
     border: 0;
     border-radius: 0;
+    box-shadow: none;
   }
 
   .resume-preview a {
     color: inherit;
   }
 
+  .resume-preview h1,
   .resume-preview h2,
   .resume-preview h3,
-  .resume-preview h1 {
+  .resume-preview h4 {
     page-break-after: avoid;
+    break-after: avoid;
   }
 
   .resume-preview li,
   .resume-preview p,
   .resume-preview blockquote,
-  .resume-preview pre {
+  .resume-preview pre,
+  .resume-preview table,
+  .resume-preview img {
     page-break-inside: avoid;
+    break-inside: avoid;
   }
 }
 `.trim();
@@ -297,10 +192,13 @@ body {
  * Build a complete, dependency-free standalone HTML document for a resume.
  *
  * The returned string is a valid `<!doctype html>` document with everything
- * inlined: the theme's `--resume-*` custom properties and a print-friendly
- * resume stylesheet live in a single `<style>` block. There are no external
- * CSS files, scripts, fonts, or network requests, so the file renders the
- * same offline, on any machine.
+ * inlined in a single `<style>` block, in cascade order:
+ *   1. the theme's `--resume-*` custom properties (`themeCssVariables`);
+ *   2. `resumeCss` — the shared `resume.css`, the SAME stylesheet that
+ *      styles the in-app preview, so the export can never drift from it;
+ *   3. `STANDALONE_EXPORT_CSS` — bare-document framing + print rules.
+ * There are no external CSS files, scripts, fonts, or network requests, so
+ * the file renders the same offline, on any machine.
  *
  * @param resumeHtml  Already-sanitized resume HTML (output of the Markdown
  *                    pipeline). It is embedded verbatim and is NOT escaped.
@@ -326,7 +224,9 @@ export function buildStandaloneHtml(
     <style>
 ${themeVars}
 
-${STANDALONE_RESUME_CSS}
+${resumeCss}
+
+${STANDALONE_EXPORT_CSS}
     </style>
   </head>
   <body>

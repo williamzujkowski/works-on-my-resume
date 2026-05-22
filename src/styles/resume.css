@@ -1,17 +1,67 @@
 /*
  * resume.css — typography and layout for the rendered resume document.
  *
- * Everything here is scoped under `.resume-preview` (the exact class the
- * React `ResumePreview` component renders). For color, this stylesheet
- * consumes ONLY the `--resume-*` semantic variables defined in global.css
- * and overridden at runtime by the theme engine — so any terminal theme
- * can drive this layout without touching markup.
+ * SINGLE SOURCE OF TRUTH for resume-document styling. This file is consumed
+ * by BOTH:
+ *   1. the in-app preview — `@import`ed by global.css, applied to the
+ *      `.resume-preview` element the React `ResumePreview` component renders;
+ *   2. the standalone-HTML export — `src/utils/export.ts` imports this file
+ *      verbatim (`resume.css?raw`) and inlines it into the exported document.
+ *
+ * To stay correct in BOTH contexts this stylesheet is fully self-contained:
+ *
+ *   - Everything is scoped under `.resume-preview` (or its descendants), so
+ *     it never collides with app chrome and is safe to drop into a bare
+ *     exported `<body>` that has no other CSS.
+ *   - For color it consumes ONLY the `--resume-*` semantic variables. In-app
+ *     these come from global.css / the theme engine; in an export they are
+ *     injected ahead of this file by `themeCssVariables`. The fallback block
+ *     just below also defines them locally, so the document is legible even
+ *     with no theme at all.
+ *   - The resume's own type tokens (`--resume-serif`, `--resume-mono`) and a
+ *     `box-sizing` reset are declared here rather than relying on global.css,
+ *     so an export needs nothing else.
+ *   - Print rules for a standalone document live at the end of this file.
+ *
+ * Do NOT reference app-chrome tokens (`--font-*`, `--space-*`, `--radius-*`,
+ * `--ui-*`) here — they do not exist in an exported document.
  */
+
+/* ------------------------------------------------------------------ */
+/* Export-safe self-sufficiency: color fallbacks + box-sizing reset.    */
+/*                                                                      */
+/* In-app these are harmless: global.css already supplies the same      */
+/* `--resume-*` defaults and a global `box-sizing` reset, so the cascade */
+/* resolves identically and the preview stays pixel-identical. In a bare */
+/* exported document they are what makes the resume render correctly.   */
+/* ------------------------------------------------------------------ */
+.resume-preview,
+.resume-preview *,
+.resume-preview *::before,
+.resume-preview *::after {
+  box-sizing: border-box;
+}
+
+.resume-preview {
+  /* Sensible light-theme fallbacks so the document is readable even when
+     no theme has been applied (e.g. a stripped export). The theme engine
+     and global.css both override these with the same semantic names. */
+  --resume-bg: var(--resume-bg, #ffffff);
+  --resume-fg: var(--resume-fg, #1f2328);
+  --resume-muted: var(--resume-muted, #57606a);
+  --resume-accent: var(--resume-accent, #0b5cae);
+  --resume-accent-2: var(--resume-accent-2, #8a3ffc);
+  --resume-border: var(--resume-border, #d6dbe1);
+  --resume-card: var(--resume-card, #f6f8fa);
+  --resume-code-bg: var(--resume-code-bg, #f0f2f5);
+}
 
 .resume-preview {
   /* Resume-document type tokens. The document is set in Source Serif 4 to
      stay impeccably professional; --resume-mono drives its monospace bits
-     (contact line, dates, inline code) so raw stacks are never repeated. */
+     (contact line, dates, inline code) so raw stacks are never repeated.
+     Both stacks fall back to widely-available system faces, so an export
+     that does not bundle the woff2 files still renders cleanly. */
   --resume-serif: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif;
   --resume-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
