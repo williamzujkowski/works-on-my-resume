@@ -20,7 +20,11 @@ export type IconName =
   | 'check'
   | 'replace'
   | 'trash'
-  | 'file';
+  | 'file'
+  | 'help'
+  | 'list-numbers'
+  | 'wrap-text'
+  | 'plus';
 
 interface IconProps {
   name: IconName;
@@ -90,6 +94,38 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <path d="M14 2v6h6" />
+    </>
+  ),
+  help: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </>
+  ),
+  'list-numbers': (
+    <>
+      <path d="M10 6h11" />
+      <path d="M10 12h11" />
+      <path d="M10 18h11" />
+      <path d="M4 4v4" />
+      <path d="M4 8h1.5" />
+      <path d="M3 4h1.5" />
+      <path d="M6 14H3l3 4H3" />
+    </>
+  ),
+  'wrap-text': (
+    <>
+      <path d="M3 6h18" />
+      <path d="M3 12h15a3 3 0 0 1 0 6h-4" />
+      <path d="m16 16-2 2 2 2" />
+      <path d="M3 18h7" />
+    </>
+  ),
+  plus: (
+    <>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
     </>
   ),
 };

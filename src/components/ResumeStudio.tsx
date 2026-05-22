@@ -33,6 +33,7 @@ import ResumePreview from './ResumePreview';
 import ThemePicker from './ThemePicker';
 import ThemeControls from './ThemeControls';
 import ExportPanel from './ExportPanel';
+import KeyboardHelp, { getStoredShortcutsEnabled, setStoredShortcutsEnabled } from './KeyboardHelp';
 import Icon from './Icon';
 
 /** Debounce window for re-parsing Markdown as the user types. */
@@ -72,10 +73,18 @@ export default function ResumeStudio() {
   const [printMode, setPrintMode] = useState<PrintMode>('conservative');
   const [loadAnnouncement, setLoadAnnouncement] = useState('');
 
+  /* ----- Keyboard-shortcut help overlay (#58) ----- */
+  const [helpOpen, setHelpOpen] = useState(false);
+  /* Single-key shortcuts can be disabled for WCAG 2.1.4 mitigation. The
+     stored preference is read once on mount (after hydration) to avoid an
+     SSR/client mismatch — default `true` until then. */
+  const [shortcutsEnabled, setShortcutsEnabled] = useState(true);
+
   const themeSearchInputId = useId();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const exportTriggerRef = useRef<HTMLButtonElement>(null);
+  const helpTriggerRef = useRef<HTMLButtonElement>(null);
 
   /** A resume is present once Markdown has been entered. */
   const hasResume = markdown.trim() !== '';
@@ -89,6 +98,21 @@ export default function ResumeStudio() {
     const initial = findTheme(slug) ?? getFallbackTheme(matchesDark());
     setTheme(initial);
     applyThemeToDocument(initial);
+  }, []);
+
+  /* ---------------------------------------------------------------- *
+   * Mount: load the persisted "single-key shortcuts" preference.      *
+   * Done in an effect (not lazy init) so the server and first client  *
+   * render agree — localStorage is client-only.                       *
+   * ---------------------------------------------------------------- */
+  useEffect(() => {
+    setShortcutsEnabled(getStoredShortcutsEnabled());
+  }, []);
+
+  /** Toggle single-key shortcuts and persist the choice. */
+  const changeShortcutsEnabled = useCallback((enabled: boolean) => {
+    setShortcutsEnabled(enabled);
+    setStoredShortcutsEnabled(enabled);
   }, []);
 
   /* ---------------------------------------------------------------- *
@@ -170,9 +194,14 @@ export default function ResumeStudio() {
 
   /* ---------------------------------------------------------------- *
    * Global keyboard shortcuts.                                        *
-   * Escape always works. The resume-acting shortcuts (theme nav, /,   *
-   * print, export) are gated on a resume being present — they have no *
-   * meaning in the empty Phase 1 state.                               *
+   * Escape ALWAYS works — it is never gated, so a panel can always be *
+   * dismissed by keyboard. The remaining shortcuts (theme nav, /,     *
+   * print, export, ?) are gated three ways:                           *
+   *   1. They act on a resume — ignored in the empty Phase 1 state.   *
+   *   2. They are silenced while the help overlay is open (it owns    *
+   *      its own keyboard handling, including its focus trap).        *
+   *   3. WCAG 2.1.4: when `shortcutsEnabled` is false the single-key  *
+   *      shortcuts are fully disabled (only Escape survives).          *
    * ---------------------------------------------------------------- */
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -186,9 +215,16 @@ export default function ResumeStudio() {
         return;
       }
 
+      // The help overlay traps focus and handles its own keys.
+      if (helpOpen) return;
+
       // Never hijack typing, and never fight browser/OS chords.
       if (isEditableTarget(event.target)) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      // WCAG 2.1.4 mitigation: all single-key shortcuts are off when the
+      // user has disabled them in the help overlay.
+      if (!shortcutsEnabled) return;
 
       // All remaining shortcuts act on a resume — ignore them in Phase 1.
       if (!hasResume) return;
@@ -218,6 +254,10 @@ export default function ResumeStudio() {
           event.preventDefault();
           setExportOpen((open) => !open);
           break;
+        case '?':
+          event.preventDefault();
+          setHelpOpen(true);
+          break;
         default:
           break;
       }
@@ -225,7 +265,14 @@ export default function ResumeStudio() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [exportOpen, themePickerOpen, hasResume, stepTheme, randomTheme]);
+  }, [exportOpen, themePickerOpen, helpOpen, hasResume, shortcutsEnabled, stepTheme, randomTheme]);
+
+  /* On close of the help overlay, restore focus to whatever opened it. */
+  const closeHelp = useCallback(() => {
+    setHelpOpen(false);
+    // Defer so the dialog has unmounted before we move focus.
+    window.setTimeout(() => helpTriggerRef.current?.focus(), 0);
+  }, []);
 
   /* ---------------------------------------------------------------- *
    * Resume loaded from the uploader. Track the source filename, then  *
@@ -252,6 +299,7 @@ export default function ResumeStudio() {
     setSourceName('resume.md');
     setExportOpen(false);
     setThemePickerOpen(false);
+    setHelpOpen(false);
     setLoadAnnouncement('Resume cleared.');
   }, []);
 
@@ -323,31 +371,65 @@ export default function ResumeStudio() {
               />
             )}
           </div>
+
+          <button
+            type="button"
+            ref={helpTriggerRef}
+            className="btn btn--icon"
+            aria-haspopup="dialog"
+            aria-expanded={helpOpen}
+            onClick={() => setHelpOpen(true)}
+            title="Keyboard shortcuts (?)"
+            aria-label="Keyboard shortcuts"
+          >
+            <Icon name="help" />
+          </button>
         </div>
       )}
 
-      {/* ----- Keyboard shortcut legend. Phase 2 only (#43). ----- */}
+      {/* ----- Keyboard shortcut legend. Phase 2 only (#43). -----
+           Intentionally NOT aria-hidden: it is genuine, useful content for
+           screen-reader users. The trailing button opens the full help
+           dialog and is the discoverable affordance for the `?` shortcut. */}
       {hasResume && (
         <div className="studio__shortcuts" data-print-hide>
           <span className="studio__shortcuts-label">Shortcuts</span>
-          <span>
-            <kbd>←</kbd> <kbd>→</kbd> theme
-          </span>
-          <span>
-            <kbd>r</kbd> random
-          </span>
-          <span>
-            <kbd>/</kbd> search themes
-          </span>
-          <span>
-            <kbd>p</kbd> print
-          </span>
-          <span>
-            <kbd>e</kbd> export
-          </span>
-          <span>
-            <kbd>Esc</kbd> close
-          </span>
+          {shortcutsEnabled ? (
+            <>
+              <span>
+                <kbd>←</kbd> <kbd>→</kbd> theme
+              </span>
+              <span>
+                <kbd>r</kbd> random
+              </span>
+              <span>
+                <kbd>/</kbd> search themes
+              </span>
+              <span>
+                <kbd>p</kbd> print
+              </span>
+              <span>
+                <kbd>e</kbd> export
+              </span>
+              <span>
+                <kbd>Esc</kbd> close
+              </span>
+            </>
+          ) : (
+            <span className="studio__shortcuts-off">
+              Single-key shortcuts are off — <kbd>Esc</kbd> still closes panels.
+            </span>
+          )}
+          <button
+            type="button"
+            className="studio__shortcuts-help"
+            onClick={() => setHelpOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={helpOpen}
+          >
+            <Icon name="help" size={13} />
+            {shortcutsEnabled ? 'All shortcuts' : 'Shortcut settings'}
+          </button>
         </div>
       )}
 
@@ -392,6 +474,15 @@ export default function ResumeStudio() {
           </div>
         </section>
       </div>
+
+      {/* ----- Keyboard-shortcuts help overlay (#58). ----- */}
+      {helpOpen && (
+        <KeyboardHelp
+          shortcutsEnabled={shortcutsEnabled}
+          onShortcutsEnabledChange={changeShortcutsEnabled}
+          onClose={closeHelp}
+        />
+      )}
     </div>
   );
 }

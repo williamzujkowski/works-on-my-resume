@@ -15,11 +15,18 @@
  * The full dataset is ~545 themes; only the first MAX_RENDERED matches are
  * mounted, with a "refine your search" hint, so the option list never mounts
  * 545 nodes at once.
+ *
+ * Preview-on-hover (#60): hovering or keyboard-focusing an option live-applies
+ * that theme to the document so browsing 545 themes is visual, not blind. The
+ * preview writes ONLY to the document (`applyThemeToDocument`) — never to the
+ * committed state, the URL, or localStorage. Those are touched only by a real
+ * selection (`onSelect`). If the popover closes without a selection, the theme
+ * that was active when it opened is restored.
  */
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ResumeTheme } from '../types';
 import { ACCENT_MIN_CONTRAST } from '../types';
-import { filterThemes } from '../utils/themes';
+import { applyThemeToDocument, filterThemes } from '../utils/themes';
 import Icon from './Icon';
 
 /** Cap on rendered option nodes — keeps the popover light. */
@@ -63,6 +70,21 @@ export default function ThemePicker({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
+  /* ----- Preview-on-hover bookkeeping (#60) -----
+     `baseThemeRef`    — the committed theme when the popover opened; the theme
+                         to restore if it closes without a selection.
+     `committedRef`    — set true the instant a real selection is made, so the
+                         cleanup effect knows NOT to revert.
+     `previewSlugRef`  — the slug currently applied to the document, so we can
+                         skip redundant re-applications (which would thrash the
+                         crossfade as the pointer sweeps the list).
+     `hasPreviewedRef` — true once a theme OTHER than the base has been
+                         previewed; gates whether a revert is needed on close. */
+  const baseThemeRef = useRef<ResumeTheme>(current);
+  const committedRef = useRef(false);
+  const previewSlugRef = useRef<string | null>(null);
+  const hasPreviewedRef = useRef(false);
+
   const idBase = useId();
   const listId = `${searchInputId}-list`;
   const liveId = `${idBase}-live`;
@@ -86,10 +108,23 @@ export default function ThemePicker({
   const openSnapshotRef = useRef({ rendered, currentSlug: current.slug });
   openSnapshotRef.current = { rendered, currentSlug: current.slug };
 
-  /* When the popover opens, focus the search input and reset the highlight to
-     the current theme if it is visible. */
+  /* When the popover opens: snapshot the committed theme (the revert target),
+     clear the preview/commit flags, focus the search input, and reset the
+     highlight to the current theme if it is visible.
+
+     On close: if no real selection was made, restore the snapshotted theme so
+     a preview never lingers as if it had been chosen. */
   useEffect(() => {
     if (!open) return;
+    baseThemeRef.current = current;
+    committedRef.current = false;
+    // Seed the preview slug with the already-applied theme: highlighting it on
+    // open is then a no-op, so the popover does not re-trigger the crossfade
+    // just by opening. A revert is only needed once a *different* theme has
+    // been previewed — tracked below.
+    previewSlugRef.current = current.slug;
+    hasPreviewedRef.current = false;
+
     const { rendered: list, currentSlug } = openSnapshotRef.current;
     const idx = list.findIndex((t) => t.slug === currentSlug);
     setActiveIndex(idx === -1 ? 0 : idx);
@@ -98,8 +133,34 @@ export default function ThemePicker({
       inputRef.current?.focus();
       inputRef.current?.select();
     }, 0);
-    return () => window.clearTimeout(id);
+
+    return () => {
+      window.clearTimeout(id);
+      // Closed without a selection, after previewing a different theme →
+      // restore the theme that was active when the popover opened.
+      if (!committedRef.current && hasPreviewedRef.current) {
+        applyThemeToDocument(baseThemeRef.current);
+      }
+      previewSlugRef.current = null;
+      hasPreviewedRef.current = false;
+    };
+    // Keyed solely on `open`: `current` is read only at open time on purpose —
+    // re-running on every committed theme change would re-snapshot mid-session.
   }, [open]);
+
+  /* Live-preview a theme by applying it to the document only. Never writes
+     committed state / URL / storage. Skips redundant re-applies so a pointer
+     sweeping the list does not retrigger the theme crossfade repeatedly. */
+  const preview = useCallback((theme: ResumeTheme) => {
+    if (previewSlugRef.current === theme.slug) return;
+    previewSlugRef.current = theme.slug;
+    // Note that we have diverged from the base theme — a revert is now needed
+    // if the popover closes without a real selection.
+    if (theme.slug !== baseThemeRef.current.slug) {
+      hasPreviewedRef.current = true;
+    }
+    applyThemeToDocument(theme);
+  }, []);
 
   /* Scroll the active option into view while navigating by keyboard. */
   useEffect(() => {
@@ -108,6 +169,17 @@ export default function ThemePicker({
     const option = list?.children[activeIndex] as HTMLElement | undefined;
     option?.scrollIntoView({ block: 'nearest' });
   }, [activeIndex, open]);
+
+  /* Keyboard navigation previews the highlighted theme too — so arrow-key
+     browsing is as visual as pointer hover. The preview helper de-dupes, so
+     this is safe to run on every activeIndex change. Keyed on the active
+     theme's slug (a stable primitive) rather than the `rendered` array. */
+  const activeSlug = rendered[activeIndex]?.slug;
+  useEffect(() => {
+    if (!open || !activeSlug) return;
+    const active = rendered.find((t) => t.slug === activeSlug);
+    if (active) preview(active);
+  }, [open, activeSlug, rendered, preview]);
 
   /* Close on outside-click. */
   useEffect(() => {
@@ -122,11 +194,15 @@ export default function ThemePicker({
   }, [open, onOpenChange]);
 
   function close(restoreFocus = true) {
+    // The open-effect cleanup reverts any preview when committedRef is false.
     onOpenChange(false);
     if (restoreFocus) triggerRef.current?.focus();
   }
 
   function choose(theme: ResumeTheme) {
+    // Mark BEFORE closing so the cleanup effect skips the revert. onSelect is
+    // the real commit — it writes state, the URL, and localStorage.
+    committedRef.current = true;
     onSelect(theme);
     close();
   }
