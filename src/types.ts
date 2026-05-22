@@ -110,17 +110,50 @@ export interface ResumeThemeTokens {
   codeBg: string;
 }
 
+/**
+ * Per-theme WCAG contrast figures, all measured against the theme's own
+ * background. Surfaced so the theme picker can show legibility at a glance
+ * and so `resumeSafe` can be derived from real numbers rather than a guess.
+ */
+export interface ResumeThemeContrast {
+  /** Foreground (body text) on background. */
+  fgOnBg: number;
+  /** Primary accent (`tokens.accent`) on background. */
+  accentOnBg: number;
+  /** Secondary accent (`tokens.accent2`) on background. */
+  accent2OnBg: number;
+}
+
 /** A terminal theme normalized into resume-ready semantic tokens. */
 export interface ResumeTheme {
   slug: string;
   name: string;
   isDark: boolean;
   tokens: ResumeThemeTokens;
-  /** Foreground-on-background contrast ratio (WCAG, 1–21). */
+  /**
+   * Foreground-on-background contrast ratio (WCAG, 1–21).
+   * Retained as the canonical body-text figure; equal to `contrast.fgOnBg`.
+   */
   contrastRatio: number;
   /**
-   * True when the theme clears a readable contrast threshold for body text.
-   * Drives the optional "resume-safe themes only" filter.
+   * All measured contrast figures for this theme — body text and both
+   * accents — against the theme background. Computed by the theme engine.
+   */
+  contrast: ResumeThemeContrast;
+  /**
+   * True when an accent was synthesized (lightness-shifted) to guarantee a
+   * legible value because no ANSI slot cleared the accent contrast floor.
+   * Purely informational — synthesized accents are still real OKLCH values.
+   */
+  accentSynthesized: boolean;
+  /**
+   * True when the theme clears the readable-contrast threshold for body
+   * text. Drives the optional "resume-safe themes only" filter.
+   *
+   * Honest definition: body text must clear `RESUME_SAFE_MIN_CONTRAST`.
+   * Accent legibility is no longer a free variable — the theme engine
+   * *guarantees* every theme's accents clear `ACCENT_MIN_CONTRAST` (by
+   * synthesizing when needed) — so it is intentionally not re-tested here.
    */
   resumeSafe: boolean;
 }
@@ -143,6 +176,15 @@ export const RESUME_CSS_VARS: Record<keyof ResumeThemeTokens, string> = {
 
 /** Minimum WCAG contrast ratio for a theme to be considered resume-safe. */
 export const RESUME_SAFE_MIN_CONTRAST = 7;
+
+/**
+ * Minimum WCAG contrast ratio an accent must clear against the theme
+ * background. 4.5:1 is the WCAG AA threshold for normal-size text — accents
+ * drive headings, links, list markers and bold spans, so they must be at
+ * least as legible as body text. The theme engine synthesizes a compliant
+ * accent for any theme whose ANSI palette cannot reach this on its own.
+ */
+export const ACCENT_MIN_CONTRAST = 4.5;
 
 /** Print modes offered by the export workflow. */
 export type PrintMode = 'conservative' | 'theme';
