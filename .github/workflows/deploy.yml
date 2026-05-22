@@ -1,0 +1,55 @@
+# Build and deploy Works on My Resume to GitHub Pages.
+#
+# This is the official Astro-on-Pages approach: the `withastro/action`
+# builds the static site, and `actions/deploy-pages` publishes the
+# resulting artifact. The app is fully static and local-first, so no
+# secrets, adapters, or runtime environment are needed.
+#
+# `site` and `base` are configured in astro.config.mjs and are NOT
+# duplicated here.
+name: Deploy to GitHub Pages
+
+on:
+  # Deploy on every push to the default branch...
+  push:
+    branches: [main]
+  # ...and allow manual runs from the Actions tab.
+  workflow_dispatch:
+
+# Least-privilege token: read the repo, write Pages, mint the OIDC token
+# that actions/deploy-pages uses to authenticate.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent Pages deployment; let an in-progress run
+# finish rather than cancelling it so a deploy is never left half-done.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # Build the static Astro site into an uploadable Pages artifact.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build with Astro
+        # withastro/action installs dependencies, runs `astro build`, and
+        # uploads the `dist/` output as a Pages artifact.
+        uses: withastro/action@v3
+
+  # Publish the artifact produced by `build` to GitHub Pages.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
