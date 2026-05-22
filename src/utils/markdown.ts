@@ -499,7 +499,7 @@ function validateLinkEntry(entry: unknown, index: number, warnings: string[]): v
   }
 
   const record = entry as Record<string, unknown>;
-  const label = asString(record.label ?? record.name ?? record.title);
+  let label = asString(record.label ?? record.name ?? record.title);
   let url = asString(record.url ?? record.href ?? record.link);
 
   // The terse single-pair form `{ GitHub: "https://…" }` is also valid.
@@ -508,6 +508,8 @@ function validateLinkEntry(entry: unknown, index: number, warnings: string[]): v
     if (keys.length === 1) {
       const onlyVal = asString(record[keys[0]]);
       if (onlyVal !== undefined) {
+        // Mirror normalizeLinks: the lone key is the label, its value the URL.
+        label = label ?? keys[0];
         url = url ?? onlyVal;
       }
     }
