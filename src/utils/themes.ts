@@ -38,21 +38,6 @@ import rawThemesData from '../data/themes.json';
 const rawThemes = rawThemesData as unknown as RawTheme[];
 
 /* ------------------------------------------------------------------ */
-/* Token normalization                                                 */
-/* ------------------------------------------------------------------ */
-
-/**
- * Build a CSS `color-mix()` string in the OKLCH space.
- *
- * Every target browser supports `color-mix()`, so emitting it as a token
- * value yields a valid static CSS value — no JS color math required. The
- * mix is `percent`% of `a` blended into `b`.
- */
-function mix(a: string, b: string, percent: number): string {
-  return `color-mix(in oklch, ${a} ${percent}%, ${b})`;
-}
-
-/* ------------------------------------------------------------------ */
 /* WCAG contrast math (OKLCH → linear sRGB → relative luminance)        */
 /* ------------------------------------------------------------------ */
 /*
@@ -397,22 +382,241 @@ function pickAccents(
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Surface-token derivation (#59)                                       */
+/* ------------------------------------------------------------------ */
+/*
+ * `muted`, `border`, `card` and `codeBg` are *derived* surfaces — the
+ * dataset never ships them. They used to be emitted as `color-mix()`
+ * strings that always blended toward `fg`, which was mode-blind (a "raised"
+ * card went *darker* on light themes, the opposite of what a raised panel
+ * should do) and broke standalone-HTML exports on renderers without
+ * `color-mix()` support.
+ *
+ * The pipeline below computes each as a concrete `oklch(...)` value via the
+ * existing OKLCH parse/format helpers, so:
+ *   - exports are engine-independent (no `color-mix()` in token output), and
+ *   - derivation is mode-aware: light themes lift surfaces toward white,
+ *     dark themes lift them toward `fg`, and the lift is scaled by the
+ *     actual `fg`/`bg` luminance gap so surfaces stay visible on both
+ *     extreme (very high-contrast) and low-contrast palettes.
+ */
+
+/**
+ * Linearly interpolate two OKLCH colors in OKLCH space.
+ *
+ * `t` is the fraction of `b` blended into `a` (t = 0 → `a`, t = 1 → `b`).
+ * Hue is interpolated the short way around the wheel so a blend between,
+ * say, 350° and 10° passes through 0° rather than sweeping 340°.
+ */
+function lerpOklch(a: Oklch, b: Oklch, t: number): Oklch {
+  // Shortest-path hue interpolation.
+  const dH = ((b.H - a.H + 540) % 360) - 180;
+  return {
+    L: a.L + (b.L - a.L) * t,
+    C: a.C + (b.C - a.C) * t,
+    H: a.H + dH * t,
+  };
+}
+
+/** Clamp a number into the inclusive [lo, hi] range. */
+function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
+/**
+ * The four derived surface tokens for one theme, each a concrete OKLCH
+ * color string (never a `color-mix()` expression).
+ */
+interface SurfaceTokens {
+  muted: string;
+  border: string;
+  card: string;
+  codeBg: string;
+}
+
+/**
+ * Smallest OKLCH-lightness separation that still reads as a visible edge.
+ * `border`/`card`/`codeBg` each enforce a floor at least this large so a
+ * surface never silently collapses into the color it sits on.
+ */
+const MIN_SURFACE_L_DELTA = 0.045;
+
+/**
+ * Derive the four surface tokens from a theme's `bg`/`fg`.
+ *
+ * All four are placed by *lightness* in OKLCH, keeping the background's hue
+ * and chroma so surfaces feel native to the palette:
+ *
+ *  - `card` / `codeBg` are "raised" surfaces, placed by an *absolute*
+ *    OKLCH-lightness step from `bg`:
+ *      · light theme → step toward white (lighter reads as raised);
+ *      · dark theme  → step toward `fg`  (lighter — `fg` is the light end).
+ *    If the preferred direction has no headroom (a pure-white light bg, or
+ *    a pure-black dark bg) the step *flips* — a tiny move the other way is
+ *    far better than a surface that silently collides with `bg`. This is
+ *    why GitHub-light's white bg yields a subtly *darker* card, exactly
+ *    like GitHub's own `#f6f8fa` panel.
+ *  - The step is scaled by `gap`, the |fg − bg| OKLCH-lightness span. A
+ *    near-monochrome / low-contrast palette has a small gap and gets a
+ *    gentle step; a high-contrast palette has a large gap and tolerates a
+ *    slightly bigger one. Either way the step is clamped small — these are
+ *    backgrounds, not loud panels.
+ *  - `border` is a divider: a lightness step from `bg` toward `fg`, but
+ *    floored at `MIN_SURFACE_L_DELTA` so it is never invisible.
+ *  - `codeBg` is forced distinct from both `card` and `bg` so code blocks
+ *    read as their own surface.
+ *  - `muted` is secondary *text*, so it is contrast-driven: dimmed from
+ *    `fg` toward `bg`, then pulled back if it drops below a legibility
+ *    floor (aiming for WCAG AA where the palette allows).
+ *
+ * @param bgStr  Theme background (`oklch(...)` string).
+ * @param fgStr  Theme foreground (`oklch(...)` string).
+ * @param isDark The theme's own light/dark classification.
+ */
+function deriveSurfaces(bgStr: string, fgStr: string, isDark: boolean): SurfaceTokens {
+  const bg = parseOklch(bgStr);
+  const fg = parseOklch(fgStr);
+
+  // Defensive fallback: if either color is unparseable, hand back the raw
+  // strings rather than throwing — normalization must never crash.
+  if (!bg || !fg) {
+    return { muted: fgStr, border: fgStr, card: bgStr, codeBg: bgStr };
+  }
+
+  // The OKLCH-lightness gap between text and background. Drives how far
+  // surfaces may travel: small gap (low-contrast palette) → gentle lifts;
+  // large gap (extreme palette) → room for stronger, still-subtle lifts.
+  const gap = Math.abs(fg.L - bg.L);
+
+  /* --- card / codeBg : raised surfaces ----------------------------- */
+  //
+  // A raised surface reads correctly as a step toward MORE lightness:
+  // toward white on a light theme, toward `fg` on a dark one. We express
+  // that as an absolute lightness delta plus a direction.
+  //
+  // `liftSign` is +1 — a raised surface goes *lighter* in both modes
+  // (toward white for light themes, toward `fg`, the light end, for dark
+  // ones). It FLIPS to -1 when that direction has no headroom: a
+  // pure-white light bg (L = 1) cannot go lighter, so its card/code
+  // surfaces step slightly darker instead; a pure-black dark bg (L = 0)
+  // flips the other way. Flipping beats colliding with `bg`.
+  let liftSign = 1;
+  // Mode-aware magnitude: dark surfaces compress perceptually — a step
+  // near L = 0 looks smaller than the same step near L = 1 — so dark
+  // themes get a slightly larger lift to keep the surface visible.
+  const modeBoost = isDark ? 1.35 : 1;
+  // Absolute lightness deltas, scaled by the contrast gap and the mode
+  // boost, then clamped so surfaces stay subtle. `card` is a faint step;
+  // `codeBg` a bit further.
+  const cardStep = clamp((0.05 + gap * 0.05) * modeBoost, MIN_SURFACE_L_DELTA, 0.12);
+  const codeStep = clamp((0.1 + gap * 0.09) * modeBoost, 0.09, 0.22);
+  // If a full code-surface step would run off the top (or bottom) of the
+  // lightness range, flip both surfaces toward the side that has room.
+  if (bg.L + liftSign * codeStep > 1 || bg.L + liftSign * codeStep < 0) {
+    liftSign = -liftSign;
+  }
+
+  // `card`/`codeBg` keep the background's hue and a damped slice of its
+  // chroma so the surface feels native to a tinted palette without picking
+  // up a visible color cast.
+  const surfaceChroma = clamp(bg.C * 0.85, 0, 0.05);
+  let card: Oklch = {
+    L: clamp(bg.L + liftSign * cardStep, 0, 1),
+    C: surfaceChroma,
+    H: bg.H,
+  };
+  let codeBg: Oklch = {
+    L: clamp(bg.L + liftSign * codeStep, 0, 1),
+    C: surfaceChroma,
+    H: bg.H,
+  };
+
+  // Guarantee `card` is a perceptible step off `bg` (clamping above may
+  // have eaten the step on an extreme palette).
+  if (Math.abs(card.L - bg.L) < MIN_SURFACE_L_DELTA) {
+    card = { ...card, L: clamp(bg.L + liftSign * MIN_SURFACE_L_DELTA, 0, 1) };
+  }
+
+  // Guarantee `codeBg` is distinct from BOTH `card` and `bg` — code blocks
+  // should never visually merge into either. It sits a further step past
+  // `card`, in the same direction, re-clamped into range.
+  if (Math.abs(codeBg.L - card.L) < MIN_SURFACE_L_DELTA) {
+    codeBg = { ...codeBg, L: clamp(card.L + liftSign * MIN_SURFACE_L_DELTA, 0, 1) };
+  }
+  if (Math.abs(codeBg.L - bg.L) < MIN_SURFACE_L_DELTA) {
+    codeBg = { ...codeBg, L: clamp(bg.L + liftSign * 2 * MIN_SURFACE_L_DELTA, 0, 1) };
+  }
+
+  /* --- border : a perceptible divider ------------------------------ */
+  //
+  // A divider steps from `bg` toward `fg` (a border reads best as a faint
+  // echo of the text color). The step is scaled by `gap`, then floored so
+  // it is always visible even on a flat palette.
+  const borderDir = fg.L >= bg.L ? 1 : -1;
+  let borderDelta = Math.max(MIN_SURFACE_L_DELTA + gap * 0.14, MIN_SURFACE_L_DELTA);
+  // Never let the divider out-shout `card`/`codeBg`: keep it a *faint* line.
+  borderDelta = Math.min(borderDelta, 0.22);
+  const border: Oklch = {
+    L: clamp(bg.L + borderDir * borderDelta, 0, 1),
+    // A touch of the background's chroma keeps the line from looking like a
+    // foreign gray on a tinted theme; the fg blend keeps it neutral-ish.
+    C: clamp(bg.C * 0.6 + fg.C * 0.15, 0, 0.1),
+    H: bg.H,
+  };
+
+  /* --- muted : legible secondary text ------------------------------ */
+  //
+  // `muted` is *text*, not a surface, so it is contrast-driven. Start by
+  // dimming `fg` toward `bg` (62% of the way to fg from bg, matching the
+  // previous visual weight), then, if that drops below a legibility floor,
+  // pull it back toward `fg` until it clears the floor (or `fg` itself if
+  // the palette simply cannot reach it).
+  const MUTED_TARGET_CONTRAST = 4.5; // WCAG AA for normal text.
+  const MUTED_FLOOR_CONTRAST = 3.0; // Absolute minimum — never below this.
+  const bgLum = relativeLuminanceOf(bg);
+
+  let mutedT = 0.62; // Fraction from `bg` toward `fg`.
+  let muted = lerpOklch(bg, fg, mutedT);
+
+  // Walk `muted` toward `fg` until it is comfortably legible. Each step
+  // closes 18% of the remaining distance; capped iterations guarantee
+  // termination. We aim for AA, but accept anything ≥ the hard floor — a
+  // low-contrast palette physically cannot do better and we must not
+  // collapse `muted` into `bg`.
+  for (let i = 0; i < 24; i += 1) {
+    const ratio = contrastFromLuminance(relativeLuminanceOf(muted), bgLum);
+    if (ratio >= MUTED_TARGET_CONTRAST) break;
+    mutedT += (1 - mutedT) * 0.18;
+    muted = lerpOklch(bg, fg, mutedT);
+  }
+  // Final safety net: if even that did not clear the hard floor, fall all
+  // the way back to `fg` (guaranteed to be the most legible value there is).
+  if (contrastFromLuminance(relativeLuminanceOf(muted), bgLum) < MUTED_FLOOR_CONTRAST) {
+    muted = { ...fg };
+  }
+
+  return {
+    muted: formatOklch(muted),
+    border: formatOklch(border),
+    card: formatOklch(card),
+    codeBg: formatOklch(codeBg),
+  };
+}
+
 /**
  * Normalize one raw terminal theme into resume semantic tokens.
  *
  * Token derivation:
  *  - `bg`/`fg`     : taken straight from the terminal background/foreground.
  *  - `accent`/`accent2` : two distinct vivid ANSI hues (see `pickAccents`).
- *  - `muted`       : foreground dimmed toward the background (62% fg).
- *  - `border`      : a very low-contrast divider (22% fg).
- *  - `card`        : a surface lifted slightly off the background — toward
- *                    the foreground for dark themes, also toward fg for
- *                    light themes (a hair darker reads as a raised panel).
- *  - `codeBg`      : a near-background surface, distinct from `card`, with a
- *                    slightly stronger shift so code blocks separate from
- *                    cards visually.
+ *  - `muted`/`border`/`card`/`codeBg` : derived surfaces — see
+ *    `deriveSurfaces`. Each is a concrete `oklch(...)` value (no
+ *    `color-mix()`), mode-aware, and scaled by the palette's contrast.
  *
- * Derived tokens are emitted as `color-mix()` strings: valid static CSS.
+ * Every derived token is emitted as a literal `oklch(...)` string, so the
+ * standalone-HTML export is engine-independent — no `color-mix()` support
+ * required by the consuming renderer / PDF engine.
  */
 function normalizeTheme(raw: RawTheme): ResumeTheme {
   const c = raw.colors;
@@ -420,19 +624,19 @@ function normalizeTheme(raw: RawTheme): ResumeTheme {
   // background — synthesizing legible values when the ANSI palette cannot.
   const { accent, accent2, synthesized } = pickAccents(c, c.foreground);
 
+  // Derive the four surface tokens as concrete OKLCH values, mode-aware and
+  // scaled by the fg/bg luminance gap (see `deriveSurfaces`).
+  const surfaces = deriveSurfaces(c.background, c.foreground, raw.isDark);
+
   const tokens: ResumeThemeTokens = {
     bg: c.background,
     fg: c.foreground,
-    // Dimmed foreground — readable but visibly secondary.
-    muted: mix(c.foreground, c.background, 62),
     accent,
     accent2,
-    // Faint divider line.
-    border: mix(c.foreground, c.background, 22),
-    // Raised panel: a subtle 6% shift off the background.
-    card: mix(c.foreground, c.background, 6),
-    // Code surface: distinct from `card` — a stronger 11% shift.
-    codeBg: mix(c.foreground, c.background, 11),
+    muted: surfaces.muted,
+    border: surfaces.border,
+    card: surfaces.card,
+    codeBg: surfaces.codeBg,
   };
 
   // Measure every contrast figure ourselves so the picker and `resumeSafe`
