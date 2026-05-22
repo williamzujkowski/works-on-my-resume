@@ -40,7 +40,11 @@ jobs:
       - name: Build with Astro
         # withastro/action installs dependencies, runs `astro build`, and
         # uploads the `dist/` output as a Pages artifact.
+        # node-version 22: Astro 6 requires Node >=22.12 (the action
+        # defaults to Node 20, which Astro 6 rejects).
         uses: withastro/action@v3
+        with:
+          node-version: 22
 
   # Publish the artifact produced by `build` to GitHub Pages.
   deploy:
