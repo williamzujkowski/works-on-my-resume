@@ -18,15 +18,17 @@
  *      cannot vouch for (scripts, inline styles, event handlers, dangerous
  *      URI schemes, embedded frames) is stripped here.
  *
- * `gray-matter` only splits optional YAML frontmatter from the body; the
- * frontmatter is structured data surfaced in the UI, never injected as HTML.
+ * Optional YAML frontmatter is split off with a small regex and parsed with
+ * `js-yaml` (a fully browser-safe parser; `js-yaml` v4's `load` is safe by
+ * default). The frontmatter is structured data surfaced in the UI, never
+ * injected as HTML.
  *
  * `parseResume` is fully SYNCHRONOUS and is intended to run only in the
  * browser (DOMPurify needs a real DOM). It never throws: every failure mode
  * degrades gracefully and, critically, NEVER returns unsanitized HTML.
  */
 
-import matter from 'gray-matter';
+import yaml from 'js-yaml';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
@@ -171,13 +173,24 @@ const PURIFY_CONFIG = Object.freeze({
 let hooksInstalled = false;
 let sanitizeRemovedSomething = false;
 
+/**
+ * DOM tree-structure tags. DOMPurify parses the input inside a throwaway
+ * document, so `uponSanitizeElement` fires for these scaffold elements even
+ * on clean input — they are not user content and must not count as removals.
+ */
+const STRUCTURAL_TAGS = new Set(['html', 'head', 'body']);
+
 function installHooks(): void {
   if (hooksInstalled) return;
   hooksInstalled = true;
 
   // Detect that the sanitizer dropped an element (e.g. a <script>).
+  // `data.tagName` is lower-cased; pseudo-nodes such as `#text` and
+  // `#comment` are not governed by the tag allow-list, so skip them —
+  // counting them would flag every ordinary resume as "had content removed".
   DOMPurify.addHook('uponSanitizeElement', (_node, data) => {
-    if (!data.allowedTags[data.tagName]) {
+    const tag = data.tagName;
+    if (tag && !tag.startsWith('#') && !STRUCTURAL_TAGS.has(tag) && !data.allowedTags[tag]) {
       sanitizeRemovedSomething = true;
     }
   });
@@ -282,6 +295,24 @@ function normalizeLinks(value: unknown): ResumeLink[] {
 }
 
 /**
+ * Matches a leading YAML frontmatter block: a `---` line, the YAML body, and
+ * a closing `---` line. Tolerates a BOM, CRLF line endings, and trailing
+ * whitespace on the fence lines. Capture group 1 is the raw YAML.
+ */
+const FRONTMATTER_RE = /^\uFEFF?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
+
+/**
+ * Split optional leading YAML frontmatter from the Markdown body. This is a
+ * pure string operation and never throws; parsing the YAML is done by the
+ * caller so a malformed block degrades to "no frontmatter" + a warning.
+ */
+function splitFrontmatter(source: string): { yamlText: string | null; body: string } {
+  const match = FRONTMATTER_RE.exec(source);
+  if (!match) return { yamlText: null, body: source };
+  return { yamlText: match[1], body: source.slice(match[0].length) };
+}
+
+/**
  * Coerce raw parsed YAML data into a `ResumeFrontmatter`. Known fields are
  * normalized; every unknown field is preserved verbatim (no rigid schema).
  */
@@ -338,22 +369,22 @@ export function parseResume(input: string): ParsedResume {
   const source = typeof input === 'string' ? input : '';
 
   /* --- Step 1: split optional YAML frontmatter from the body --------- */
-  // Both the try and catch branches assign these before any use.
+  // The split is a pure regex op; only the YAML parse can fail, and when it
+  // does the body (already stripped of the frontmatter block) still renders.
   let frontmatter: ResumeFrontmatter;
-  let body: string;
-  try {
-    const parsed = matter(source);
-    frontmatter = coerceFrontmatter(parsed.data);
-    body = parsed.content;
-  } catch (error) {
-    // A frontmatter parse error is non-fatal: treat the whole input as body.
+  const { yamlText, body } = splitFrontmatter(source);
+  if (yamlText !== null && yamlText.trim().length > 0) {
+    try {
+      frontmatter = coerceFrontmatter(yaml.load(yamlText));
+    } catch (error) {
+      frontmatter = {};
+      const detail = error instanceof Error ? error.message : String(error);
+      warnings.push(
+        `Frontmatter could not be parsed and was ignored (${detail}).`,
+      );
+    }
+  } else {
     frontmatter = {};
-    body = source;
-    const detail = error instanceof Error ? error.message : String(error);
-    warnings.push(
-      `Frontmatter could not be parsed and was ignored (${detail}). ` +
-        `The full document was treated as resume content.`,
-    );
   }
 
   /* --- Step 2: render the body with GFM-enabled marked --------------- */

@@ -27,7 +27,7 @@
     "@astrojs/react": "^5.0.5",
     "astro": "^6.3.7",
     "dompurify": "^3.4.5",
-    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.1.1",
     "marked": "^18.0.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
@@ -35,6 +35,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
     "@eslint/js": "^10.0.1",
+    "@types/js-yaml": "^4.0.9",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "eslint": "^10.4.0",
