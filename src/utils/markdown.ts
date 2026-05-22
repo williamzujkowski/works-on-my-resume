@@ -137,9 +137,10 @@ const FORBID_TAGS = [
 const FORBID_ATTR = ['style'];
 
 /**
- * URI schemes permitted on `href`/`src`. DOMPurify blocks `javascript:`,
- * `vbscript:`, and bare `data:` by not listing them. `data:image/*` is
- * re-permitted for images only via the `afterSanitizeAttributes` hook.
+ * URI schemes permitted on `href`/`src`. DOMPurify blocks `javascript:` and
+ * `vbscript:` by not listing them here. Note: `data:` URIs on `<img src>`
+ * bypass this regex via DOMPurify's built-in `DATA_URI_TAGS` allowance — the
+ * `afterSanitizeAttributes` hook below is what narrows those to raster images.
  * Relative URLs and fragments have no scheme and are always allowed.
  */
 const ALLOWED_URI_REGEXP = /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i;
@@ -159,6 +160,9 @@ const PURIFY_CONFIG = Object.freeze({
   RETURN_DOM_FRAGMENT: false,
   // Forbid `javascript:`-style URLs everywhere as a second guard.
   SANITIZE_DOM: true,
+  // Prefix any `id`/`name` from uploaded content with `user-content-` so a
+  // malicious resume cannot clobber app element IDs or named DOM properties.
+  SANITIZE_NAMED_PROPS: true,
 });
 
 /* ------------------------------------------------------------------ */
@@ -219,9 +223,11 @@ function installHooks(): void {
 
     if (tag === 'img' && node.hasAttribute('src')) {
       const src = node.getAttribute('src') ?? '';
-      // `data:` URIs were stripped by ALLOWED_URI_REGEXP. Re-allow only
-      // genuine inline images; reject anything else (e.g. data:text/html).
-      if (/^data:/i.test(src) && !/^data:image\//i.test(src)) {
+      // DOMPurify's DATA_URI_TAGS clause lets ANY `data:` URI through on
+      // `<img src>` before ALLOWED_URI_REGEXP runs, so this hook is the real
+      // filter. Allow only raster image data URIs — drop `data:image/svg+xml`
+      // (SVG can carry markup) and every non-image `data:` URI.
+      if (/^data:/i.test(src) && !/^data:image\/(?:png|jpe?g|gif|webp|avif)[;,]/i.test(src)) {
         node.removeAttribute('src');
         sanitizeRemovedSomething = true;
       }
@@ -379,9 +385,7 @@ export function parseResume(input: string): ParsedResume {
     } catch (error) {
       frontmatter = {};
       const detail = error instanceof Error ? error.message : String(error);
-      warnings.push(
-        `Frontmatter could not be parsed and was ignored (${detail}).`,
-      );
+      warnings.push(`Frontmatter could not be parsed and was ignored (${detail}).`);
     }
   } else {
     frontmatter = {};
