@@ -27,6 +27,14 @@
   overflow-wrap: break-word;
 }
 
+.resume-preview,
+.resume-preview * {
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    border-color 200ms ease;
+}
+
 @media (max-width: 640px) {
   .resume-preview {
     padding: 1.75rem 1.5rem;

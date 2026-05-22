@@ -23,6 +23,8 @@ interface ThemePickerProps {
   onResumeSafeOnlyChange: (value: boolean) => void;
   /** Called when a theme is chosen. */
   onSelect: (theme: ResumeTheme) => void;
+  /** Called to preview a theme without committing. */
+  onPreview: (theme: ResumeTheme | null) => void;
   /** DOM id for the search input, so the `/` shortcut can focus it. */
   searchInputId: string;
 }
@@ -35,10 +37,12 @@ export default function ThemePicker({
   resumeSafeOnly,
   onResumeSafeOnlyChange,
   onSelect,
+  onPreview,
   searchInputId,
 }: ThemePickerProps) {
   const listRef = useRef<HTMLUListElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isInteracting, setIsInteracting] = useState(false);
 
   const filtered = filterThemes(themes, query, resumeSafeOnly);
 
@@ -47,6 +51,15 @@ export default function ThemePicker({
   useEffect(() => {
     setActiveIndex((index) => (filtered.length === 0 ? 0 : Math.min(index, filtered.length - 1)));
   }, [filtered.length]);
+
+  /** Trigger theme preview based on interaction state. */
+  useEffect(() => {
+    if (isInteracting && filtered.length > 0) {
+      onPreview(filtered[activeIndex] ?? null);
+    } else {
+      onPreview(null);
+    }
+  }, [isInteracting, activeIndex, filtered, onPreview]);
 
   /** Scroll the active option into view when navigating by keyboard. */
   useEffect(() => {
@@ -74,7 +87,17 @@ export default function ThemePicker({
   const listId = `${searchInputId}-list`;
 
   return (
-    <div className="theme-picker">
+    <div
+      className="theme-picker"
+      onMouseEnter={() => setIsInteracting(true)}
+      onMouseLeave={() => setIsInteracting(false)}
+      onFocus={() => setIsInteracting(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+          setIsInteracting(false);
+        }
+      }}
+    >
       <div className="theme-picker__search-row">
         <label className="visually-hidden" htmlFor={searchInputId}>
           Search themes

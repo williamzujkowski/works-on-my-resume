@@ -46,6 +46,7 @@ export default function ResumeStudio() {
   /* ----- Theme state ----- */
   const themes = useMemo<ResumeTheme[]>(() => getAllThemes(), []);
   const [theme, setTheme] = useState<ResumeTheme | null>(null);
+  const [previewTheme, setPreviewTheme] = useState<ResumeTheme | null>(null);
   const [themeQuery, setThemeQuery] = useState('');
   const [resumeSafeOnly, setResumeSafeOnly] = useState(false);
 
@@ -65,6 +66,15 @@ export default function ResumeStudio() {
     setTheme(initial);
     applyThemeToDocument(initial);
   }, []);
+
+  /* ---------------------------------------------------------------- *
+   * Apply preview theme or current theme to document.                 *
+   * ---------------------------------------------------------------- */
+  useEffect(() => {
+    if (theme) {
+      applyThemeToDocument(previewTheme ?? theme);
+    }
+  }, [previewTheme, theme]);
 
   /* ---------------------------------------------------------------- *
    * Reflect print mode onto <body> so print.css can react.            *
@@ -224,6 +234,7 @@ export default function ResumeStudio() {
           resumeSafeOnly={resumeSafeOnly}
           onResumeSafeOnlyChange={setResumeSafeOnly}
           onSelect={changeTheme}
+          onPreview={setPreviewTheme}
           searchInputId={themeSearchInputId}
         />
 
