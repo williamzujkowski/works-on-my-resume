@@ -72,6 +72,15 @@ contains no scripts and makes no network requests.
 - Shareable theme-only links.
 - Strict TypeScript throughout; no runtime backend.
 
+## Writing your resume
+
+New to authoring a resume for this tool? See
+[`docs/writing-your-resume.md`](docs/writing-your-resume.md) — a practical
+guide to the optional YAML frontmatter, recommended body structure, the
+supported (and sanitized-away) Markdown features, and tips for themes and
+printing. The bundled [`public/sample-resume.md`](public/sample-resume.md)
+is a working reference for the recommended structure.
+
 ## Local development
 
 Requires Node.js `>= 22.12.0`.
