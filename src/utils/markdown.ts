@@ -355,6 +355,256 @@ function coerceFrontmatter(raw: unknown): ResumeFrontmatter {
 }
 
 /* ------------------------------------------------------------------ */
+/* Frontmatter validation (optional, non-blocking)                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Frontmatter validation philosophy
+ * ---------------------------------
+ * The MVP has NO rigid schema and that is deliberate — unknown fields are
+ * freely allowed and never warned about. But when a *known* field is present
+ * and obviously wrong (a misspelled key, an `email` with no `@`, a `links`
+ * value that is not a list) the user almost certainly made a typo, so a
+ * gentle nudge is far more useful than silent coercion.
+ *
+ * Every check below is a SOFT warning: it is appended to `ParsedResume.warnings`
+ * and nothing else. Validation never throws, never blocks rendering, and never
+ * drops content — `coerceFrontmatter` has already done the lossy normalization;
+ * this pass only *describes* what looked off, in friendly, actionable wording.
+ */
+
+/** The known top-level frontmatter keys, used for "did you mean" matching. */
+const KNOWN_FRONTMATTER_KEYS = ['name', 'role', 'location', 'email', 'phone', 'links'] as const;
+
+/** Scalar known keys that should hold a string-ish value. */
+const SCALAR_FRONTMATTER_KEYS = ['name', 'role', 'location', 'phone', 'email'] as const;
+
+/**
+ * A deliberately loose "looks like an email" test. We are not RFC-5322
+ * compliant on purpose — the goal is to catch obvious mistakes (a missing
+ * `@`, a domain with no dot, stray whitespace), not to reject unusual but
+ * legal addresses. False positives here would be worse than a missed catch.
+ */
+const PLAUSIBLE_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * URL schemes a resume link may legitimately use. Anything else (relative
+ * paths and bare fragments included) is checked separately below.
+ */
+const PLAUSIBLE_URL_SCHEME_RE = /^(?:https?|mailto):/i;
+
+/**
+ * Compute the Damerau-Levenshtein edit distance between two strings, with an
+ * early exit once the distance is known to exceed `max`. Used only for short
+ * frontmatter keys, so the simple O(m*n) three-row implementation is plenty.
+ *
+ * We use the *optimal string alignment* variant of Damerau-Levenshtein, which
+ * — unlike plain Levenshtein — counts an adjacent transposition (`naem` for
+ * `name`) as a single edit. Transpositions are the single most common kind of
+ * typo, so this materially improves the "did you mean" suggestions.
+ *
+ * The early exit keeps a pathological long key from doing real work and
+ * lets callers express "near miss" as a small numeric threshold.
+ */
+function editDistance(a: string, b: string, max: number): number {
+  // A length gap alone already exceeds the budget — no need to compute.
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  if (a === b) return 0;
+
+  // Three rolling rows: `prev2` (i-2), `prev` (i-1) and `curr` (i). The
+  // i-2 row is what makes the transposition check possible.
+  let prev2 = new Array<number>(b.length + 1);
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  let curr = new Array<number>(b.length + 1);
+
+  for (let i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    let rowMin = curr[0];
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let best = Math.min(
+        prev[j] + 1, // deletion
+        curr[j - 1] + 1, // insertion
+        prev[j - 1] + cost, // substitution
+      );
+      // Adjacent transposition: the last two characters are swapped.
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        best = Math.min(best, prev2[j - 2] + 1);
+      }
+      curr[j] = best;
+      if (best < rowMin) rowMin = best;
+    }
+    // Whole row already over budget — distance can only grow from here.
+    if (rowMin > max) return max + 1;
+    [prev2, prev, curr] = [prev, curr, prev2];
+  }
+
+  return prev[b.length];
+}
+
+/**
+ * Find the known frontmatter key that an unknown key is most likely a typo
+ * of, or `undefined` when the key is not a near-miss of anything. The
+ * threshold scales with key length so short keys (where one edit is a big
+ * proportional change) are not over-eagerly "corrected".
+ */
+function suggestKnownKey(unknownKey: string): string | undefined {
+  const candidate = unknownKey.trim().toLowerCase();
+  if (candidate.length === 0) return undefined;
+
+  // 1 edit for short keys, 2 for longer ones — enough to catch `naem`,
+  // `tite`, `e-mail`, `phon`, `lnks` without matching unrelated words.
+  const threshold = candidate.length <= 4 ? 1 : 2;
+
+  let best: string | undefined;
+  let bestDistance = threshold + 1;
+
+  for (const known of KNOWN_FRONTMATTER_KEYS) {
+    // An exact match is a known key, not an unknown one — skip it.
+    if (known === candidate) return undefined;
+    const distance = editDistance(candidate, known, threshold);
+    if (distance <= threshold && distance < bestDistance) {
+      best = known;
+      bestDistance = distance;
+    }
+  }
+
+  return best;
+}
+
+/** Quote a value for display inside a warning, truncating absurdly long ones. */
+function quoteForWarning(value: unknown): string {
+  const text = typeof value === 'string' ? value : (JSON.stringify(value) ?? String(value));
+  const clipped = text.length > 60 ? `${text.slice(0, 57)}…` : text;
+  return `"${clipped}"`;
+}
+
+/** A friendly word for the JS type of an unexpected value. */
+function describeType(value: unknown): string {
+  if (value === null) return 'an empty value';
+  if (Array.isArray(value)) return 'a list';
+  return `a ${typeof value}`;
+}
+
+/**
+ * Validate one raw `links` entry, pushing a friendly warning for the first
+ * real problem found. `index` is 1-based for human-readable messages.
+ */
+function validateLinkEntry(entry: unknown, index: number, warnings: string[]): void {
+  if (entry == null || typeof entry !== 'object') {
+    warnings.push(
+      `Frontmatter "links" entry #${index} isn't a link — expected a label and URL, got ${describeType(entry)}.`,
+    );
+    return;
+  }
+
+  const record = entry as Record<string, unknown>;
+  const label = asString(record.label ?? record.name ?? record.title);
+  let url = asString(record.url ?? record.href ?? record.link);
+
+  // The terse single-pair form `{ GitHub: "https://…" }` is also valid.
+  if ((label === undefined || url === undefined) && !('url' in record)) {
+    const keys = Object.keys(record);
+    if (keys.length === 1) {
+      const onlyVal = asString(record[keys[0]]);
+      if (onlyVal !== undefined) {
+        url = url ?? onlyVal;
+      }
+    }
+  }
+
+  if (label === undefined && url === undefined) {
+    warnings.push(
+      `Frontmatter "links" entry #${index} is missing both a label and a URL, so it was skipped.`,
+    );
+    return;
+  }
+  if (label === undefined) {
+    warnings.push(`Frontmatter "links" entry #${index} is missing a label, so it was skipped.`);
+    return;
+  }
+  if (url === undefined) {
+    warnings.push(
+      `Frontmatter "links" entry #${index} ("${label}") is missing a URL, so it was skipped.`,
+    );
+    return;
+  }
+
+  // A URL is present — make sure its scheme is one the renderer can use.
+  // Relative paths and fragments have no scheme and are intentionally fine.
+  const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(url);
+  if (hasScheme && !PLAUSIBLE_URL_SCHEME_RE.test(url)) {
+    warnings.push(
+      `Frontmatter "links" entry #${index} ("${label}") has a URL that isn't http(s), ` +
+        `mailto, or a relative path: ${quoteForWarning(url)}.`,
+    );
+  }
+}
+
+/**
+ * Sanity-check parsed frontmatter and append friendly, actionable warnings
+ * for anything that looks like a mistake. Runs AFTER `coerceFrontmatter`, so
+ * `coerced` holds the normalized view and `raw` the original parsed YAML —
+ * we inspect `raw` to catch problems that coercion would otherwise hide
+ * (e.g. a numeric `name`, which coercion happily stringifies).
+ *
+ * This function only ever pushes strings onto `warnings`; it cannot throw.
+ */
+function validateFrontmatter(raw: unknown, coerced: ResumeFrontmatter, warnings: string[]): void {
+  // Nothing object-shaped means nothing to validate (coercion already
+  // returned `{}` and the caller will have warned about a bad parse).
+  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return;
+  const record = raw as Record<string, unknown>;
+
+  /* --- Scalar fields: present but not a string/number/boolean -------- */
+  for (const key of SCALAR_FRONTMATTER_KEYS) {
+    if (!(key in record)) continue;
+    const value = record[key];
+    // `asString` accepts strings, numbers and booleans; anything it rejects
+    // (objects, arrays, null) is a value the user almost certainly mistyped.
+    if (value != null && asString(value) === undefined) {
+      warnings.push(
+        `Frontmatter "${key}" should be text, but it's ${describeType(value)} — it was ignored.`,
+      );
+    }
+  }
+
+  /* --- email: present but doesn't look like an email address --------- */
+  // Use the coerced value so a numeric/boolean email is compared as text;
+  // a structurally-bad value was already warned about by the scalar check.
+  if (typeof coerced.email === 'string' && !PLAUSIBLE_EMAIL_RE.test(coerced.email)) {
+    warnings.push(
+      `Frontmatter "email" doesn't look like an email address: ${quoteForWarning(coerced.email)}.`,
+    );
+  }
+
+  /* --- links: present but not an array, or with bad entries ---------- */
+  if ('links' in record) {
+    const value = record.links;
+    if (!Array.isArray(value)) {
+      warnings.push(
+        `Frontmatter "links" should be a list of links, but it's ${describeType(value)} — it was ignored.`,
+      );
+    } else {
+      value.forEach((entry, i) => validateLinkEntry(entry, i + 1, warnings));
+    }
+  }
+
+  /* --- unknown keys that are near-misses of a known key -------------- */
+  // Unknown fields are allowed and NOT warned about in general; we only
+  // speak up when a key looks like a typo of a known one.
+  for (const key of Object.keys(record)) {
+    if ((KNOWN_FRONTMATTER_KEYS as readonly string[]).includes(key)) continue;
+    const suggestion = suggestKnownKey(key);
+    if (suggestion !== undefined && !(suggestion in record)) {
+      // Only suggest when the correct key isn't already present, so we
+      // don't nag about an extra field that merely resembles one in use.
+      warnings.push(`Frontmatter has an unknown key "${key}" — did you mean "${suggestion}"?`);
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -381,7 +631,11 @@ export function parseResume(input: string): ParsedResume {
   const { yamlText, body } = splitFrontmatter(source);
   if (yamlText !== null && yamlText.trim().length > 0) {
     try {
-      frontmatter = coerceFrontmatter(yaml.load(yamlText));
+      const rawFrontmatter = yaml.load(yamlText);
+      frontmatter = coerceFrontmatter(rawFrontmatter);
+      // Optional, non-blocking sanity checks. Runs only once the YAML has
+      // parsed and coerced cleanly; appends friendly warnings, never throws.
+      validateFrontmatter(rawFrontmatter, frontmatter, warnings);
     } catch (error) {
       frontmatter = {};
       const detail = error instanceof Error ? error.message : String(error);
