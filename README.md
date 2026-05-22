@@ -136,8 +136,7 @@ ships precomputed WCAG contrast metadata, which powers the optional
 ## Roadmap
 
 The MVP focuses on render, theme, print, and export. Post-MVP work is tracked
-in the repository's **GitHub issues and milestones**, and includes ideas such
-as:
+in the repository's **GitHub issues and milestones**. Recent improvements from the design overhaul pass include live theme previews with smooth crossfades and a much improved Markdown editor. Other ideas include:
 
 - JSON Resume import/export.
 - Theme contrast scoring surfaced in the UI.
