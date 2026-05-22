@@ -1,0 +1,35 @@
+/*
+ * fonts.css — self-hosted typefaces for Works on My Resume.
+ *
+ * Both families are bundled as variable woff2 and served from the app's
+ * own origin, so they satisfy the strict CSP (`font-src 'self'`) and work
+ * fully offline. No Google Fonts, no CDNs. The woff2 files live in
+ * src/fonts/ so Vite fingerprints and bundles them.
+ *
+ *   JetBrains Mono — SIL Open Font License 1.1 — all app chrome + wordmark.
+ *   Source Serif 4 — SIL Open Font License 1.1 — the resume document.
+ */
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../fonts/jetbrains-mono-latin-variable.woff2') format('woff2');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('../fonts/source-serif-4-latin-variable.woff2') format('woff2');
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('../fonts/source-serif-4-latin-variable-italic.woff2') format('woff2');
+  font-weight: 200 900;
+  font-style: italic;
+  font-display: swap;
+}
