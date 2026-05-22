@@ -107,7 +107,10 @@ export default function MarkdownUploader({ onLoad }: MarkdownUploaderProps) {
     setNotice(null);
     setIsLoadingSample(true);
     try {
-      const url = `${import.meta.env.BASE_URL}sample-resume.md`;
+      // BASE_URL may or may not carry a trailing slash depending on the
+      // Astro `base` config; normalize to exactly one before joining.
+      const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+      const url = `${base}sample-resume.md`;
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
