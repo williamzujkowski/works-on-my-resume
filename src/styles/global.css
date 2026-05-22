@@ -538,19 +538,107 @@ a {
   gap: var(--space-2);
 }
 
-.editor__textarea {
-  width: 100%;
+.editor__toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.editor__toolbar-spacer {
+  flex: 1;
+  min-width: var(--space-3);
+}
+
+.editor__toolbar-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ui-fg-subtle);
+  text-transform: uppercase;
+}
+
+.editor__snippets {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.editor__btn-small {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.75rem;
+}
+
+.editor__toolbar-divider {
+  width: 1px;
+  height: 1.2rem;
+  background: var(--ui-border-strong);
+  margin: 0 var(--space-1);
+}
+
+.editor__checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.78rem;
+  color: var(--ui-fg-muted);
+  cursor: pointer;
+}
+
+.editor__container {
+  display: flex;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--ui-bg);
   min-height: 60vh;
+  position: relative;
+}
+
+.editor__container:focus-within {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.editor__gutter {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--ui-fg-subtle);
+  background: var(--ui-bg-elevated);
+  border-right: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  text-align: right;
+  user-select: none;
+  overflow-y: hidden;
+  min-width: 3rem;
+}
+
+.editor__textarea {
+  flex: 1;
+  width: 100%;
   padding: var(--space-3);
   font-family: var(--font-mono);
   font-size: 0.86rem;
   line-height: 1.6;
   color: var(--ui-fg);
-  background: var(--ui-bg);
-  border: 1px solid var(--ui-border-strong);
-  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
   resize: vertical;
   tab-size: 2;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+
+.editor__textarea:focus {
+  outline: none;
+}
+
+.editor__textarea--wrap {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 
 .editor__meta {
