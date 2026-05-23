@@ -12,9 +12,9 @@
  * carries a stable `id`. Arrow-key moves are announced via a polite live
  * region so screen-reader users hear the highlighted theme.
  *
- * The full dataset is ~545 themes; only the first MAX_RENDERED matches are
- * mounted, with a "refine your search" hint, so the option list never mounts
- * 545 nodes at once.
+ * The full dataset is ~545 themes; the option list mounts all filtered matches
+ * directly (no render cap, no "refine your search" hint), so users browsing for
+ * "Tomorrow Night" or "Zenwritten Light" actually see them in the list.
  *
  * Preview-on-hover (#60): hovering or keyboard-focusing an option live-applies
  * that theme to the document so browsing 545 themes is visual, not blind. The
@@ -89,8 +89,10 @@ function wcagLevel(ratio: number): 'AAA' | 'AA' | 'fails AA' {
   return 'fails AA';
 }
 
-/** Cap on rendered option nodes — keeps the popover light. */
-const MAX_RENDERED = 60;
+// Note: an earlier MAX_RENDERED cap (60) was removed — it hid most of the
+// 545-theme dataset behind a "refine your search" hint, which read to users as
+// "the list stops at B". 545 simple option rows mount comfortably within the
+// click-to-popover interaction budget on a modern browser.
 
 interface ThemePickerProps {
   /** All currently-available themes (just the boot fallback until the
@@ -160,8 +162,9 @@ export default function ThemePicker({
     () => filterThemes(themes, query, resumeSafeOnly),
     [themes, query, resumeSafeOnly],
   );
-  const rendered = allMatches.slice(0, MAX_RENDERED);
-  const overflow = allMatches.length - rendered.length;
+  // Render every match. `rendered` stays as the bound name used throughout
+  // this component (active-index, onOpen snapshot, keyboard nav).
+  const rendered = allMatches;
 
   /* Keep the active index inside bounds as the filtered list changes. */
   useEffect(() => {
@@ -466,12 +469,9 @@ export default function ThemePicker({
             </ul>
           )}
 
-          {overflow > 0 && (
-            <p className="theme-picker__refine" role="status">
-              Showing {rendered.length} of {allMatches.length} — refine your search to narrow it
-              down.
-            </p>
-          )}
+          {/* The full filtered list is rendered (no cap). The contrast
+              readout below carries the legibility context for the committed
+              theme; a verbose match-count footer would just be noise. */}
 
           {/* Legibility readout for the committed theme — body text and
               accent contrast, each labelled with its WCAG level so the bare

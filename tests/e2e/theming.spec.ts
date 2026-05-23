@@ -49,17 +49,12 @@ test('typing in the search input narrows the option list', async ({ page }) => {
 });
 
 /**
- * Read the picker's TOTAL match count (not just the rendered slice).
- * When the list overflows the 60-option cap the picker shows
- * "Showing 60 of M"; below the cap, the total is the rendered count.
+ * Read the picker's match count. The picker no longer caps the rendered list
+ * (an earlier MAX_RENDERED hid most of the dataset behind a "refine your
+ * search" hint and read to users as "the list stops at B" — see the picker
+ * file-header comment). The total is now just the rendered option count.
  */
 async function readPickerTotal(page: import('@playwright/test').Page): Promise<number> {
-  const refine = page.locator('.theme-picker__refine');
-  if ((await refine.count()) > 0) {
-    const text = (await refine.textContent()) ?? '';
-    const match = /of\s+(\d+)/.exec(text);
-    if (match) return Number(match[1]);
-  }
   return page
     .getByRole('listbox', { name: /themes/i })
     .getByRole('option')
@@ -70,9 +65,8 @@ test('the resume-safe-only toggle removes low-contrast themes from the list', as
   await openThemePickerReady(page);
 
   const list = page.getByRole('listbox', { name: /themes/i });
-  /* The picker caps the rendered list at 60 options, so a bare option count
-     would miss any filtering past that cap. We compare against the picker's
-     OWN reported total instead — see readPickerTotal. */
+  /* The picker now renders every match (no cap). readPickerTotal stays as a
+     stable seam in case we re-introduce some aggregation footer later. */
   const totalBefore = await readPickerTotal(page);
   const unsafeBefore = await list.locator('.badge--unsafe').count();
   expect(totalBefore).toBeGreaterThan(0);
