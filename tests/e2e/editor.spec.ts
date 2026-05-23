@@ -46,8 +46,17 @@ test('Insert section appends an Experience entry skeleton', async ({ page }) => 
   // Focus so the caret position is `0`.
   await textarea.click();
 
-  await page.getByRole('button', { name: /insert section/i }).click();
-  await page.getByRole('menuitem', { name: /experience entry/i }).click();
+  /* Experience is one of the always-visible quick-insert buttons on wide
+     viewports (#70), but on narrow viewports the row collapses and it's
+     reachable through the popover instead. Pick whichever entry point is
+     actually visible — the inserted snippet is identical either way. */
+  const quickExperience = page.getByRole('button', { name: /^insert experience entry$/i });
+  if (await quickExperience.isVisible()) {
+    await quickExperience.click();
+  } else {
+    await page.getByRole('button', { name: /^insert section$/i }).click();
+    await page.getByRole('menuitem', { name: /experience entry/i }).click();
+  }
 
   const value = await textarea.inputValue();
   // The snippet must include the canonical placeholder heading and a bullet.

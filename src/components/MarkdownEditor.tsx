@@ -61,12 +61,14 @@ function setStoredSoftWrap(wrap: boolean): void {
   }
 }
 
-/** A resume section skeleton offered by the "insert section" menu. */
+/** A resume section skeleton offered by the section-snippet controls. */
 interface Snippet {
   /** Stable id (used as the React key and menu item identity). */
   id: string;
-  /** Menu label. */
+  /** Label used inside the popover menu. */
   label: string;
+  /** Shorter label used on the always-visible toolbar button (#70). */
+  quickLabel?: string;
   /** Markdown inserted at the caret. */
   body: string;
 }
@@ -75,6 +77,7 @@ const SNIPPETS: Snippet[] = [
   {
     id: 'experience',
     label: 'Experience entry',
+    quickLabel: 'Experience',
     body: `### Job Title — Company Name
 *City, ST · Mon YYYY – Present*
 
@@ -85,6 +88,7 @@ const SNIPPETS: Snippet[] = [
   {
     id: 'education',
     label: 'Education entry',
+    quickLabel: 'Education',
     body: `### Degree, Field of Study
 *School Name · City, ST · YYYY*
 
@@ -120,6 +124,13 @@ One or two sentences describing who you are and what you do.
 `,
   },
 ];
+
+/* The two snippets an empty resume most needs are promoted to always-visible
+   toolbar buttons (#70 — alt UX proposed by @theshantanujoshi in PR #65).
+   The remaining three stay in the popover. On narrow viewports the
+   always-visible row collapses via CSS @media; the popover continues to
+   list all five so nothing is unreachable. */
+const QUICK_SNIPPETS: Snippet[] = SNIPPETS.filter((s) => s.quickLabel !== undefined);
 
 export default function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
   const textareaId = useId();
@@ -243,7 +254,28 @@ export default function MarkdownEditor({ value, onChange }: MarkdownEditorProps)
         </label>
 
         <div className="editor__bar-controls">
-          {/* ----- Insert section snippet ----- */}
+          {/* ----- Always-visible quick-insert buttons (#70) -----
+              Toolbar buttons — NOT menu items. They sit outside the
+              popover's role="menu" container so they get the normal
+              toolbar focus ring and tab order. On narrow viewports
+              (<640px) they're hidden by CSS; the popover below still
+              lists every snippet so nothing is unreachable. */}
+          <div className="editor__quick-insert" role="group" aria-label="Insert section">
+            {QUICK_SNIPPETS.map((snippet) => (
+              <button
+                key={snippet.id}
+                type="button"
+                className="btn btn--ghost editor__quick-insert-btn"
+                onClick={() => insertSnippet(snippet)}
+                aria-label={`Insert ${snippet.label}`}
+              >
+                <Icon name="plus" size={13} />
+                {snippet.quickLabel}
+              </button>
+            ))}
+          </div>
+
+          {/* ----- Insert section popover (the long tail) ----- */}
           <div className="editor__snippet" ref={snippetWrapRef}>
             <button
               type="button"
@@ -271,7 +303,20 @@ export default function MarkdownEditor({ value, onChange }: MarkdownEditorProps)
                 }}
               >
                 {SNIPPETS.map((snippet) => (
-                  <li key={snippet.id} role="none">
+                  /* Snippets duplicated on the always-visible row carry
+                     the --quick modifier; CSS hides them above 640px so
+                     the popover shows only the long-tail entries on
+                     wide viewports, but stays fully populated when the
+                     quick row collapses on narrow ones. */
+                  <li
+                    key={snippet.id}
+                    role="none"
+                    className={
+                      snippet.quickLabel
+                        ? 'editor__snippet-li editor__snippet-li--quick'
+                        : 'editor__snippet-li'
+                    }
+                  >
                     <button
                       type="button"
                       role="menuitem"
