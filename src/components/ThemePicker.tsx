@@ -93,8 +93,13 @@ function wcagLevel(ratio: number): 'AAA' | 'AA' | 'fails AA' {
 const MAX_RENDERED = 60;
 
 interface ThemePickerProps {
-  /** All available themes. */
+  /** All currently-available themes (just the boot fallback until the
+      ~545-theme dataset finishes loading; see #78). */
   themes: ResumeTheme[];
+  /** True while the dataset is still streaming in via dynamic import.
+      Drives the "Loading 545 themes…" line inside the popover so the user
+      knows the option list will grow in a moment. */
+  themesLoading: boolean;
   /** The currently applied theme. */
   current: ResumeTheme;
   /** Current search query (controlled by ResumeStudio). */
@@ -114,6 +119,7 @@ interface ThemePickerProps {
 
 export default function ThemePicker({
   themes,
+  themesLoading,
   current,
   query,
   onQueryChange,
@@ -362,6 +368,18 @@ export default function ThemePicker({
               onKeyDown={handleSearchKeyDown}
             />
           </div>
+
+          {/* Lazy-load indicator (#78). The ~545-theme dataset code-splits;
+              while it streams in, the option list is just the boot fallback.
+              The status line tells users (sighted and SR alike) that the
+              full picker is on its way — `role="status"` announces politely.
+              Reuses the `__refine` class for its small, subtle styling so
+              this fits the popover without needing new CSS. */}
+          {themesLoading && (
+            <p className="theme-picker__refine" role="status">
+              Loading 545 themes…
+            </p>
+          )}
 
           <label className="theme-picker__checkbox">
             <input

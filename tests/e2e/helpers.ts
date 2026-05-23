@@ -36,3 +36,39 @@ export async function loadSampleResume(page: Page): Promise<void> {
 export function previewArticle(page: Page): Locator {
   return page.getByRole('article', { name: /rendered resume/i });
 }
+
+/**
+ * Open the theme picker and wait for the lazy-loaded ~545-theme dataset
+ * (#78) to be in place before returning. Tests that count or filter the
+ * option list MUST call this rather than clicking the trigger directly,
+ * otherwise they race the dynamic import and may run against just the
+ * boot-fallback theme.
+ *
+ * The "Loading 545 themes…" indicator inside the popover disappears once
+ * `loadAllThemesAsync()` resolves; we wait for that signal AND for the
+ * option list to actually carry more than one option (the boot state has
+ * exactly one). This gives the chunk a deterministic ready-point even on
+ * cold-cache CI runs.
+ */
+export async function openThemePickerReady(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /^theme /i }).click();
+  const dialog = page.getByRole('dialog', { name: /choose a theme/i });
+  await expect(dialog).toBeVisible();
+  // The loading status line is only mounted while themesLoading is true.
+  // Wait for it to disappear before counting options — its absence is the
+  // signal that the full dataset has been normalized into the cache.
+  await expect(dialog.getByText(/loading 545 themes/i)).toHaveCount(0, { timeout: 10_000 });
+  // Defense-in-depth: only proceed once the list actually carries more than
+  // the boot-fallback option, so an unusually fast loading-flash doesn't
+  // sneak the test past the gate.
+  await expect
+    .poll(
+      async () =>
+        dialog
+          .getByRole('listbox', { name: /themes/i })
+          .getByRole('option')
+          .count(),
+      { timeout: 10_000 },
+    )
+    .toBeGreaterThan(1);
+}

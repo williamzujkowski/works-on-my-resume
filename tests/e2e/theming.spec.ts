@@ -10,7 +10,7 @@
  *  - Closing the popover without selecting reverts a hover preview.
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, loadSampleResume } from './helpers';
+import { clearAppStorage, loadSampleResume, openThemePickerReady } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await clearAppStorage(page);
@@ -19,7 +19,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('opening the picker shows the search input and the option list', async ({ page }) => {
-  await page.getByRole('button', { name: /^theme /i }).click();
+  // The picker is code-split (#78); `openThemePickerReady` waits for the
+  // lazy-loaded dataset before returning, so the list is fully populated.
+  await openThemePickerReady(page);
 
   // The popover is `<div role="dialog" aria-label="Choose a theme">`.
   await expect(page.getByRole('dialog', { name: /choose a theme/i })).toBeVisible();
@@ -28,7 +30,7 @@ test('opening the picker shows the search input and the option list', async ({ p
 });
 
 test('typing in the search input narrows the option list', async ({ page }) => {
-  await page.getByRole('button', { name: /^theme /i }).click();
+  await openThemePickerReady(page);
 
   const list = page.getByRole('listbox', { name: /themes/i });
   const totalBefore = await list.getByRole('option').count();
@@ -65,7 +67,7 @@ async function readPickerTotal(page: import('@playwright/test').Page): Promise<n
 }
 
 test('the resume-safe-only toggle removes low-contrast themes from the list', async ({ page }) => {
-  await page.getByRole('button', { name: /^theme /i }).click();
+  await openThemePickerReady(page);
 
   const list = page.getByRole('listbox', { name: /themes/i });
   /* The picker caps the rendered list at 60 options, so a bare option count
@@ -89,7 +91,7 @@ test('the resume-safe-only toggle removes low-contrast themes from the list', as
 });
 
 test('selecting a theme writes ?theme=slug and updates the trigger label', async ({ page }) => {
-  await page.getByRole('button', { name: /^theme /i }).click();
+  await openThemePickerReady(page);
 
   // Pick the first option that is NOT the currently-committed theme so the
   // selection is guaranteed to move state.
@@ -131,7 +133,7 @@ test('closing the picker without selecting reverts a hover preview', async ({ pa
     getComputedStyle(document.documentElement).getPropertyValue('--resume-bg').trim(),
   );
 
-  await page.getByRole('button', { name: /^theme /i }).click();
+  await openThemePickerReady(page);
   const options = page.getByRole('listbox', { name: /themes/i }).getByRole('option');
 
   // Find an option whose theme differs from the current one so hovering

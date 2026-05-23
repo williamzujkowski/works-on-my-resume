@@ -28,14 +28,28 @@ import {
 } from '../types';
 import { getStoredThemeSlug } from './storage';
 
-import rawThemesData from '../data/themes.json';
-
-/**
- * The dataset is a ~545-entry literal. A direct `as RawTheme[]` would force
- * TypeScript into a slow deep structural check of the whole literal, so we
- * route through `unknown` — the shape is guaranteed by how it was vendored.
- */
-const rawThemes = rawThemesData as unknown as RawTheme[];
+/* ------------------------------------------------------------------ *
+ * Code-split dataset (#78)                                            *
+ *                                                                     *
+ * `src/data/themes.json` is ~600 kB raw (the largest single asset in  *
+ * the bundle). Statically importing it forced Vite to inline it into  *
+ * the main client chunk, blowing past the 500 kB warning threshold    *
+ * even though the dataset is only needed AFTER the user opens the     *
+ * theme picker. We now load it lazily via a dynamic `import()` so     *
+ * Vite emits it as its own chunk, fetched on demand.                  *
+ *                                                                     *
+ * Loading lifecycle:                                                  *
+ *   1. App boots with no themes loaded; `getAllThemes()` returns just *
+ *      the inline `HARDCODED_FALLBACK` so any sync caller still gets  *
+ *      a legible value.                                               *
+ *   2. `loadAllThemesAsync()` (called by `ResumeStudio` on mount)     *
+ *      fetches the JSON chunk, normalizes every entry through the     *
+ *      same OKLCH math + accent-synthesis + surface-derivation        *
+ *      pipeline used by the sync path, and populates the cache.       *
+ *   3. Subsequent sync calls (`getAllThemes`, `findTheme`,            *
+ *      `getFallbackTheme`, `resolveInitialThemeSlug`) transparently   *
+ *      see the full dataset.                                          *
+ * ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------ */
 /* WCAG contrast math (OKLCH → linear sRGB → relative luminance)        */
@@ -666,23 +680,63 @@ function normalizeTheme(raw: RawTheme): ResumeTheme {
 }
 
 /* ------------------------------------------------------------------ */
-/* Memoized normalized dataset                                          */
+/* Memoized normalized dataset (lazy-loaded via dynamic import)        */
 /* ------------------------------------------------------------------ */
 
-/** Lazily-computed, normalized-once cache of every theme. */
+/**
+ * Normalized themes once the dataset has been loaded. `null` until the
+ * dynamic import resolves. Sync callers that need a value before then get
+ * `HARDCODED_FALLBACK` (see `getAllThemes`, `findTheme`, `getFallbackTheme`).
+ */
 let normalizedCache: ResumeTheme[] | null = null;
 
 /** Slug → theme index, built alongside `normalizedCache` for O(1) lookups. */
 let slugIndex: Map<string, ResumeTheme> | null = null;
 
-function ensureNormalized(): ResumeTheme[] {
-  if (normalizedCache && slugIndex) return normalizedCache;
-  const normalized = rawThemes.map(normalizeTheme);
-  const index = new Map<string, ResumeTheme>();
-  for (const theme of normalized) index.set(theme.slug, theme);
-  normalizedCache = normalized;
-  slugIndex = index;
-  return normalized;
+/**
+ * In-flight load promise, so concurrent callers share one fetch rather than
+ * each kicking off their own dynamic import. Resolves to the normalized list.
+ */
+let loadPromise: Promise<ResumeTheme[]> | null = null;
+
+/**
+ * True once the full dataset has been loaded and normalized into the cache.
+ * Drives the picker's "Loading 545 themes…" UX hint.
+ */
+export function themesLoaded(): boolean {
+  return normalizedCache !== null;
+}
+
+/**
+ * Lazily load the full ~545-theme dataset and normalize every entry.
+ *
+ * Returns the cached array on every subsequent call, so it is safe to invoke
+ * repeatedly from React mount effects. The dynamic `import()` triggers Vite
+ * to split `src/data/themes.json` into its own chunk (#78) — the main client
+ * chunk no longer carries the ~600 kB literal.
+ */
+export async function loadAllThemesAsync(): Promise<ResumeTheme[]> {
+  if (normalizedCache) return normalizedCache;
+  if (loadPromise) return loadPromise;
+
+  loadPromise = (async () => {
+    // Dynamic import: Vite emits this JSON as its own asset chunk; the
+    // network round-trip happens once, cached by the browser thereafter.
+    const mod = await import('../data/themes.json');
+    // The dataset is a ~545-entry literal. A direct `as RawTheme[]` would
+    // force TypeScript into a slow deep structural check of the whole
+    // literal, so we route through `unknown` — the shape is guaranteed by
+    // how it was vendored.
+    const rawThemes = mod.default as unknown as RawTheme[];
+    const normalized = rawThemes.map(normalizeTheme);
+    const index = new Map<string, ResumeTheme>();
+    for (const theme of normalized) index.set(theme.slug, theme);
+    normalizedCache = normalized;
+    slugIndex = index;
+    return normalized;
+  })();
+
+  return loadPromise;
 }
 
 /* ------------------------------------------------------------------ */
@@ -764,15 +818,30 @@ function passesContrastChecks(theme: ResumeTheme): boolean {
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
-/** Every theme, normalized into resume tokens. Computed once, then cached. */
+/**
+ * Every theme that is currently loaded, normalized into resume tokens.
+ *
+ * Synchronous, so it returns whatever the engine has on hand RIGHT NOW:
+ *  - Before the dynamic import resolves: a single-element array holding
+ *    `HARDCODED_FALLBACK`, so any consumer that iterates over the array
+ *    still has a usable theme to display.
+ *  - After `loadAllThemesAsync()` resolves: the full ~545 normalized themes.
+ *
+ * Callers that genuinely need the full dataset should call
+ * `loadAllThemesAsync()` (and gate UX on `themesLoaded()`).
+ */
 export function getAllThemes(): ResumeTheme[] {
-  return ensureNormalized();
+  return normalizedCache ?? [HARDCODED_FALLBACK];
 }
 
-/** Look up a single theme by slug. `undefined` when no such slug exists. */
+/**
+ * Look up a single theme by slug. `undefined` when no such slug exists in
+ * the currently-loaded set (i.e. before `loadAllThemesAsync()` resolves,
+ * only `HARDCODED_FALLBACK`'s slug is findable).
+ */
 export function findTheme(slug: string): ResumeTheme | undefined {
-  ensureNormalized();
-  return slugIndex?.get(slug);
+  if (slugIndex) return slugIndex.get(slug);
+  return slug === HARDCODED_FALLBACK.slug ? HARDCODED_FALLBACK : undefined;
 }
 
 /**
@@ -790,12 +859,20 @@ export function findTheme(slug: string): ResumeTheme | undefined {
  * @param prefersDark When true, return a dark theme; otherwise a light one.
  */
 export function getFallbackTheme(prefersDark = false): ResumeTheme {
-  const themes = ensureNormalized();
+  // Dataset not yet loaded → the inline hardcoded theme is the only value
+  // we can return synchronously. It is a light, high-contrast neutral, so
+  // even a user who asked for dark gets a legible first paint; the real
+  // resolved theme swaps in once `loadAllThemesAsync()` finishes.
+  if (!normalizedCache || !slugIndex) {
+    return HARDCODED_FALLBACK;
+  }
+
+  const themes = normalizedCache;
 
   // 1. First curated slug that both exists and passes contrast verification.
   const curated = prefersDark ? CURATED_DARK_SLUGS : CURATED_LIGHT_SLUGS;
   for (const slug of curated) {
-    const theme = slugIndex?.get(slug);
+    const theme = slugIndex.get(slug);
     if (theme && theme.isDark === prefersDark && passesContrastChecks(theme)) {
       return theme;
     }
@@ -834,14 +911,28 @@ export function getFallbackTheme(prefersDark = false): ResumeTheme {
  * resolves purely against the dataset's curated light fallback.
  */
 export function resolveInitialThemeSlug(): string {
-  ensureNormalized();
+  // URL > storage > curated light fallback. Before the dataset is loaded
+  // we still HONOR the URL / stored slug as the user's expressed intent —
+  // the slug is a primitive, not a theme object — so the caller (which
+  // awaits `loadAllThemesAsync()` and then resolves the slug to a real
+  // `ResumeTheme`) reapplies the requested theme as soon as it's available.
 
-  // 1. URL parameter.
+  // 1. URL parameter — honored verbatim (validated against the dataset
+  //    when the dataset is here; otherwise trusted as the user's intent).
   if (typeof window !== 'undefined' && window.location?.search) {
     try {
       const params = new URLSearchParams(window.location.search);
       const urlSlug = params.get('theme');
-      if (urlSlug && slugIndex?.has(urlSlug)) return urlSlug;
+      if (urlSlug) {
+        if (slugIndex) {
+          if (slugIndex.has(urlSlug)) return urlSlug;
+          // Dataset loaded but the slug is unknown → fall through to storage.
+        } else {
+          // Dataset not yet loaded: trust the URL. The caller validates
+          // post-load and falls back if the slug turns out to be bogus.
+          return urlSlug;
+        }
+      }
     } catch {
       /* malformed query string — ignore and continue */
     }
@@ -849,10 +940,17 @@ export function resolveInitialThemeSlug(): string {
 
   // 2. Stored preference (this is where a deliberate dark choice persists).
   const stored = getStoredThemeSlug();
-  if (stored && slugIndex?.has(stored)) return stored;
+  if (stored) {
+    if (slugIndex) {
+      if (slugIndex.has(stored)) return stored;
+    } else {
+      return stored;
+    }
+  }
 
   // 3. No signal at all → always a curated light theme, regardless of the
-  //    OS color-scheme preference.
+  //    OS color-scheme preference. Falls back to HARDCODED_FALLBACK's slug
+  //    when the dataset hasn't loaded yet.
   return getFallbackTheme(false).slug;
 }
 
