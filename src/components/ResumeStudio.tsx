@@ -472,12 +472,31 @@ export default function ResumeStudio() {
   /* ---------------------------------------------------------------- *
    * Resume loaded from the uploader. Track the source filename, then  *
    * scroll the preview into view and announce the load (#53).         *
+   *                                                                   *
+   * #69: when draft autosave is on AND a non-empty draft was saved    *
+   * before this load, announce that the saved copy is being replaced  *
+   * rather than the generic "Resume loaded" line. This is decided     *
+   * synchronously by reading the source-of-truth from storage so a    *
+   * stale React state can't lie about whether a draft existed.        *
    * ---------------------------------------------------------------- */
   const handleResumeLoaded = useCallback((text: string, name: string) => {
+    const lines = text.length === 0 ? 0 : text.split('\n').length;
+    const linesLabel = `${lines} ${lines === 1 ? 'line' : 'lines'}`;
+    // Decide BEFORE we overwrite anything: was a draft on disk?
+    const overwritingSavedDraft = isDraftPersistenceEnabled() && (getDraft()?.length ?? 0) > 0;
+
     setMarkdown(text);
     setSourceName(name || 'resume.md');
-    const lines = text.length === 0 ? 0 : text.split('\n').length;
-    setLoadAnnouncement(`Resume loaded — ${lines} ${lines === 1 ? 'line' : 'lines'}.`);
+
+    if (overwritingSavedDraft) {
+      // Source-aware, non-alarming. The filename is the closest thing to
+      // a "source label" the uploader threads through — fall back to a
+      // generic label if it's missing.
+      const source = (name && name.trim().length > 0 ? name : 'this file').trim();
+      setLoadAnnouncement(`Saved draft replaced — ${linesLabel} from ${source}.`);
+    } else {
+      setLoadAnnouncement(`Resume loaded — ${linesLabel}.`);
+    }
     // Defer the scroll until the preview has rendered.
     window.setTimeout(() => {
       previewRef.current?.scrollIntoView({

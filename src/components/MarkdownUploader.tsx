@@ -45,6 +45,21 @@ interface MarkdownUploaderProps {
   onClear: () => void;
 }
 
+/** Maximum lines of gist content surfaced in the preview card (#68). */
+const GIST_PREVIEW_LINES = 10;
+
+/**
+ * Build the human-readable preview snippet: the first N lines of the
+ * picked gist file. Rendered as plain text (NOT as Markdown) so a malicious
+ * gist cannot inject anything dangerous into the preview region.
+ */
+function gistPreviewSnippet(markdown: string): string {
+  if (markdown.length === 0) return '';
+  const lines = markdown.split('\n');
+  const head = lines.slice(0, GIST_PREVIEW_LINES).join('\n');
+  return lines.length > GIST_PREVIEW_LINES ? `${head}\n…` : head;
+}
+
 /** True when the browser exposes the File / FileReader APIs we rely on. */
 function hasFileApi(): boolean {
   return (
@@ -70,14 +85,24 @@ export default function MarkdownUploader({
   const jsonInputId = useId();
   const gistInputId = useId();
   const gistDisclosureId = useId();
+  const gistPreviewId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
+  const gistDetailsRef = useRef<HTMLDetailsElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoadingSample, setIsLoadingSample] = useState(false);
   const [gistUrl, setGistUrl] = useState('');
   const [isFetchingGist, setIsFetchingGist] = useState(false);
+  /* Preview before commit (#68). Holds the fetched gist body until the
+     user clicks "Use this" — only then is `onLoad` called. The form
+     remains visible underneath so cancelling drops the user back at the
+     URL field with the value intact. */
+  const [gistPreview, setGistPreview] = useState<{
+    markdown: string;
+    filename: string;
+  } | null>(null);
 
   const fileApiAvailable = hasFileApi();
 
@@ -227,10 +252,15 @@ export default function MarkdownUploader({
    * network call this app makes; it sends no resume content outbound and
    * requires no auth. The CSP in BaseLayout.astro grants `api.github.com`
    * exactly for this path.
+   *
+   * Behaviour (#68): on success we DO NOT commit the gist to the editor —
+   * we stash it as `gistPreview` and let the user inspect the resolved
+   * filename + the first few lines before deciding to keep or cancel.
    */
   const importFromGist = useCallback(async () => {
     setError(null);
     setNotice(null);
+    setGistPreview(null);
     const url = gistUrl.trim();
     if (url.length === 0) {
       setError('Paste a Gist URL first — for example https://gist.github.com/you/abcdef…');
@@ -243,14 +273,13 @@ export default function MarkdownUploader({
     setIsFetchingGist(true);
     try {
       const { markdown, filename } = await fetchGistMarkdown(url);
-      onLoad(markdown, filename || 'gist.md');
-      setGistUrl('');
+      setGistPreview({ markdown, filename: filename || 'gist.md' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not import the Gist.');
     } finally {
       setIsFetchingGist(false);
     }
-  }, [gistUrl, onLoad]);
+  }, [gistUrl]);
 
   const handleGistSubmit = useCallback(
     (event: React.SyntheticEvent<HTMLFormElement>) => {
@@ -258,6 +287,43 @@ export default function MarkdownUploader({
       void importFromGist();
     },
     [importFromGist],
+  );
+
+  /** Commit the previewed gist: hand it upstream and reset the preview. */
+  const commitGistPreview = useCallback(() => {
+    if (!gistPreview) return;
+    onLoad(gistPreview.markdown, gistPreview.filename);
+    setGistPreview(null);
+    setGistUrl('');
+  }, [gistPreview, onLoad]);
+
+  /** Drop the previewed gist — returns the user to the URL input. */
+  const cancelGistPreview = useCallback(() => {
+    setGistPreview(null);
+  }, []);
+
+  /**
+   * Escape inside the gist disclosure cancels a pending preview, or — if
+   * no preview is open — closes the disclosure itself. Real `<details>`
+   * doesn't natively respond to Escape, so we wire it up here.
+   */
+  const handleGistKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>) => {
+      if (event.key !== 'Escape') return;
+      if (gistPreview) {
+        event.preventDefault();
+        event.stopPropagation();
+        cancelGistPreview();
+        return;
+      }
+      const details = gistDetailsRef.current;
+      if (details && details.open) {
+        event.preventDefault();
+        event.stopPropagation();
+        details.open = false;
+      }
+    },
+    [gistPreview, cancelGistPreview],
   );
 
   const handleClear = useCallback(() => {
@@ -393,8 +459,8 @@ export default function MarkdownUploader({
         </div>
       )}
 
-      {/* ----- Optional: import from a public GitHub Gist (#33) ----- */}
-      <details className="uploader__gist">
+      {/* ----- Optional: import from a public GitHub Gist (#33, #68) ----- */}
+      <details className="uploader__gist" ref={gistDetailsRef} onKeyDown={handleGistKeyDown}>
         <summary className="uploader__gist-summary">Import from a public GitHub Gist</summary>
         <form className="uploader__gist-form" onSubmit={handleGistSubmit}>
           <label htmlFor={gistInputId} className="uploader__gist-label">
@@ -410,12 +476,12 @@ export default function MarkdownUploader({
               value={gistUrl}
               onChange={(event) => setGistUrl(event.target.value)}
               aria-describedby={gistDisclosureId}
-              disabled={isFetchingGist}
+              disabled={isFetchingGist || gistPreview !== null}
             />
             <button
               type="submit"
               className="btn btn--primary"
-              disabled={isFetchingGist || gistUrl.trim().length === 0}
+              disabled={isFetchingGist || gistPreview !== null || gistUrl.trim().length === 0}
             >
               {isFetchingGist ? 'Importing…' : 'Import'}
             </button>
@@ -425,10 +491,43 @@ export default function MarkdownUploader({
             <span>
               Heads up — this is a network request. When you click Import, the app fetches the Gist
               anonymously from <code>api.github.com</code>: no login, no resume content sent
-              outbound, only the Gist ID in the URL. The Gist must be public.
+              outbound, only the Gist ID in the URL. The Gist must be public. You'll see a preview
+              of what was fetched and can choose whether to use it.
             </span>
           </p>
         </form>
+
+        {/* ----- Preview-before-commit card (#68) -----
+            Rendered as plain text inside <pre> — never as Markdown — so the
+            fetched gist body cannot inject markup into the app chrome. */}
+        {gistPreview && (
+          <section
+            className="uploader__gist-preview"
+            aria-labelledby={gistPreviewId}
+            aria-live="polite"
+          >
+            <header className="uploader__gist-preview-header">
+              <h3 id={gistPreviewId} className="uploader__gist-preview-title">
+                Preview before importing
+              </h3>
+              <span className="uploader__gist-preview-filename" title={gistPreview.filename}>
+                <Icon name="file" size={13} />
+                <span>{gistPreview.filename}</span>
+              </span>
+            </header>
+            <pre className="uploader__gist-preview-body" aria-label="Gist file preview">
+              {gistPreviewSnippet(gistPreview.markdown)}
+            </pre>
+            <div className="uploader__gist-preview-actions">
+              <button type="button" className="btn btn--primary" onClick={commitGistPreview}>
+                Use this
+              </button>
+              <button type="button" className="btn" onClick={cancelGistPreview}>
+                Cancel
+              </button>
+            </div>
+          </section>
+        )}
       </details>
 
       {messages}

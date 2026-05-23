@@ -809,6 +809,96 @@ a {
   border-radius: var(--radius-sm);
 }
 
+/* ----- Gist preview-before-commit card (#68) -----
+   Sits beneath the URL form inside the disclosure. The body uses a <pre>
+   so the fetched text is rendered as-is — never as Markdown — preserving
+   indentation and preventing any markup from leaking into the app chrome. */
+.uploader__gist-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 var(--space-3) var(--space-3);
+  padding: var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border-strong);
+  border-left: 3px solid var(--ui-accent);
+  border-radius: var(--radius-sm);
+}
+
+.uploader__gist-preview-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+
+.uploader__gist-preview-title {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ui-fg);
+  margin: 0;
+}
+
+.uploader__gist-preview-filename {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  padding: 0.12rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--ui-fg-muted);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uploader__gist-preview-filename svg {
+  flex-shrink: 0;
+  color: var(--ui-accent);
+}
+
+.uploader__gist-preview-filename span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uploader__gist-preview-body {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  max-height: 16rem;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: var(--ui-fg);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  white-space: pre;
+  /* The wrapping fallback for narrow viewports — long lines should fold
+     gracefully rather than smear sideways. */
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .uploader__gist-preview-body {
+    white-space: pre-wrap;
+  }
+}
+
+.uploader__gist-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 /* ----- Opt-in draft persistence toggle (#32) ----- */
 .studio__draft-toggle {
   padding: var(--space-2) var(--space-3);
@@ -911,7 +1001,8 @@ a {
 }
 
 .editor__snippet-trigger,
-.editor__wrap-toggle {
+.editor__wrap-toggle,
+.editor__quick-insert-btn {
   padding: 0.32rem 0.5rem;
   font-size: 0.74rem;
 }
@@ -923,9 +1014,40 @@ a {
   background: var(--ui-panel);
 }
 
+/* ----- Always-visible quick-insert buttons (#70) -----
+   A small group of toolbar buttons for the section snippets an empty
+   resume most needs (Experience + Education). They share the compact
+   ghost-button look with the soft-wrap toggle. Below 640px the row is
+   hidden and these entries reappear inside the popover instead. */
+.editor__quick-insert {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* ----- Insert-section menu ----- */
 .editor__snippet {
   position: relative;
+}
+
+/* Popover list items default to visible; the --quick modifier marks rows
+   whose snippet is duplicated by an always-visible toolbar button. On
+   wide viewports CSS hides those rows so the popover only carries the
+   long-tail entries; on narrow viewports they reappear (see @media below). */
+.editor__snippet-li {
+  display: block;
+}
+
+@media (min-width: 641px) {
+  .editor__snippet-li--quick {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .editor__quick-insert {
+    display: none;
+  }
 }
 
 .editor__snippet-menu {
