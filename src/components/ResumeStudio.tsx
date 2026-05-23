@@ -16,7 +16,7 @@
  * to storage and never put in the URL. Only the theme slug is persisted (via
  * storage.ts) and reflected into `?theme=`.
  */
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ParsedResume, PreviewMode, PrintMode, ResumeTemplate, ResumeTheme } from '../types';
 import { DEFAULT_RESUME_TEMPLATE, RESUME_TEMPLATES, isResumeTemplate } from '../types';
 import { parseResume } from '../utils/markdown';
@@ -25,7 +25,9 @@ import {
   findTheme,
   getAllThemes,
   getFallbackTheme,
+  loadAllThemesAsync,
   resolveInitialThemeSlug,
+  themesLoaded,
 } from '../utils/themes';
 import {
   clearDraft,
@@ -47,6 +49,7 @@ import AtsModeToggle from './AtsModeToggle';
 import ExportPanel from './ExportPanel';
 import KeyboardHelp, { getStoredShortcutsEnabled, setStoredShortcutsEnabled } from './KeyboardHelp';
 import Icon from './Icon';
+import Toast from './Toast';
 
 /** sessionStorage key for the ATS preview mode (#31). */
 const ATS_MODE_SESSION_KEY = 'womr:ats-mode';
@@ -76,8 +79,15 @@ export default function ResumeStudio() {
   const [parsed, setParsed] = useState<ParsedResume | null>(null);
   const [sourceName, setSourceName] = useState('resume.md');
 
-  /* ----- Theme state ----- */
-  const themes = useMemo<ResumeTheme[]>(() => getAllThemes(), []);
+  /* ----- Theme state -----
+     The ~600 kB theme dataset is code-split (#78): it loads asynchronously
+     via a dynamic import on mount. `themes` starts with whatever
+     `getAllThemes()` returns synchronously (just `HARDCODED_FALLBACK` until
+     the dataset is here) and is replaced with the full ~545 entries once
+     `loadAllThemesAsync()` resolves. `themesReady` toggles when the load
+     finishes — the picker reads it to show a brief loading state. */
+  const [themes, setThemes] = useState<ResumeTheme[]>(() => getAllThemes());
+  const [themesReady, setThemesReady] = useState<boolean>(() => themesLoaded());
   const [theme, setTheme] = useState<ResumeTheme | null>(null);
   const [themeQuery, setThemeQuery] = useState('');
   const [themePickerOpen, setThemePickerOpen] = useState(false);
@@ -87,6 +97,18 @@ export default function ResumeStudio() {
   const [exportOpen, setExportOpen] = useState(false);
   const [printMode, setPrintMode] = useState<PrintMode>('conservative');
   const [loadAnnouncement, setLoadAnnouncement] = useState('');
+
+  /* ----- Overwrite toast (#77) — visible companion to the aria-live
+     announcement for sighted users. `toast` is null when nothing is
+     showing; setting it (with a monotonically increasing `id`) shows a
+     fresh toast and resets the auto-dismiss timer. Only set on the
+     overwrite path, NOT on the generic "Resume loaded" path. */
+  const [toast, setToast] = useState<{ id: number; message: string } | null>(null);
+  // Stable across renders — the toast's auto-dismiss effect lists this in its
+  // dependency array, so an inline arrow would restart the 5 s timer on every
+  // parent re-render (e.g. the debounced parse on every keystroke).
+  const dismissToast = useCallback(() => setToast(null), []);
+  const toastIdRef = useRef(0);
 
   /* ----- Layout template (#30) — persisted via localStorage + URL.
      The initial value is the safe default so SSR and the first client
@@ -129,13 +151,51 @@ export default function ResumeStudio() {
   const lineCount = markdown.length === 0 ? 0 : markdown.split('\n').length;
 
   /* ---------------------------------------------------------------- *
-   * Mount: resolve and apply the initial theme.                       *
+   * Mount: resolve and apply the initial theme, then async-load the   *
+   * full theme dataset (#78). Two-stage so first paint is never       *
+   * blocked on the ~600 kB JSON chunk:                                *
+   *                                                                   *
+   *   1. Sync: resolve from URL/storage/curated and apply             *
+   *      `HARDCODED_FALLBACK` (the only theme available before the    *
+   *      dataset loads). For a URL or stored slug we hold the slug    *
+   *      and reapply post-load — `findTheme` returns undefined for    *
+   *      now since the cache is empty.                                *
+   *   2. Async: dynamic-import the dataset, hand the full list to     *
+   *      state, and re-resolve the active theme so a `?theme=foo`     *
+   *      URL ends up displaying `foo` rather than the boot fallback.  *
    * ---------------------------------------------------------------- */
   useEffect(() => {
     const slug = resolveInitialThemeSlug();
     const initial = findTheme(slug) ?? getFallbackTheme(matchesDark());
     setTheme(initial);
     applyThemeToDocument(initial);
+
+    // Kick off the lazy load. If it has already happened (HMR, fast nav)
+    // `loadAllThemesAsync` returns the cached array immediately.
+    let cancelled = false;
+    loadAllThemesAsync()
+      .then((all) => {
+        if (cancelled) return;
+        setThemes(all);
+        setThemesReady(true);
+        // Re-resolve the active theme now that the full dataset is here.
+        // If the URL/stored slug points at a real theme we did not have
+        // synchronously, swap it in (and re-apply). Otherwise leave the
+        // boot fallback alone — the user hasn't expressed an opinion yet.
+        const resolved = resolveInitialThemeSlug();
+        const real = findTheme(resolved);
+        if (real && real.slug !== initial.slug) {
+          setTheme(real);
+          applyThemeToDocument(real);
+        }
+      })
+      .catch(() => {
+        // Network / chunk-load failure: keep the boot fallback. The picker
+        // remains usable on just the fallback theme — degraded but legible.
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   /* ---------------------------------------------------------------- *
@@ -493,7 +553,12 @@ export default function ResumeStudio() {
       // a "source label" the uploader threads through — fall back to a
       // generic label if it's missing.
       const source = (name && name.trim().length > 0 ? name : 'this file').trim();
-      setLoadAnnouncement(`Saved draft replaced — ${linesLabel} from ${source}.`);
+      const message = `Saved draft replaced — ${linesLabel} from ${source}.`;
+      setLoadAnnouncement(message);
+      // Visible counterpart (#77). Bump the id so a second overwrite
+      // replaces the first toast instead of stacking.
+      toastIdRef.current += 1;
+      setToast({ id: toastIdRef.current, message });
     } else {
       setLoadAnnouncement(`Resume loaded — ${linesLabel}.`);
     }
@@ -544,6 +609,7 @@ export default function ResumeStudio() {
         <div className="studio__toolbar" data-print-hide>
           <ThemePicker
             themes={themes}
+            themesLoading={!themesReady}
             current={theme}
             query={themeQuery}
             onQueryChange={setThemeQuery}
@@ -736,6 +802,11 @@ export default function ResumeStudio() {
           onClose={closeHelp}
         />
       )}
+
+      {/* ----- Overwrite toast (#77). Visual companion to the aria-live
+           announcement above; the toast intentionally has no live-region
+           semantics so AT users don't hear the message twice. ----- */}
+      {toast && <Toast id={toast.id} message={toast.message} onDismiss={dismissToast} />}
     </div>
   );
 }
