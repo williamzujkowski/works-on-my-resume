@@ -7,6 +7,44 @@
 import type { Page, Locator } from '@playwright/test';
 import { expect } from '@playwright/test';
 
+/**
+ * Force the document into a specific print mode and switch the viewport to
+ * print-media emulation. Mirrors what the app does in production: ResumeStudio
+ * writes `printMode` onto `body[data-print-mode]`, and print.css keys off
+ * that attribute. Tests that drive the print path through the in-app Export
+ * panel are valuable, but slow and chrome-couples — for the CSS-rule lock-in
+ * matrix it is simpler and more deterministic to set the attribute directly
+ * and assert the resulting computed style.
+ */
+export async function setPrintMode(
+  page: Page,
+  mode: 'conservative' | 'theme' | null,
+): Promise<void> {
+  await page.evaluate((m) => {
+    if (m === null) {
+      delete document.body.dataset.printMode;
+    } else {
+      document.body.dataset.printMode = m;
+    }
+  }, mode);
+  await page.emulateMedia({ media: 'print' });
+}
+
+/** Reset print-media emulation between tests. */
+export async function resetPrintMode(page: Page): Promise<void> {
+  await page.emulateMedia({ media: null });
+}
+
+/**
+ * True iff the element is rendered as `display: none` (the contract that
+ * print.css uses for every chrome-hide rule). `toBeHidden()` waffles on
+ * `visibility: hidden` vs. detached cases — for the lock-in matrix we want
+ * the precise rule that print.css writes.
+ */
+export async function isDisplayNone(locator: Locator): Promise<boolean> {
+  return locator.evaluate((el) => getComputedStyle(el).display === 'none');
+}
+
 /** Ensure all shortcut prefs are reset before a test that depends on them. */
 export async function clearAppStorage(page: Page): Promise<void> {
   await page.addInitScript(() => {
