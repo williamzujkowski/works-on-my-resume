@@ -14,8 +14,14 @@
  * on outside-click, and on close it restores focus to the Export trigger.
  */
 import { useEffect, useId, useRef } from 'react';
-import type { ParsedResume, PrintMode, ResumeTheme } from '../types';
-import { downloadMarkdown, downloadResumeHtml, downloadThemeCss } from '../utils/export';
+import type { ParsedResume, PrintMode, ResumeTemplate, ResumeTheme } from '../types';
+import { DEFAULT_RESUME_TEMPLATE } from '../types';
+import {
+  downloadMarkdown,
+  downloadResumeHtml,
+  downloadResumeZip,
+  downloadThemeCss,
+} from '../utils/export';
 import { downloadJsonResume, toJsonResume } from '../utils/jsonresume';
 import Icon from './Icon';
 
@@ -26,6 +32,11 @@ interface ExportPanelProps {
   parsed: ParsedResume | null;
   /** The active theme. */
   theme: ResumeTheme;
+  /**
+   * The active layout template (#30). Applied to the standalone HTML export
+   * and the ZIP bundle so a download faithfully reflects the in-app preview.
+   */
+  template?: ResumeTemplate;
   /** Current print mode. */
   printMode: PrintMode;
   onPrintModeChange: (mode: PrintMode) => void;
@@ -39,6 +50,7 @@ export default function ExportPanel({
   markdown,
   parsed,
   theme,
+  template = DEFAULT_RESUME_TEMPLATE,
   printMode,
   onPrintModeChange,
   onClose,
@@ -168,7 +180,7 @@ export default function ExportPanel({
             disabled={!hasResume}
             onClick={() => {
               if (parsed) {
-                downloadResumeHtml(parsed.html, theme, parsed.frontmatter);
+                downloadResumeHtml(parsed.html, theme, parsed.frontmatter, template);
               }
             }}
           >
@@ -187,9 +199,22 @@ export default function ExportPanel({
           <button type="button" className="btn" onClick={() => downloadThemeCss(theme)}>
             Download theme CSS (.css)
           </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={!hasResume}
+            onClick={() => {
+              if (parsed) {
+                downloadResumeZip(markdown, parsed.html, theme, parsed.frontmatter, template);
+              }
+            }}
+          >
+            Download as .zip
+          </button>
         </div>
         <p className="export-panel__note">
-          Downloads are generated in your browser. Nothing is uploaded.
+          Downloads are generated in your browser. Nothing is uploaded. The .zip bundles the
+          Markdown, the standalone HTML, and the theme CSS.
         </p>
       </div>
     </div>

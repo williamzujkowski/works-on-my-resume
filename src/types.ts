@@ -190,6 +190,66 @@ export const ACCENT_MIN_CONTRAST = 4.5;
 export type PrintMode = 'conservative' | 'theme';
 
 /* ------------------------------------------------------------------ */
+/* Layout templates (#30)                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Resume layout templates. Each is a CSS variant on `.resume-preview`,
+ * keyed by a `data-template` attribute. All three consume only the
+ * existing `--resume-*` semantic tokens — no theme regressions.
+ */
+export type ResumeTemplate = 'classic' | 'modern' | 'compact';
+
+/** Description for a layout template, used by the layout selector UI. */
+export interface ResumeTemplateInfo {
+  slug: ResumeTemplate;
+  label: string;
+  description: string;
+}
+
+/** The complete, ordered set of layout templates for the selector UI. */
+export const RESUME_TEMPLATES: readonly ResumeTemplateInfo[] = [
+  {
+    slug: 'classic',
+    label: 'Classic',
+    description: 'Serif body with the original rhythm.',
+  },
+  {
+    slug: 'modern',
+    label: 'Modern',
+    description: 'Tighter hierarchy with mono section labels.',
+  },
+  {
+    slug: 'compact',
+    label: 'Compact',
+    description: 'Dense rhythm tuned for a one-page resume.',
+  },
+] as const;
+
+/** Default template — the original Source Serif 4 look. */
+export const DEFAULT_RESUME_TEMPLATE: ResumeTemplate = 'classic';
+
+/** True when the input string is one of the known template slugs. */
+export function isResumeTemplate(value: unknown): value is ResumeTemplate {
+  return value === 'classic' || value === 'modern' || value === 'compact';
+}
+
+/* ------------------------------------------------------------------ */
+/* ATS preview mode (#31)                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Preview rendering mode.
+ *
+ *  - `normal`: the active theme and template apply.
+ *  - `ats`:    a plain-text-friendly, single-column, color-stripped
+ *              rendering meant to approximate what an ATS parser sees.
+ *              The theme is intentionally ignored in this mode (the
+ *              preview reflects that visibly).
+ */
+export type PreviewMode = 'normal' | 'ats';
+
+/* ------------------------------------------------------------------ */
 /* JSON Resume (#28) — additive type definitions                       */
 /* ------------------------------------------------------------------ */
 

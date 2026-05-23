@@ -18,12 +18,24 @@
  * content-only; this guard simply makes user resumes forgiving.
  */
 import { useMemo } from 'react';
-import type { ParsedResume } from '../types';
+import type { ParsedResume, PreviewMode, ResumeTemplate } from '../types';
+import { DEFAULT_RESUME_TEMPLATE } from '../types';
 import Icon from './Icon';
 
 interface ResumePreviewProps {
   /** Parsed resume, or null when nothing has been loaded yet. */
   parsed: ParsedResume | null;
+  /**
+   * Active layout template (#30). Reflected onto the article as
+   * `data-template="<slug>"` so `resume.css`'s template overlays apply.
+   * Defaults to `classic`.
+   */
+  template?: ResumeTemplate;
+  /**
+   * Preview rendering mode (#31). `ats` overrides theme/template visuals
+   * with a monochrome, single-column rendering. Defaults to `normal`.
+   */
+  mode?: PreviewMode;
 }
 
 /**
@@ -64,7 +76,11 @@ function dedupeIdentity(html: string): string {
   return wrapper.innerHTML;
 }
 
-export default function ResumePreview({ parsed }: ResumePreviewProps) {
+export default function ResumePreview({
+  parsed,
+  template = DEFAULT_RESUME_TEMPLATE,
+  mode = 'normal',
+}: ResumePreviewProps) {
   const { name, role, location, email, phone, links } = parsed?.frontmatter ?? {};
   const hasContact = Boolean(
     name || role || location || email || phone || (links && links.length > 0),
@@ -120,8 +136,25 @@ export default function ResumePreview({ parsed }: ResumePreviewProps) {
   }
 
   return (
-    <div className="preview-frame">
-      <article className="resume-preview" aria-label="Rendered resume">
+    <div className="preview-frame" data-mode={mode === 'ats' ? 'ats' : undefined}>
+      {mode === 'ats' && (
+        // A genuine, non-color-coded affordance: the user has chosen a viewing
+        // mode that ignores the theme, so we say so in plain text and announce
+        // the change via a live region. `data-print-hide` keeps the badge out
+        // of printed / exported output.
+        <div className="preview-mode-badge" role="status" data-print-hide>
+          <strong>ATS preview</strong>
+          <span>
+            Showing a plain, single-column rendering — the active theme is muted in this view.
+          </span>
+        </div>
+      )}
+      <article
+        className="resume-preview"
+        aria-label="Rendered resume"
+        data-template={template}
+        data-mode={mode === 'ats' ? 'ats' : undefined}
+      >
         {warnings.length > 0 && (
           <div className="preview-warnings" role="status" data-print-hide>
             <strong>Heads up — the parser noted:</strong>

@@ -58,7 +58,10 @@ async function readPickerTotal(page: import('@playwright/test').Page): Promise<n
     const match = /of\s+(\d+)/.exec(text);
     if (match) return Number(match[1]);
   }
-  return page.getByRole('listbox', { name: /themes/i }).getByRole('option').count();
+  return page
+    .getByRole('listbox', { name: /themes/i })
+    .getByRole('option')
+    .count();
 }
 
 test('the resume-safe-only toggle removes low-contrast themes from the list', async ({ page }) => {

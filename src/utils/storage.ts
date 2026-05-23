@@ -18,6 +18,13 @@
 const THEME_KEY = 'womr:theme';
 
 /**
+ * Namespaced key for the layout-template preference (#30). Templates are
+ * purely presentation-layer (no resume content), so persisting the choice
+ * carries no personal data, the same trade-off as the theme slug.
+ */
+const TEMPLATE_KEY = 'womr:template';
+
+/**
  * Opt-in draft persistence (#32).
  *
  * Two keys, deliberately separate:
@@ -170,5 +177,42 @@ export function clearDraft(): void {
     store.removeItem(DRAFT_KEY);
   } catch {
     /* no-op */
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Layout-template preference (#30)                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Read the persisted layout-template slug.
+ *
+ * Returns the raw string; callers narrow with `isResumeTemplate` so an
+ * unknown legacy value degrades to the default rather than producing a
+ * broken layout. Returns `null` when nothing is stored / storage is
+ * unavailable.
+ */
+export function getStoredTemplate(): string | null {
+  const store = safeLocalStorage();
+  if (!store) return null;
+  try {
+    const value = store.getItem(TEMPLATE_KEY);
+    return value && value.length > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persist the chosen layout-template slug. No-ops silently when storage
+ * is unavailable — template preference is a convenience, not correctness.
+ */
+export function setStoredTemplate(slug: string): void {
+  const store = safeLocalStorage();
+  if (!store) return;
+  try {
+    store.setItem(TEMPLATE_KEY, slug);
+  } catch {
+    /* no-op: persistence is best-effort only */
   }
 }

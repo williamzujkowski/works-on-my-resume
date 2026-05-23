@@ -17,7 +17,8 @@
  * storage.ts) and reflected into `?theme=`.
  */
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { ParsedResume, PrintMode, ResumeTheme } from '../types';
+import type { ParsedResume, PreviewMode, PrintMode, ResumeTemplate, ResumeTheme } from '../types';
+import { DEFAULT_RESUME_TEMPLATE, RESUME_TEMPLATES, isResumeTemplate } from '../types';
 import { parseResume } from '../utils/markdown';
 import {
   applyThemeToDocument,
@@ -29,9 +30,11 @@ import {
 import {
   clearDraft,
   getDraft,
+  getStoredTemplate,
   isDraftPersistenceEnabled,
   setDraft,
   setDraftPersistenceEnabled,
+  setStoredTemplate,
   setStoredThemeSlug,
 } from '../utils/storage';
 import MarkdownUploader from './MarkdownUploader';
@@ -39,9 +42,14 @@ import MarkdownEditor from './MarkdownEditor';
 import ResumePreview from './ResumePreview';
 import ThemePicker from './ThemePicker';
 import ThemeControls from './ThemeControls';
+import LayoutSelector from './LayoutSelector';
+import AtsModeToggle from './AtsModeToggle';
 import ExportPanel from './ExportPanel';
 import KeyboardHelp, { getStoredShortcutsEnabled, setStoredShortcutsEnabled } from './KeyboardHelp';
 import Icon from './Icon';
+
+/** sessionStorage key for the ATS preview mode (#31). */
+const ATS_MODE_SESSION_KEY = 'womr:ats-mode';
 
 /** Debounce window for re-parsing Markdown as the user types. */
 const PARSE_DEBOUNCE_MS = 200;
@@ -80,6 +88,18 @@ export default function ResumeStudio() {
   const [printMode, setPrintMode] = useState<PrintMode>('conservative');
   const [loadAnnouncement, setLoadAnnouncement] = useState('');
 
+  /* ----- Layout template (#30) — persisted via localStorage + URL.
+     The initial value is the safe default so SSR and the first client
+     render agree; the mount-time effect below promotes the value from
+     URL > storage > default once the client is alive. */
+  const [template, setTemplate] = useState<ResumeTemplate>(DEFAULT_RESUME_TEMPLATE);
+
+  /* ----- ATS preview mode (#31) — persisted for the session only.
+     Sessions match the user's mental model: "I'm looking at this as an
+     ATS while I tweak the resume" doesn't deserve a long-term setting.
+     Default off; the mount-time effect reads sessionStorage. */
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('normal');
+
   /* ----- Keyboard-shortcut help overlay (#58) ----- */
   const [helpOpen, setHelpOpen] = useState(false);
   /* Single-key shortcuts can be disabled for WCAG 2.1.4 mitigation. The
@@ -116,6 +136,52 @@ export default function ResumeStudio() {
     const initial = findTheme(slug) ?? getFallbackTheme(matchesDark());
     setTheme(initial);
     applyThemeToDocument(initial);
+  }, []);
+
+  /* ---------------------------------------------------------------- *
+   * Mount: resolve the initial layout template (#30).                 *
+   * Priority order: ?layout=<slug> > localStorage > default.          *
+   * Same SSR-parity pattern as the theme: read once in an effect so   *
+   * server and first client paint agree.                              *
+   * ---------------------------------------------------------------- */
+  useEffect(() => {
+    let resolved: ResumeTemplate = DEFAULT_RESUME_TEMPLATE;
+
+    // 1. URL parameter.
+    try {
+      if (typeof window !== 'undefined' && window.location?.search) {
+        const params = new URLSearchParams(window.location.search);
+        const fromUrl = params.get('layout');
+        if (fromUrl && isResumeTemplate(fromUrl)) {
+          resolved = fromUrl;
+        } else {
+          // 2. localStorage (only if the URL did not provide one).
+          const stored = getStoredTemplate();
+          if (stored && isResumeTemplate(stored)) resolved = stored;
+        }
+      } else {
+        const stored = getStoredTemplate();
+        if (stored && isResumeTemplate(stored)) resolved = stored;
+      }
+    } catch {
+      /* malformed query / blocked storage — fall back to the default */
+    }
+
+    setTemplate(resolved);
+  }, []);
+
+  /* ---------------------------------------------------------------- *
+   * Mount: resolve the initial ATS preview mode (#31).                *
+   * sessionStorage only — a viewing mode, not a saved preference.     *
+   * ---------------------------------------------------------------- */
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      const stored = window.sessionStorage.getItem(ATS_MODE_SESSION_KEY);
+      if (stored === 'ats') setPreviewMode('ats');
+    } catch {
+      /* sessionStorage may be blocked; default to normal mode */
+    }
   }, []);
 
   /* ---------------------------------------------------------------- *
@@ -183,6 +249,49 @@ export default function ResumeStudio() {
   useEffect(() => {
     document.body.dataset.printMode = printMode;
   }, [printMode]);
+
+  /**
+   * Change the active layout template (#30). Persists to localStorage and
+   * reflects into the URL as `?layout=<slug>`, the same shape as `?theme=`
+   * so a permalink preserves both choices.
+   */
+  const changeTemplate = useCallback((next: ResumeTemplate) => {
+    setTemplate(next);
+    setStoredTemplate(next);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('layout', next);
+      window.history.replaceState(null, '', url);
+    } catch {
+      /* URL update is cosmetic — ignore failures. */
+    }
+  }, []);
+
+  /**
+   * Toggle ATS preview mode (#31). Persists for the session only — when the
+   * user reopens the tab the preview returns to normal. Theme switching
+   * remains live in the toolbar but is intentionally muted in the preview.
+   */
+  const changePreviewMode = useCallback((active: boolean) => {
+    const next: PreviewMode = active ? 'ats' : 'normal';
+    setPreviewMode(next);
+    try {
+      if (typeof window !== 'undefined') {
+        if (next === 'ats') {
+          window.sessionStorage.setItem(ATS_MODE_SESSION_KEY, 'ats');
+        } else {
+          window.sessionStorage.removeItem(ATS_MODE_SESSION_KEY);
+        }
+      }
+    } catch {
+      /* sessionStorage blocked — ignore */
+    }
+    setLoadAnnouncement(
+      next === 'ats'
+        ? 'ATS preview on. Showing a plain, single-column rendering; theme is muted.'
+        : 'ATS preview off. Theme and layout restored.',
+    );
+  }, []);
 
   /* ---------------------------------------------------------------- *
    * Debounced Markdown parsing. parseResume is sync + browser-only.   *
@@ -427,6 +536,14 @@ export default function ResumeStudio() {
             onOpenChange={setThemePickerOpen}
           />
 
+          <LayoutSelector
+            templates={RESUME_TEMPLATES}
+            current={template}
+            onChange={changeTemplate}
+          />
+
+          <AtsModeToggle active={previewMode === 'ats'} onChange={changePreviewMode} />
+
           <div className="studio__toolbar-spacer" />
 
           <ThemeControls
@@ -453,6 +570,7 @@ export default function ResumeStudio() {
                 markdown={markdown}
                 parsed={parsed}
                 theme={theme}
+                template={template}
                 printMode={printMode}
                 onPrintModeChange={setPrintMode}
                 onClose={() => setExportOpen(false)}
@@ -586,7 +704,7 @@ export default function ResumeStudio() {
             <span className="studio__pane-tab">preview · {theme.name}</span>
           </div>
           <div className="studio__pane-body" ref={previewRef}>
-            <ResumePreview parsed={parsed} />
+            <ResumePreview parsed={parsed} template={template} mode={previewMode} />
           </div>
         </section>
       </div>

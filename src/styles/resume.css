@@ -315,3 +315,362 @@
   max-width: 100%;
   border-radius: 4px;
 }
+
+/* ------------------------------------------------------------------ */
+/* GFM task lists (#66)                                                */
+/* ------------------------------------------------------------------ */
+/*
+ * The Markdown pipeline rewrites GFM task lists into a safe shape:
+ *
+ *   <ul class="task-list">
+ *     <li class="task-item">
+ *       <span class="task-checkbox" aria-hidden="true"
+ *             data-checked="true|false"></span> Item text
+ *     </li>
+ *   </ul>
+ *
+ * The native bullet is suppressed; the checkbox glyph is supplied by a
+ * `::before` pseudo-element on the span. The glyph is monochrome (inheriting
+ * `--resume-fg` / `--resume-accent`), accessible (the span is
+ * `aria-hidden="true"` so the surrounding text carries meaning), and prints
+ * cleanly (a Unicode character beats an icon font on a printer).
+ */
+
+.resume-preview ul.task-list {
+  list-style: none;
+  padding-left: 0.4rem;
+}
+
+.resume-preview ul.task-list ul,
+.resume-preview ol ul.task-list,
+.resume-preview ul ul.task-list {
+  padding-left: 1.1rem;
+}
+
+.resume-preview .task-item {
+  /* A negative `text-indent` keeps wrapped text aligned with the first
+     character past the checkbox, the same effect a list-marker has. */
+  margin: 0.3rem 0;
+  padding-left: 1.55rem;
+  text-indent: -1.55rem;
+}
+
+.resume-preview .task-checkbox {
+  /* Inline-block so the negative text-indent above places it at the start
+     of the line; the rest of the line then flows back at its normal indent. */
+  display: inline-block;
+  width: 1.1rem;
+  margin-right: 0.45rem;
+  text-indent: 0;
+  font-family: var(--resume-mono);
+  font-size: 0.95em;
+  line-height: 1;
+  color: var(--resume-fg);
+  user-select: none;
+}
+
+/* Glyphs are emitted via CSS content so they survive copy/paste from the
+   document and remain monochrome — no icon font, no SVG dependency. */
+.resume-preview .task-checkbox[data-checked='false']::before {
+  content: '\2610'; /* ☐ — BALLOT BOX */
+}
+
+.resume-preview .task-checkbox[data-checked='true']::before {
+  content: '\2611'; /* ☑ — BALLOT BOX WITH CHECK */
+  color: var(--resume-accent);
+}
+
+/* ------------------------------------------------------------------ */
+/* Layout templates (#30)                                              */
+/* ------------------------------------------------------------------ */
+/*
+ * Three layout variants. Each is a CSS overlay keyed on the
+ * `data-template` attribute the React preview sets (and the exported HTML
+ * carries verbatim). All three consume the same `--resume-*` semantic
+ * tokens, so any template can ride any theme without contrast regressions.
+ *
+ *  - `classic` (default) is the existing look — no overrides needed.
+ *  - `modern`  reshuffles the heading hierarchy: thinner H2 underline,
+ *              monospaced section labels with letter-spacing, and a
+ *              column-style H3 treatment (role on the left, date stub on
+ *              the right via the H3+P em pattern the body already uses).
+ *  - `compact` tightens vertical rhythm and shrinks heading sizes to
+ *              help a longer resume fit on one page.
+ */
+
+/* --- Modern --------------------------------------------------------- */
+.resume-preview[data-template='modern'] {
+  /* Modern reads as a designer's CV: a touch of mono in the section labels,
+     a slightly larger identity, and quieter dividers. */
+}
+
+.resume-preview[data-template='modern'] h1 {
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+.resume-preview[data-template='modern'] h2 {
+  margin-top: 2.1rem;
+  margin-bottom: 0.55rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid var(--resume-border);
+  font-family: var(--resume-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--resume-muted);
+}
+
+.resume-preview[data-template='modern'] h3 {
+  font-size: 1.08rem;
+  margin-top: 1.3rem;
+  margin-bottom: 0.1rem;
+  color: var(--resume-accent);
+  font-weight: 700;
+}
+
+/* The italic line directly after an H3 reads as the role/date stub. In
+   modern, it sits on the same baseline as the H3 — a designed two-line
+   record rather than a heading + paragraph stack. */
+.resume-preview[data-template='modern'] h3 + p em,
+.resume-preview[data-template='modern'] h4 + p em {
+  font-family: var(--resume-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--resume-muted);
+}
+
+/* Quieter identity divider; the mono section labels do enough work. */
+.resume-preview[data-template='modern'] .resume-preview__contact {
+  border-bottom-width: 1px;
+  border-bottom-color: var(--resume-border);
+}
+
+.resume-preview[data-template='modern'] .resume-preview__contact-name {
+  font-size: 2.1rem;
+  letter-spacing: -0.02em;
+}
+
+.resume-preview[data-template='modern'] .resume-preview__contact-role {
+  font-family: var(--resume-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--resume-muted);
+}
+
+/* --- Compact -------------------------------------------------------- */
+.resume-preview[data-template='compact'] {
+  /* Tighter page geometry, smaller body, denser rhythm. The page itself is
+     still scoped — we only adjust *within* the sheet. */
+  padding: 2.25rem 2.5rem;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.resume-preview[data-template='compact'] h1 {
+  font-size: 1.55rem;
+  margin-bottom: 0.2rem;
+}
+
+.resume-preview[data-template='compact'] h2 {
+  margin-top: 1.2rem;
+  margin-bottom: 0.45rem;
+  padding-bottom: 0.2rem;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+}
+
+.resume-preview[data-template='compact'] h3 {
+  font-size: 0.96rem;
+  margin-top: 0.8rem;
+  margin-bottom: 0.1rem;
+}
+
+.resume-preview[data-template='compact'] h4 {
+  font-size: 0.9rem;
+  margin-top: 0.6rem;
+}
+
+.resume-preview[data-template='compact'] p {
+  margin: 0.32rem 0;
+}
+
+.resume-preview[data-template='compact'] ul,
+.resume-preview[data-template='compact'] ol {
+  margin: 0.3rem 0;
+  padding-left: 1.2rem;
+}
+
+.resume-preview[data-template='compact'] li {
+  margin: 0.16rem 0;
+}
+
+.resume-preview[data-template='compact'] hr {
+  margin: 1rem 0;
+}
+
+.resume-preview[data-template='compact'] .resume-preview__contact {
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.8rem;
+}
+
+.resume-preview[data-template='compact'] .resume-preview__contact-name {
+  font-size: 1.55rem;
+}
+
+.resume-preview[data-template='compact'] .resume-preview__contact-role {
+  font-size: 0.95rem;
+}
+
+@media (max-width: 640px) {
+  .resume-preview[data-template='compact'] {
+    padding: 1.5rem 1.3rem;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* ATS preview mode (#31)                                              */
+/* ------------------------------------------------------------------ */
+/*
+ * `data-mode="ats"` overrides the active theme and template visuals with a
+ * single-column, monochrome rendering. The goal is "what a plain ATS parser
+ * approximately sees": black on white, no shadows, no accent colors on
+ * headings, no decorative chrome — but with the document still legible and
+ * the structure intact. Links keep their underline because that is meaningful
+ * structural information.
+ *
+ * Implementation strategy: set `--resume-*` overrides INSIDE the scope so
+ * `resume.css`'s own rules continue to drive the document. Everything that
+ * cannot be expressed through tokens (shadows, the sheet border, the soft
+ * paper background) is reset explicitly below. The ATS overrides apply on
+ * top of any template — `data-template` has no visible effect in ATS mode.
+ */
+.resume-preview[data-mode='ats'] {
+  /* Strip the theme and force a high-contrast monochrome palette. */
+  --resume-bg: #ffffff;
+  --resume-fg: #000000;
+  --resume-muted: #2a2a2a;
+  --resume-accent: #000000;
+  --resume-accent-2: #000000;
+  --resume-border: #000000;
+  --resume-card: #ffffff;
+  --resume-code-bg: #f4f4f4;
+
+  /* Reset the sheet itself: no shadow, no rounded paper, no border. */
+  background: #ffffff;
+  color: #000000;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  /* A plain system font stack is closer to what ATS extractors actually read. */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Strip decorative weight from accent surfaces; keep structural underlines. */
+.resume-preview[data-mode='ats'] h1,
+.resume-preview[data-mode='ats'] h2,
+.resume-preview[data-mode='ats'] h3,
+.resume-preview[data-mode='ats'] h4 {
+  color: #000000;
+  letter-spacing: 0;
+}
+
+.resume-preview[data-mode='ats'] h2 {
+  border-bottom-color: #000000;
+  /* Plain rather than mono / uppercase in ATS mode — closer to what a
+     parser sees as a section heading. */
+  font-family: inherit;
+  font-size: 1.12rem;
+  text-transform: none;
+}
+
+.resume-preview[data-mode='ats'] h3 + p em,
+.resume-preview[data-mode='ats'] h4 + p em {
+  font-family: inherit;
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #2a2a2a;
+}
+
+.resume-preview[data-mode='ats'] strong {
+  color: #000000;
+}
+
+.resume-preview[data-mode='ats'] em {
+  color: #2a2a2a;
+}
+
+.resume-preview[data-mode='ats'] a {
+  color: #000000;
+  text-decoration: underline;
+}
+
+.resume-preview[data-mode='ats'] li::marker {
+  color: #000000;
+}
+
+.resume-preview[data-mode='ats'] blockquote {
+  background: #ffffff;
+  border-left-color: #000000;
+  color: #2a2a2a;
+}
+
+.resume-preview[data-mode='ats'] code,
+.resume-preview[data-mode='ats'] pre {
+  background: #f4f4f4;
+  border-color: #000000;
+  color: #000000;
+}
+
+.resume-preview[data-mode='ats'] table,
+.resume-preview[data-mode='ats'] th,
+.resume-preview[data-mode='ats'] td {
+  border-color: #000000;
+  background: #ffffff;
+  color: #000000;
+}
+
+.resume-preview[data-mode='ats'] th {
+  background: #f4f4f4;
+}
+
+.resume-preview[data-mode='ats'] tbody tr:nth-child(even) {
+  background: #ffffff;
+}
+
+.resume-preview[data-mode='ats'] .resume-preview__contact {
+  border-bottom-color: #000000;
+}
+
+.resume-preview[data-mode='ats'] .resume-preview__contact-name {
+  color: #000000;
+}
+
+.resume-preview[data-mode='ats'] .resume-preview__contact-role {
+  color: #000000;
+  font-family: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.resume-preview[data-mode='ats'] .resume-preview__contact-meta {
+  font-family: inherit;
+  color: #2a2a2a;
+}
+
+.resume-preview[data-mode='ats'] .resume-preview__contact-meta a {
+  color: #000000;
+}
+
+.resume-preview[data-mode='ats'] .resume-preview__contact-sep {
+  color: #000000;
+}
+
+/* ATS mode keeps the safe task-list glyph. */
+.resume-preview[data-mode='ats'] .task-checkbox[data-checked='true']::before {
+  color: #000000;
+}
