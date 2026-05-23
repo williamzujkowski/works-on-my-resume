@@ -103,6 +103,15 @@ export default function ThemePicker({
   const rendered = allMatches.slice(0, MAX_RENDERED);
   const overflow = allMatches.length - rendered.length;
 
+  const swatchStyles = useMemo(() => {
+    return themes
+      .map(
+        (t) =>
+          `.swatch-${t.slug} { background: ${t.tokens.bg}; border-color: ${t.tokens.accent}; }`
+      )
+      .join('\n');
+  }, [themes]);
+
   /* Keep the active index inside bounds as the filtered list changes. */
   useEffect(() => {
     setActiveIndex((index) => (rendered.length === 0 ? 0 : Math.min(index, rendered.length - 1)));
@@ -253,6 +262,7 @@ export default function ThemePicker({
 
   return (
     <div className="theme-picker" ref={rootRef}>
+      <style dangerouslySetInnerHTML={{ __html: swatchStyles }} />
       <button
         type="button"
         ref={triggerRef}
@@ -263,7 +273,6 @@ export default function ThemePicker({
       >
         <span
           className="theme-picker__swatch theme-picker__swatch--trigger"
-          style={{ background: current.tokens.bg, borderColor: current.tokens.accent }}
           aria-hidden="true"
         />
         <span className="theme-picker__trigger-label">
@@ -355,8 +364,7 @@ export default function ThemePicker({
                     onMouseEnter={() => setActiveIndex(index)}
                   >
                     <span
-                      className="theme-picker__swatch"
-                      style={{ background: theme.tokens.bg, borderColor: theme.tokens.accent }}
+                      className={`theme-picker__swatch swatch-${theme.slug}`}
                       aria-hidden="true"
                     />
                     <span className="theme-picker__option-name">{theme.name}</span>
@@ -433,7 +441,6 @@ export default function ThemePicker({
             >
               <span
                 className="theme-picker__accent-dot"
-                style={{ background: current.tokens.accent }}
                 aria-hidden="true"
               />
               Accent {current.contrast.accentOnBg.toFixed(1)}:1 — WCAG{' '}

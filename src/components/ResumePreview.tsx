@@ -180,7 +180,7 @@ export default function ResumePreview({
                   // Key the wrapper by the item's OWN stable key ("loc",
                   // "email", "link-…") rather than the array index, so an
                   // index-keyed wrapper never shadows the item's identity.
-                  <span key={String(item.key)} style={{ display: 'contents' }}>
+                  <span key={String(item.key)} className="display-contents">
                     {index > 0 && (
                       <span className="resume-preview__contact-sep" aria-hidden="true">
                         ·

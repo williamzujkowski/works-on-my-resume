@@ -1865,3 +1865,11 @@ a {
   line-height: 1.6;
   color: var(--ui-fg-muted);
 }
+
+.display-contents { display: contents; }
+.delay-0 { animation-delay: 0s; }
+.delay-1 { animation-delay: 0.15s; }
+.delay-2 { animation-delay: 0.3s; }
+.theme-picker__swatch--trigger { background: var(--resume-bg); border-color: var(--resume-accent); }
+.theme-picker__accent-dot { background: var(--resume-accent); }
+.theme-controls__accent-dot { background: var(--resume-accent); }

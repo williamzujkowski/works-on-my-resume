@@ -19,13 +19,13 @@ import ResumeStudio from '../components/ResumeStudio.tsx';
         page-load reveal in global.css. Collapses to the final state
         instantly under prefers-reduced-motion. */
     }
-    <div class="reveal" style="--i: 0">
+    <div class="reveal delay-0">
       <AppHeader />
     </div>
-    <div class="reveal" style="--i: 1">
+    <div class="reveal delay-1">
       <PrivacyNotice />
     </div>
-    <main id="studio" class="reveal" style="--i: 2">
+    <main id="studio" class="reveal delay-2">
       <ResumeStudio client:load />
     </main>
   </div>

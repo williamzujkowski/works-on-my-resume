@@ -124,7 +124,6 @@ export default function ThemeControls({
         <span className="badge" title={accentLabel} aria-label={accentLabel}>
           <span
             className="theme-controls__accent-dot"
-            style={{ background: current.tokens.accent }}
             aria-hidden="true"
           />
           {accentContrast}:1

@@ -15,7 +15,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node scripts/hash-csp.cjs",
     "preview": "astro preview",
     "check": "astro check",
     "lint": "eslint .",
