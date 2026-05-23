@@ -46,14 +46,22 @@
   /* Sensible light-theme fallbacks so the document is readable even when
      no theme has been applied (e.g. a stripped export). The theme engine
      and global.css both override these with the same semantic names. */
-  --resume-bg: var(--resume-bg, #ffffff);
-  --resume-fg: var(--resume-fg, #1f2328);
-  --resume-muted: var(--resume-muted, #57606a);
-  --resume-accent: var(--resume-accent, #0b5cae);
-  --resume-accent-2: var(--resume-accent-2, #8a3ffc);
-  --resume-border: var(--resume-border, #d6dbe1);
-  --resume-card: var(--resume-card, #f6f8fa);
-  --resume-code-bg: var(--resume-code-bg, #f0f2f5);
+  --_resume-bg-input: var(--resume-bg, #ffffff);
+  --resume-bg: var(--_resume-bg-input);
+  --_resume-fg-input: var(--resume-fg, #1f2328);
+  --resume-fg: var(--_resume-fg-input);
+  --_resume-muted-input: var(--resume-muted, #57606a);
+  --resume-muted: var(--_resume-muted-input);
+  --_resume-accent-input: var(--resume-accent, #0b5cae);
+  --resume-accent: var(--_resume-accent-input);
+  --_resume-accent-2-input: var(--resume-accent-2, #8a3ffc);
+  --resume-accent-2: var(--_resume-accent-2-input);
+  --_resume-border-input: var(--resume-border, #d6dbe1);
+  --resume-border: var(--_resume-border-input);
+  --_resume-card-input: var(--resume-card, #f6f8fa);
+  --resume-card: var(--_resume-card-input);
+  --_resume-code-bg-input: var(--resume-code-bg, #f0f2f5);
+  --resume-code-bg: var(--_resume-code-bg-input);
 }
 
 .resume-preview {
