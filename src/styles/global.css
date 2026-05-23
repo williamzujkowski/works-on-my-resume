@@ -1106,6 +1106,16 @@ a {
   padding-left: 1.2rem;
 }
 
+/* CSP-friendly stand-in for what used to be `style={{ display: 'contents' }}`
+   inline in ResumePreview.tsx. The wrapper exists only to carry a stable React
+   key around an interleaved separator + item pair; `display: contents` removes
+   its own box so the inner nodes participate directly in the parent flex
+   layout. Lives in global.css (not resume.css) because the parent owns this
+   structural component class — see issue #38 for the CSP rationale. */
+.resume-preview__contact-meta-item {
+  display: contents;
+}
+
 /* ------------------------------------------------------------------ */
 /* Theme picker                                                        */
 /* ------------------------------------------------------------------ */

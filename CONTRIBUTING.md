@@ -15,24 +15,24 @@ already started, and your PR gets superseded before review. If you don't
 hear back in a few days, please nudge.
 
 If you have an idea that isn't tracked yet, open an issue describing it
-*before* writing the code, so we can talk through the approach.
+_before_ writing the code, so we can talk through the approach.
 
 ## Issue labels you'll see
 
-| Label                | Meaning                                                                  |
-| -------------------- | ------------------------------------------------------------------------ |
-| `good-first-issue`   | Small, well-scoped — a good entry point for first-time contributors.     |
-| `mvp`                | Required for the MVP acceptance criteria (mostly closed).                |
-| `post-mvp`           | Tracked but deliberately deferred from the MVP.                          |
-| `design`             | Visual craft.                                                            |
-| `ux`                 | Interaction / journey / accessibility.                                   |
-| `security`           | Touches the trust boundary (sanitizer, CSP, untrusted input).            |
-| `privacy`            | Affects the local-first guarantees.                                      |
-| `themes`             | OKLCH theme engine.                                                      |
-| `tech-debt`          | Known debt to revisit.                                                   |
-| `bug`                | Something doesn't work as documented.                                    |
-| `epic`               | Tracking issue spanning several children.                                |
-| `under-review`       | A PR is being looked at — not ignored.                                   |
+| Label              | Meaning                                                              |
+| ------------------ | -------------------------------------------------------------------- |
+| `good-first-issue` | Small, well-scoped — a good entry point for first-time contributors. |
+| `mvp`              | Required for the MVP acceptance criteria (mostly closed).            |
+| `post-mvp`         | Tracked but deliberately deferred from the MVP.                      |
+| `design`           | Visual craft.                                                        |
+| `ux`               | Interaction / journey / accessibility.                               |
+| `security`         | Touches the trust boundary (sanitizer, CSP, untrusted input).        |
+| `privacy`          | Affects the local-first guarantees.                                  |
+| `themes`           | OKLCH theme engine.                                                  |
+| `tech-debt`        | Known debt to revisit.                                               |
+| `bug`              | Something doesn't work as documented.                                |
+| `epic`             | Tracking issue spanning several children.                            |
+| `under-review`     | A PR is being looked at — not ignored.                               |
 
 ## Local development
 
@@ -57,9 +57,17 @@ This project is **static and local-first**, and we'd like to keep it that way.
   user-initiated "Import from Gist" flow (anonymous public-Gist fetch).
 - Uploaded Markdown is **untrusted input**. The sanitizer pipeline
   (`src/utils/markdown.ts`) is the trust boundary; DOMPurify holds it.
-- Anything that touches `src/utils/markdown.ts`, `src/layouts/BaseLayout.astro`
+- Anything that touches `src/utils/markdown.ts`, `astro.config.mjs`
   (the CSP), or adds a new network call needs extra scrutiny — please flag
   it explicitly in the PR description.
+- **CSP gotcha — no React `style={...}`.** The built CSP is hash-based and
+  does NOT include `style-src 'unsafe-inline'` (#38). A `style="..."` HTML
+  attribute would be blocked. If a component needs to paint a runtime color,
+  use a ref + `useLayoutEffect` and call `el.style.setProperty(...)` directly.
+  CSSOM mutations from script are governed by `script-src`, not `style-src`,
+  so they bypass the inline-style restriction. The `ThemeSwatch` and
+  `AccentDot` helpers in `ThemePicker.tsx` and `ThemeControls.tsx` are the
+  canonical pattern. Static styles belong in a CSS class, not inline.
 - New npm dependencies need a clear reason and a license check. Prefer
   hand-rolling small things over pulling in a dep.
 

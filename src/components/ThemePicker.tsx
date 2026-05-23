@@ -23,10 +23,64 @@
  * selection (`onSelect`). If the popover closes without a selection, the theme
  * that was active when it opened is restored.
  */
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ResumeTheme } from '../types';
 import { applyThemeToDocument, filterThemes } from '../utils/themes';
 import Icon from './Icon';
+
+/* ----------------------------------------------------------------------------
+ * CSP-friendly swatch primitives.
+ *
+ * The picker has to paint per-theme background / border colors that the CSS
+ * cannot know at build time — there are 545 themes and the tokens come from
+ * runtime state. The historical implementation used a React `style={...}`
+ * attribute, which forces `style-src 'unsafe-inline'` to allow it (#38).
+ *
+ * Instead, these components mount a ref and then in `useLayoutEffect` write
+ * the colors directly via the CSSOM (`el.style.setProperty(...)`). CSSOM
+ * mutations from script are NOT covered by `style-src` — they are governed
+ * by `script-src`, which is locked to `'self'` + Astro-emitted hashes — so
+ * this dodges `'unsafe-inline'` cleanly while keeping the swatches visually
+ * identical to the inline-style version.
+ * -------------------------------------------------------------------------- */
+
+interface ThemeSwatchProps {
+  /** Class applied to the swatch element (sizes/borders/etc. via CSS). */
+  className: string;
+  /** Color painted on `background-color`. */
+  background: string;
+  /** Color painted on `border-color`. */
+  borderColor: string;
+}
+
+/** Square theme swatch (trigger + option list). Paints colors via CSSOM. */
+function ThemeSwatch({ className, background, borderColor }: ThemeSwatchProps) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty('background-color', background);
+    el.style.setProperty('border-color', borderColor);
+  }, [background, borderColor]);
+  return <span ref={ref} className={className} aria-hidden="true" />;
+}
+
+interface AccentDotProps {
+  className: string;
+  /** Color painted on `background-color`. */
+  background: string;
+}
+
+/** Small circular accent indicator. Paints color via CSSOM. */
+function AccentDot({ className, background }: AccentDotProps) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty('background-color', background);
+  }, [background]);
+  return <span ref={ref} className={className} aria-hidden="true" />;
+}
 
 /** WCAG conformance level of a contrast ratio for normal-size text. */
 function wcagLevel(ratio: number): 'AAA' | 'AA' | 'fails AA' {
@@ -261,10 +315,10 @@ export default function ThemePicker({
         aria-expanded={open}
         onClick={() => onOpenChange(!open)}
       >
-        <span
+        <ThemeSwatch
           className="theme-picker__swatch theme-picker__swatch--trigger"
-          style={{ background: current.tokens.bg, borderColor: current.tokens.accent }}
-          aria-hidden="true"
+          background={current.tokens.bg}
+          borderColor={current.tokens.accent}
         />
         <span className="theme-picker__trigger-label">
           <span className="theme-picker__trigger-kicker">theme</span>
@@ -354,10 +408,10 @@ export default function ThemePicker({
                     onClick={() => choose(theme)}
                     onMouseEnter={() => setActiveIndex(index)}
                   >
-                    <span
+                    <ThemeSwatch
                       className="theme-picker__swatch"
-                      style={{ background: theme.tokens.bg, borderColor: theme.tokens.accent }}
-                      aria-hidden="true"
+                      background={theme.tokens.bg}
+                      borderColor={theme.tokens.accent}
                     />
                     <span className="theme-picker__option-name">{theme.name}</span>
                     {theme.accentSynthesized && (
@@ -431,11 +485,7 @@ export default function ThemePicker({
                 1,
               )}:1 — WCAG ${wcagLevel(current.contrast.accentOnBg)}`}
             >
-              <span
-                className="theme-picker__accent-dot"
-                style={{ background: current.tokens.accent }}
-                aria-hidden="true"
-              />
+              <AccentDot className="theme-picker__accent-dot" background={current.tokens.accent} />
               Accent {current.contrast.accentOnBg.toFixed(1)}:1 — WCAG{' '}
               {wcagLevel(current.contrast.accentOnBg)}
             </p>

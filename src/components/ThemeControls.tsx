@@ -5,10 +5,26 @@
  * The copied link carries ONLY the theme slug — never resume content — which
  * is the entire reason `?theme=` exists.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ResumeTheme } from '../types';
 import { RESUME_SAFE_MIN_CONTRAST } from '../types';
 import Icon from './Icon';
+
+/**
+ * CSP-friendly accent dot. Paints its background color via CSSOM
+ * (`el.style.setProperty(...)`) rather than a React `style={...}` attribute,
+ * so the document CSP can drop `style-src 'unsafe-inline'` (#38). CSSOM
+ * mutations are governed by `script-src`, not `style-src`.
+ */
+function AccentDot({ className, background }: { className: string; background: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty('background-color', background);
+  }, [background]);
+  return <span ref={ref} className={className} aria-hidden="true" />;
+}
 
 /**
  * Map a WCAG contrast ratio to its conformance level for normal-size text.
@@ -122,11 +138,7 @@ export default function ThemeControls({
         {/* Accent contrast — every theme's accent is engine-guaranteed to
             clear WCAG AA, so this is informational rather than a warning. */}
         <span className="badge" title={accentLabel} aria-label={accentLabel}>
-          <span
-            className="theme-controls__accent-dot"
-            style={{ background: current.tokens.accent }}
-            aria-hidden="true"
-          />
+          <AccentDot className="theme-controls__accent-dot" background={current.tokens.accent} />
           {accentContrast}:1
         </span>
       </span>

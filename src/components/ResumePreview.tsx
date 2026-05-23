@@ -180,7 +180,12 @@ export default function ResumePreview({
                   // Key the wrapper by the item's OWN stable key ("loc",
                   // "email", "link-…") rather than the array index, so an
                   // index-keyed wrapper never shadows the item's identity.
-                  <span key={String(item.key)} style={{ display: 'contents' }}>
+                  // The wrapper uses `display: contents` via a CSS class so it
+                  // doesn't impose its own box on the flex/inline layout — see
+                  // `.resume-preview__contact-meta-item` in global.css. Done as
+                  // a class rather than inline `style=` so the CSP can drop
+                  // `'unsafe-inline'` from `style-src` (#38).
+                  <span key={String(item.key)} className="resume-preview__contact-meta-item">
                     {index > 0 && (
                       <span className="resume-preview__contact-sep" aria-hidden="true">
                         ·
