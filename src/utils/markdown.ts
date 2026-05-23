@@ -29,7 +29,7 @@
  */
 
 import yaml from 'js-yaml';
-import { marked } from 'marked';
+import { Marked, type RendererObject, type Tokens } from 'marked';
 import DOMPurify from 'dompurify';
 
 import type { ResumeFrontmatter, ResumeLink, ParsedResume } from '../types';
@@ -110,8 +110,16 @@ const ALLOWED_ATTR = [
   'colspan',
   'rowspan',
   'scope',
-  // GFM task-list checkboxes render as disabled inputs; we forbid <input>
-  // entirely (see FORBID_TAGS), so no checkbox-related attrs are needed.
+  // GFM task-list checkboxes are rendered by our custom `marked` renderer as a
+  // <span class="task-checkbox" aria-hidden="true" data-checked="true|false">
+  // (see the renderer block further down). The literal <input type="checkbox">
+  // that `marked`'s default renderer would emit remains forbidden via
+  // FORBID_TAGS, so the checkbox glyph reaches the DOM through the span only.
+  // `aria-hidden` and `data-checked` are listed here explicitly — the broader
+  // `ALLOW_ARIA_ATTR` / `ALLOW_DATA_ATTR` flags stay `false` so this policy
+  // remains a tight allow-list rather than a category-wide opt-in.
+  'aria-hidden',
+  'data-checked',
 ];
 
 /**
@@ -245,6 +253,113 @@ function sanitize(dirtyHtml: string): { clean: string; removed: boolean } {
   const clean = DOMPurify.sanitize(dirtyHtml, PURIFY_CONFIG) as string;
   return { clean, removed: sanitizeRemovedSomething };
 }
+
+/* ------------------------------------------------------------------ */
+/* marked: GFM task-list renderer override                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Task-list rendering background
+ * ------------------------------
+ * GitHub-Flavored Markdown task lists (`- [ ] todo` / `- [x] done`) expand
+ * by default into `<input type="checkbox" disabled>` followed by the item
+ * text. Our DOMPurify config FORBIDs `<input>` outright (a resume has no
+ * legitimate need for form controls), so the default renderer's output would
+ * be stripped, the checkbox glyph would vanish, and every task list would
+ * trigger the "sanitizer removed something" warning — surfaced to the user
+ * for content they wrote intentionally.
+ *
+ * Fix: replace the checkbox `<input>` with a non-interactive `<span>` that
+ * carries a `data-checked="true|false"` flag. The CSS in `resume.css` styles
+ * `.task-checkbox` to render a Unicode checkbox glyph (☐ / ☑) keyed off
+ * `data-checked`, and the `.task-list` class on the enclosing `<ul>` removes
+ * the bullet so the glyph stands alone. No `<input>` ever reaches the DOM,
+ * so DOMPurify has nothing to strip and no warning fires.
+ *
+ * marked v18 API note
+ * -------------------
+ * The v18 renderer signatures changed: every method takes a single token
+ * object instead of positional arguments (the v15-and-earlier API). We pass
+ * a `RendererObject` to a per-module `Marked` instance via `marked.use(...)`,
+ * which composes our overrides on top of the default renderer (rather than
+ * mutating the package-global `marked` singleton).
+ */
+
+/**
+ * Custom `marked` renderer object. Each override sticks to the token-object
+ * v18 signature. Anything we don't override falls through to the default
+ * renderer untouched — GFM tables, links, code fences, etc. all keep their
+ * usual HTML.
+ */
+const taskListRenderer: RendererObject = {
+  /**
+   * `checkbox` is called inline as part of the surrounding paragraph/text in
+   * a loose list, or as a top-level token in a tight list. We render an
+   * empty string here so the literal `<input type="checkbox">` never appears
+   * in the HTML stream — the visible glyph is emitted by `listitem` below,
+   * which has the `checked` state on the parent token.
+   */
+  checkbox(_token: Tokens.Checkbox): string {
+    return '';
+  },
+
+  /**
+   * Wrap a task list item in our safe substitute. Non-task items render
+   * exactly like marked's default (`<li>...</li>`), so ordinary bulleted
+   * and numbered lists are unaffected.
+   *
+   * The `parser.parse(item.tokens)` call recursively renders the item's
+   * children; because our `checkbox` override above returns an empty string,
+   * the inner HTML carries no stray `<input>` from the lexer-injected
+   * checkbox token.
+   */
+  listitem(item: Tokens.ListItem): string {
+    const innerHtml = this.parser.parse(item.tokens);
+    if (item.task) {
+      const checked = item.checked === true ? 'true' : 'false';
+      // Single-line, no leading/trailing whitespace inside the <li> so it
+      // composes cleanly inside both tight and loose lists.
+      return (
+        `<li class="task-item">` +
+        `<span class="task-checkbox" aria-hidden="true" data-checked="${checked}"></span> ` +
+        `${innerHtml}</li>\n`
+      );
+    }
+    return `<li>${innerHtml}</li>\n`;
+  },
+
+  /**
+   * Add `class="task-list"` to a `<ul>`/`<ol>` whose items are GFM task
+   * items. The check inspects only the immediate children (matching how
+   * task lists are tokenized). A list with no task items returns `false`,
+   * which marked treats as "delegate to the default renderer" — so ordinary
+   * bulleted and numbered lists keep their stock output.
+   */
+  list(token: Tokens.List): string | false {
+    const hasTask = token.items.some((item) => item.task);
+    if (!hasTask) return false;
+    const tag = token.ordered ? 'ol' : 'ul';
+    const startAttr = token.ordered && token.start !== 1 ? ` start="${token.start}"` : '';
+    let body = '';
+    for (const item of token.items) {
+      // `listitem` is on the composed renderer (default merged with our
+      // overrides); calling it via `this` keeps task-item wrapping consistent.
+      body += this.listitem(item);
+    }
+    return `<${tag} class="task-list"${startAttr}>\n${body}</${tag}>\n`;
+  },
+};
+
+/**
+ * Per-module `Marked` instance with the task-list renderer composed in. We
+ * deliberately do NOT call `marked.use(...)` on the package-global, because
+ * other modules (now or in the future) might rely on stock marked behavior.
+ * Constructing our own instance keeps the override scoped to this file.
+ */
+const markedInstance = new Marked({
+  gfm: true,
+  renderer: taskListRenderer,
+});
 
 /* ------------------------------------------------------------------ */
 /* Frontmatter coercion                                                */
@@ -655,8 +770,10 @@ export function parseResume(input: string): ParsedResume {
 
   let renderedHtml: string;
   try {
-    // `async: false` makes `marked.parse` return a string synchronously.
-    renderedHtml = marked.parse(body, { async: false, gfm: true });
+    // `async: false` makes `parse` return a string synchronously. We render
+    // through our scoped `markedInstance` so the task-list renderer above
+    // applies; `gfm: true` is already set on the instance.
+    renderedHtml = markedInstance.parse(body, { async: false });
   } catch (error) {
     // Fail safe: a renderer crash must never yield unsanitized HTML.
     const detail = error instanceof Error ? error.message : String(error);
