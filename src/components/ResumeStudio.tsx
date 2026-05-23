@@ -26,7 +26,14 @@ import {
   getFallbackTheme,
   resolveInitialThemeSlug,
 } from '../utils/themes';
-import { setStoredThemeSlug } from '../utils/storage';
+import {
+  clearDraft,
+  getDraft,
+  isDraftPersistenceEnabled,
+  setDraft,
+  setDraftPersistenceEnabled,
+  setStoredThemeSlug,
+} from '../utils/storage';
 import MarkdownUploader from './MarkdownUploader';
 import MarkdownEditor from './MarkdownEditor';
 import ResumePreview from './ResumePreview';
@@ -80,8 +87,19 @@ export default function ResumeStudio() {
      SSR/client mismatch — default `true` until then. */
   const [shortcutsEnabled, setShortcutsEnabled] = useState(true);
 
+  /* ----- Opt-in draft persistence (#32) -----
+     Default OFF: the privacy banner promises nothing is persisted by
+     default. The state is read once on mount (after hydration) so SSR and
+     the client agree; until then we treat it as off. `draftRestored` gates
+     the autosave effect so we don't overwrite the restored draft with an
+     empty initial `markdown` before the restore has had a chance to run. */
+  const [draftEnabled, setDraftEnabled] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+
   const themeSearchInputId = useId();
+  const draftCheckboxId = useId();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const exportTriggerRef = useRef<HTMLButtonElement>(null);
   const helpTriggerRef = useRef<HTMLButtonElement>(null);
@@ -109,11 +127,55 @@ export default function ResumeStudio() {
     setShortcutsEnabled(getStoredShortcutsEnabled());
   }, []);
 
+  /* ---------------------------------------------------------------- *
+   * Mount: read opt-in draft state and (only when opted in) restore   *
+   * the saved Markdown. Done in an effect for the same SSR-parity     *
+   * reason as the shortcuts preference. The `draftRestored` flag      *
+   * unblocks the autosave effect once restoration has had its turn.   *
+   * ---------------------------------------------------------------- */
+  useEffect(() => {
+    const enabled = isDraftPersistenceEnabled();
+    setDraftEnabled(enabled);
+    if (enabled) {
+      const saved = getDraft();
+      if (saved && saved.length > 0) {
+        setMarkdown(saved);
+        setSourceName('saved-draft.md');
+        setLoadAnnouncement('Restored your saved draft.');
+      }
+    }
+    setDraftRestored(true);
+  }, []);
+
   /** Toggle single-key shortcuts and persist the choice. */
   const changeShortcutsEnabled = useCallback((enabled: boolean) => {
     setShortcutsEnabled(enabled);
     setStoredShortcutsEnabled(enabled);
   }, []);
+
+  /**
+   * Toggle draft persistence (#32).
+   * - Off → on: persist the current Markdown immediately so the next reload
+   *   restores what's on screen. The flag is set BEFORE the body so the
+   *   safety belt inside `setDraft` allows the write.
+   * - On → off: purge both the flag and the stored body synchronously, so
+   *   nothing is left behind after the user opts out.
+   */
+  const changeDraftEnabled = useCallback(
+    (enabled: boolean) => {
+      setDraftEnabled(enabled);
+      setDraftPersistenceEnabled(enabled);
+      if (enabled) {
+        // Capture whatever is on screen right now so the opt-in feels
+        // immediate rather than "this will save what you type next".
+        if (markdown.length > 0) setDraft(markdown);
+        setLoadAnnouncement('Draft saving is on for this device.');
+      } else {
+        setLoadAnnouncement('Draft saving is off. Any saved draft was removed from this device.');
+      }
+    },
+    [markdown],
+  );
 
   /* ---------------------------------------------------------------- *
    * Reflect print mode onto <body> so print.css can react.            *
@@ -141,6 +203,30 @@ export default function ResumeStudio() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [markdown]);
+
+  /* ---------------------------------------------------------------- *
+   * Debounced draft autosave (#32). Only runs when:                   *
+   *   - the mount-time restore has already happened (so we don't      *
+   *     blow the saved draft away with an empty initial value), AND   *
+   *   - the user has opted in.                                        *
+   * An empty Markdown body purges the stored draft so an empty editor *
+   * never persists a stale resume.                                    *
+   * ---------------------------------------------------------------- */
+  useEffect(() => {
+    if (!draftRestored) return;
+    if (!draftEnabled) return;
+    if (draftDebounceRef.current) clearTimeout(draftDebounceRef.current);
+    draftDebounceRef.current = setTimeout(() => {
+      if (markdown.length === 0) {
+        clearDraft();
+      } else {
+        setDraft(markdown);
+      }
+    }, PARSE_DEBOUNCE_MS);
+    return () => {
+      if (draftDebounceRef.current) clearTimeout(draftDebounceRef.current);
+    };
+  }, [markdown, draftEnabled, draftRestored]);
 
   /* ---------------------------------------------------------------- *
    * Theme change: apply to document, persist slug, reflect into URL.  *
@@ -300,6 +386,9 @@ export default function ResumeStudio() {
     setExportOpen(false);
     setThemePickerOpen(false);
     setHelpOpen(false);
+    // Clear is destructive by user intent — drop any saved draft too, so
+    // a Clear that the user thought was permanent is actually permanent.
+    clearDraft();
     setLoadAnnouncement('Resume cleared.');
   }, []);
 
@@ -456,6 +545,33 @@ export default function ResumeStudio() {
               sourceName={sourceName}
               onClear={handleClear}
             />
+            {/*
+              Opt-in draft persistence (#32).
+              Default OFF. Discoverable but unobtrusive — sits beneath the
+              uploader row, above the editing surface, with a self-explaining
+              hint. Toggling on stores the current Markdown immediately;
+              toggling off purges the saved draft from this device.
+            */}
+            <div className="studio__draft-toggle">
+              <label className="studio__draft-toggle-label" htmlFor={draftCheckboxId}>
+                <input
+                  id={draftCheckboxId}
+                  type="checkbox"
+                  checked={draftEnabled}
+                  onChange={(event) => changeDraftEnabled(event.target.checked)}
+                />
+                <span>
+                  <span className="studio__draft-toggle-name">
+                    Remember this resume on this device
+                  </span>
+                  <span className="studio__draft-toggle-hint">
+                    Saves your Markdown to this browser's local storage so it survives a reload. Off
+                    by default — nothing is saved unless you turn this on, and turning it off
+                    deletes the saved copy immediately.
+                  </span>
+                </span>
+              </label>
+            </div>
             <MarkdownEditor value={markdown} onChange={setMarkdown} />
           </div>
         </section>

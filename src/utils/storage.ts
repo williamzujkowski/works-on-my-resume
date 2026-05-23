@@ -18,6 +18,22 @@
 const THEME_KEY = 'womr:theme';
 
 /**
+ * Opt-in draft persistence (#32).
+ *
+ * Two keys, deliberately separate:
+ *  - `DRAFT_ENABLED_KEY` ("1"/"0") — the user's explicit consent that their
+ *    resume Markdown may be stored on this device. Default is OFF; the
+ *    privacy banner promises nothing is persisted by default and that
+ *    promise survives ONLY because we never write `DRAFT_KEY` unless this
+ *    flag is "1".
+ *  - `DRAFT_KEY` — the actual Markdown body. Only ever written when the
+ *    enabled flag is on; purged immediately when the user opts out or
+ *    clears the resume.
+ */
+const DRAFT_KEY = 'womr:draft';
+const DRAFT_ENABLED_KEY = 'womr:draft-enabled';
+
+/**
  * Safely obtain `localStorage`, or `null` when it is unavailable.
  *
  * Returns `null` during SSR (no `window`), and also when the browser throws
@@ -66,5 +82,93 @@ export function setStoredThemeSlug(slug: string): void {
     store.setItem(THEME_KEY, slug);
   } catch {
     /* no-op: persistence is best-effort only */
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Opt-in draft persistence (#32)                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Read whether the user has opted into draft persistence on this device.
+ *
+ * Defaults to `false` so the privacy promise ("nothing is persisted by
+ * default") holds for first-time visitors and for anyone using private
+ * browsing — the absence of the key is treated as explicit opt-out.
+ */
+export function isDraftPersistenceEnabled(): boolean {
+  const store = safeLocalStorage();
+  if (!store) return false;
+  try {
+    return store.getItem(DRAFT_ENABLED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Set whether draft persistence is enabled. When disabled, the stored
+ * draft (if any) is purged synchronously — never leave content behind
+ * after a user opts out.
+ */
+export function setDraftPersistenceEnabled(enabled: boolean): void {
+  const store = safeLocalStorage();
+  if (!store) return;
+  try {
+    if (enabled) {
+      store.setItem(DRAFT_ENABLED_KEY, '1');
+    } else {
+      // Opt-out: clear both the flag AND the body. Anything else would be
+      // a surprise — the user's mental model is "I turned it off → it's gone".
+      store.removeItem(DRAFT_ENABLED_KEY);
+      store.removeItem(DRAFT_KEY);
+    }
+  } catch {
+    /* no-op: persistence is best-effort only */
+  }
+}
+
+/**
+ * Read the persisted resume draft, or `null` if none / opted out.
+ *
+ * Returns `null` when the user has not opted in, even if a stale body
+ * somehow exists — the enabled flag is the source of truth.
+ */
+export function getDraft(): string | null {
+  const store = safeLocalStorage();
+  if (!store) return null;
+  try {
+    if (store.getItem(DRAFT_ENABLED_KEY) !== '1') return null;
+    const value = store.getItem(DRAFT_KEY);
+    return value && value.length > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persist the resume Markdown as a draft. No-op when the user has NOT
+ * opted in — the enabled flag is checked here as a safety belt so a
+ * mis-wired caller can never accidentally write resume content.
+ */
+export function setDraft(markdown: string): void {
+  const store = safeLocalStorage();
+  if (!store) return;
+  try {
+    if (store.getItem(DRAFT_ENABLED_KEY) !== '1') return;
+    store.setItem(DRAFT_KEY, markdown);
+  } catch {
+    /* no-op: persistence is best-effort only (quota, etc.) */
+  }
+}
+
+/** Remove the persisted draft. Leaves the enabled flag alone. */
+export function clearDraft(): void {
+  const store = safeLocalStorage();
+  if (!store) return;
+  try {
+    store.removeItem(DRAFT_KEY);
+  } catch {
+    /* no-op */
   }
 }

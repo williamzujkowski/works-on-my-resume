@@ -1,16 +1,21 @@
 /**
  * MarkdownUploader — gets resume Markdown into the app.
  *
- * Three input paths, all fully local:
+ * Five input paths, four fully local + one explicit network call:
  *   1. A native file <input> (.md / .markdown / .txt).
  *   2. A drag-and-drop zone over that input.
  *   3. A "Load sample" button that fetches the bundled sample resume — a
- *      same-origin static asset, the only fetch this app makes.
+ *      same-origin static asset.
+ *   4. "Import JSON Resume" — picks a local `.json` file and converts it
+ *      via `fromJsonResume`. Fully local; no network.
+ *   5. "Import from Gist" — the one deliberate network call in the whole
+ *      app. ONLY triggered when the user pastes a gist URL and clicks
+ *      Import. Clearly disclosed at the input.
  *
  * Two-phase affordance (#51): with no resume loaded the dropzone is the hero
- * — a large drop target. Once a resume IS loaded it collapses to a compact
- * one-line bar (`resume.md · 87 lines`) with Replace-file and Clear actions,
- * so it no longer dominates the editor pane.
+ * — a large drop target with the secondary import affordances tucked below.
+ * Once a resume IS loaded it collapses to a compact one-line bar with
+ * Replace-file and Clear actions, so the chrome no longer dominates.
  *
  * Validation is forgiving: an unknown file type or read failure produces a
  * clear error; an oversized file produces a non-blocking warning but still
@@ -18,11 +23,14 @@
  */
 import { useCallback, useId, useRef, useState } from 'react';
 import Icon from './Icon';
+import { fromJsonResume } from '../utils/jsonresume';
+import { fetchGistMarkdown, isGistUrl } from '../utils/gist';
 
 /** Files larger than this trigger a soft warning (not a hard failure). */
 const SOFT_SIZE_LIMIT = 1024 * 1024; // 1 MB
 const ACCEPT = '.md,.markdown,.txt';
 const ACCEPTED_EXTENSIONS = ['.md', '.markdown', '.txt'];
+const JSON_ACCEPT = '.json,application/json';
 
 interface MarkdownUploaderProps {
   /** Called with the resume text once it has been read locally. */
@@ -59,11 +67,17 @@ export default function MarkdownUploader({
   onClear,
 }: MarkdownUploaderProps) {
   const inputId = useId();
+  const jsonInputId = useId();
+  const gistInputId = useId();
+  const gistDisclosureId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jsonInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoadingSample, setIsLoadingSample] = useState(false);
+  const [gistUrl, setGistUrl] = useState('');
+  const [isFetchingGist, setIsFetchingGist] = useState(false);
 
   const fileApiAvailable = hasFileApi();
 
@@ -101,6 +115,55 @@ export default function MarkdownUploader({
     [onLoad],
   );
 
+  /**
+   * Read a JSON Resume file: parse, convert via `fromJsonResume`, surface
+   * any warnings (non-blocking) and load the synthesized Markdown.
+   */
+  const readJsonResume = useCallback(
+    (file: File) => {
+      setError(null);
+      setNotice(null);
+
+      if (!/\.json$/i.test(file.name) && file.type && !file.type.includes('json')) {
+        setError(`"${file.name}" does not look like a JSON Resume (.json) file.`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onerror = () => setError(`Could not read "${file.name}". Please try again.`);
+      reader.onload = () => {
+        const text = reader.result;
+        if (typeof text !== 'string') {
+          setError(`Could not read "${file.name}" as text.`);
+          return;
+        }
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          setError(`"${file.name}" is not valid JSON.`);
+          return;
+        }
+        const { markdown, warnings } = fromJsonResume(parsed);
+        if (markdown.length === 0) {
+          setError(warnings[0] ?? 'That JSON file did not look like a JSON Resume document.');
+          return;
+        }
+        if (warnings.length > 0) {
+          // Surface up to two warnings inline; the rest are unlikely to matter.
+          const head = warnings.slice(0, 2).join(' ');
+          const more = warnings.length > 2 ? ` (+${warnings.length - 2} more)` : '';
+          setNotice(`Imported with warnings — ${head}${more}`);
+        }
+        // Replace the .json with .md so the filename chip stays sensible.
+        const baseName = file.name.replace(/\.json$/i, '.md');
+        onLoad(markdown, baseName);
+      };
+      reader.readAsText(file);
+    },
+    [onLoad],
+  );
+
   const handleInputChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
@@ -111,14 +174,29 @@ export default function MarkdownUploader({
     [readFile],
   );
 
+  const handleJsonInputChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) readJsonResume(file);
+      event.target.value = '';
+    },
+    [readJsonResume],
+  );
+
   const handleDrop = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
       event.preventDefault();
       setIsDragging(false);
       const file = event.dataTransfer.files?.[0];
-      if (file) readFile(file);
+      if (!file) return;
+      // Allow dropping a JSON Resume too — convenient and unsurprising.
+      if (/\.json$/i.test(file.name)) {
+        readJsonResume(file);
+      } else {
+        readFile(file);
+      }
     },
-    [readFile],
+    [readFile, readJsonResume],
   );
 
   /** Load the bundled sample resume — a same-origin static asset. */
@@ -144,13 +222,51 @@ export default function MarkdownUploader({
     }
   }, [onLoad]);
 
+  /**
+   * Fetch the gist the user just pasted. This is the SINGLE deliberate
+   * network call this app makes; it sends no resume content outbound and
+   * requires no auth. The CSP in BaseLayout.astro grants `api.github.com`
+   * exactly for this path.
+   */
+  const importFromGist = useCallback(async () => {
+    setError(null);
+    setNotice(null);
+    const url = gistUrl.trim();
+    if (url.length === 0) {
+      setError('Paste a Gist URL first — for example https://gist.github.com/you/abcdef…');
+      return;
+    }
+    if (!isGistUrl(url)) {
+      setError("That doesn't look like a Gist URL. Expected https://gist.github.com/…");
+      return;
+    }
+    setIsFetchingGist(true);
+    try {
+      const { markdown, filename } = await fetchGistMarkdown(url);
+      onLoad(markdown, filename || 'gist.md');
+      setGistUrl('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not import the Gist.');
+    } finally {
+      setIsFetchingGist(false);
+    }
+  }, [gistUrl, onLoad]);
+
+  const handleGistSubmit = useCallback(
+    (event: React.SyntheticEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      void importFromGist();
+    },
+    [importFromGist],
+  );
+
   const handleClear = useCallback(() => {
     setError(null);
     setNotice(null);
     onClear();
   }, [onClear]);
 
-  /* The shared, visually-hidden file input — referenced from both phases. */
+  /* The shared, visually-hidden file inputs — referenced from both phases. */
   const fileInput = (
     <input
       ref={fileInputRef}
@@ -159,6 +275,17 @@ export default function MarkdownUploader({
       type="file"
       accept={ACCEPT}
       onChange={handleInputChange}
+    />
+  );
+
+  const jsonFileInput = (
+    <input
+      ref={jsonInputRef}
+      id={jsonInputId}
+      className="visually-hidden"
+      type="file"
+      accept={JSON_ACCEPT}
+      onChange={handleJsonInputChange}
     />
   );
 
@@ -245,6 +372,10 @@ export default function MarkdownUploader({
             <button type="button" className="btn" onClick={loadSample} disabled={isLoadingSample}>
               {isLoadingSample ? 'Loading sample…' : 'Load sample'}
             </button>
+            <label className="btn" htmlFor={jsonInputId}>
+              Import JSON Resume
+            </label>
+            {jsonFileInput}
           </div>
         </div>
       ) : (
@@ -261,6 +392,45 @@ export default function MarkdownUploader({
           </span>
         </div>
       )}
+
+      {/* ----- Optional: import from a public GitHub Gist (#33) ----- */}
+      <details className="uploader__gist">
+        <summary className="uploader__gist-summary">Import from a public GitHub Gist</summary>
+        <form className="uploader__gist-form" onSubmit={handleGistSubmit}>
+          <label htmlFor={gistInputId} className="uploader__gist-label">
+            Gist URL
+          </label>
+          <div className="uploader__gist-row">
+            <input
+              id={gistInputId}
+              className="text-input uploader__gist-input"
+              type="url"
+              inputMode="url"
+              placeholder="https://gist.github.com/you/abc123…"
+              value={gistUrl}
+              onChange={(event) => setGistUrl(event.target.value)}
+              aria-describedby={gistDisclosureId}
+              disabled={isFetchingGist}
+            />
+            <button
+              type="submit"
+              className="btn btn--primary"
+              disabled={isFetchingGist || gistUrl.trim().length === 0}
+            >
+              {isFetchingGist ? 'Importing…' : 'Import'}
+            </button>
+          </div>
+          <p id={gistDisclosureId} className="uploader__gist-disclosure">
+            <Icon name="info" size={13} />
+            <span>
+              Heads up — this is a network request. When you click Import, the app fetches the Gist
+              anonymously from <code>api.github.com</code>: no login, no resume content sent
+              outbound, only the Gist ID in the URL. The Gist must be public.
+            </span>
+          </p>
+        </form>
+      </details>
+
       {messages}
     </div>
   );

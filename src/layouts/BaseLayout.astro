@@ -38,10 +38,17 @@ const base = import.meta.env.BASE_URL;
       'unsafe-inline' is currently required for Astro's island hydration
       scripts and for the theme picker's dynamic per-theme swatch colors;
       tightening this to hashes is tracked in issue #38.
+
+      connect-src exception — `https://api.github.com` (#33):
+      A single, deliberate allowance so the user-initiated "Import from
+      Gist" flow can call the public Gists API. The fetch ONLY happens
+      when the user pastes a gist URL and explicitly clicks Import; it
+      sends no auth, no resume content, and no other data outbound. This
+      is the lone exception to the otherwise self-only `connect-src`.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none';"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'self'; form-action 'none';"
     />
 
     <title>{title}</title>

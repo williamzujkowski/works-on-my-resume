@@ -16,6 +16,7 @@
 import { useEffect, useId, useRef } from 'react';
 import type { ParsedResume, PrintMode, ResumeTheme } from '../types';
 import { downloadMarkdown, downloadResumeHtml, downloadThemeCss } from '../utils/export';
+import { downloadJsonResume, toJsonResume } from '../utils/jsonresume';
 import Icon from './Icon';
 
 interface ExportPanelProps {
@@ -172,6 +173,16 @@ export default function ExportPanel({
             }}
           >
             Download HTML (.html)
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={!hasResume}
+            onClick={() => {
+              if (parsed) downloadJsonResume(toJsonResume(parsed, markdown));
+            }}
+          >
+            Download JSON Resume (.json)
           </button>
           <button type="button" className="btn" onClick={() => downloadThemeCss(theme)}>
             Download theme CSS (.css)

@@ -188,3 +188,115 @@ export const ACCENT_MIN_CONTRAST = 4.5;
 
 /** Print modes offered by the export workflow. */
 export type PrintMode = 'conservative' | 'theme';
+
+/* ------------------------------------------------------------------ */
+/* JSON Resume (#28) — additive type definitions                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A subset of the JSON Resume schema (https://jsonresume.org/schema/) that
+ * Works on My Resume can round-trip from Markdown.
+ *
+ * Every field is OPTIONAL because we both produce and consume JSON Resume
+ * documents written by other tools — some omit fields, some carry extras
+ * we don't recognize. Unknown top-level keys are preserved in `meta.womr`
+ * during a Markdown → JSON Resume conversion, never silently dropped.
+ *
+ * This is a structural subset, not a wire-format validator. Inputs go
+ * through the defensive `fromJsonResume` parser in `utils/jsonresume.ts`,
+ * which treats anything malformed as a warning rather than a crash.
+ */
+export interface JsonResume {
+  $schema?: string;
+  basics?: JsonResumeBasics;
+  work?: JsonResumeWork[];
+  education?: JsonResumeEducation[];
+  skills?: JsonResumeSkill[];
+  /** Free-form additional sections we don't model. Preserved on round-trip. */
+  projects?: unknown[];
+  awards?: unknown[];
+  certificates?: unknown[];
+  publications?: unknown[];
+  languages?: unknown[];
+  interests?: unknown[];
+  references?: unknown[];
+  volunteer?: unknown[];
+  meta?: JsonResumeMeta;
+  /** Allow other top-level fields. They survive a round-trip untouched. */
+  [key: string]: unknown;
+}
+
+export interface JsonResumeBasics {
+  name?: string;
+  label?: string;
+  email?: string;
+  phone?: string;
+  url?: string;
+  summary?: string;
+  image?: string;
+  location?: JsonResumeLocation;
+  profiles?: JsonResumeProfile[];
+  [key: string]: unknown;
+}
+
+export interface JsonResumeLocation {
+  address?: string;
+  postalCode?: string;
+  city?: string;
+  countryCode?: string;
+  region?: string;
+  [key: string]: unknown;
+}
+
+export interface JsonResumeProfile {
+  network?: string;
+  username?: string;
+  url?: string;
+  [key: string]: unknown;
+}
+
+export interface JsonResumeWork {
+  name?: string;
+  /** Older schemas used `company` — accept on read, emit `name` on write. */
+  company?: string;
+  position?: string;
+  url?: string;
+  startDate?: string;
+  endDate?: string;
+  summary?: string;
+  highlights?: string[];
+  location?: string;
+  [key: string]: unknown;
+}
+
+export interface JsonResumeEducation {
+  institution?: string;
+  url?: string;
+  area?: string;
+  studyType?: string;
+  startDate?: string;
+  endDate?: string;
+  score?: string;
+  courses?: string[];
+  [key: string]: unknown;
+}
+
+export interface JsonResumeSkill {
+  name?: string;
+  level?: string;
+  keywords?: string[];
+  [key: string]: unknown;
+}
+
+export interface JsonResumeMeta {
+  canonical?: string;
+  version?: string;
+  lastModified?: string;
+  /** Works on My Resume's namespaced bag for round-trip preservation. */
+  womr?: {
+    /** Original Markdown body, when a JSON Resume was produced from Markdown. */
+    markdownBody?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
