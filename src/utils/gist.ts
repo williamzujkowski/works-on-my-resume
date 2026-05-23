@@ -65,42 +65,69 @@ interface GistApiResponse {
 }
 
 /**
- * Pick the file in a gist most likely to be the resume. Strategy:
- *   1. The first `.md` / `.markdown` file by filename (case-insensitive).
- *   2. Failing that, any file whose language is "Markdown".
- *   3. Failing that, the first file whose content is non-empty text.
- * Returns `null` if no candidate is found.
+ * A single file inside a fetched gist, normalised for UI consumption.
+ *
+ * `content` is whatever string GitHub returned (may be empty if the file
+ * was truncated server-side); the picker UI shows it as plain text so a
+ * hostile filename or body cannot become markup.
+ *
+ * `isMarkdown` is the heuristic we already used to auto-pick the resume:
+ * either the filename ends `.md` / `.markdown`, or the language is
+ * `Markdown`. Useful for badging an option in the picker without forcing
+ * the UI to re-implement the heuristic.
  */
-function pickResumeFile(files: Record<string, GistApiFile | null>): GistApiFile | null {
-  const entries = Object.values(files).filter(
-    (f): f is GistApiFile => f !== null && f !== undefined,
-  );
-  if (entries.length === 0) return null;
-
-  const markdownByExt = entries.find((f) => {
-    const name = (f.filename ?? '').toLowerCase();
-    return name.endsWith('.md') || name.endsWith('.markdown');
-  });
-  if (markdownByExt) return markdownByExt;
-
-  const markdownByLang = entries.find((f) => (f.language ?? '').toLowerCase() === 'markdown');
-  if (markdownByLang) return markdownByLang;
-
-  return entries.find((f) => typeof f.content === 'string' && f.content.length > 0) ?? null;
+export interface GistFile {
+  filename: string;
+  content: string;
+  isMarkdown: boolean;
+  truncated: boolean;
 }
 
 /**
- * Issue a single anonymous GET to GitHub's Gists API and return the
- * Markdown body of the first markdown-shaped file in the gist.
+ * Classify a file as markdown-shaped for the auto-pick heuristic. Same
+ * rule we've always used; pulled out so `fetchGistFiles` can stamp the
+ * `isMarkdown` bit on every returned file.
+ */
+function isMarkdownFile(file: GistApiFile): boolean {
+  const name = (file.filename ?? '').toLowerCase();
+  if (name.endsWith('.md') || name.endsWith('.markdown')) return true;
+  if ((file.language ?? '').toLowerCase() === 'markdown') return true;
+  return false;
+}
+
+/**
+ * Pick the index of the file in `files` most likely to be the resume.
+ * Strategy (unchanged from the original `pickResumeFile`):
+ *   1. The first `.md` / `.markdown` file by filename (case-insensitive).
+ *   2. Failing that, any file whose language is "Markdown".
+ *   3. Failing that, the first file whose content is non-empty text.
+ * Returns `-1` if no candidate is found.
+ */
+function pickDefaultIndex(files: GistFile[]): number {
+  if (files.length === 0) return -1;
+
+  const byExt = files.findIndex((f) => {
+    const name = f.filename.toLowerCase();
+    return name.endsWith('.md') || name.endsWith('.markdown');
+  });
+  if (byExt !== -1) return byExt;
+
+  const byLang = files.findIndex((f) => f.isMarkdown);
+  if (byLang !== -1) return byLang;
+
+  const byContent = files.findIndex((f) => f.content.length > 0);
+  return byContent;
+}
+
+/**
+ * Internal helper: issue the single anonymous GET to GitHub and return the
+ * parsed `files` map. Shared by `fetchGistFiles` (and, via that,
+ * `fetchGistMarkdown`) so the network behaviour stays in exactly one place.
  *
  * Throws a friendly `Error` on any failure mode — callers surface
  * `error.message` directly in the UI.
- *
- * @param url The gist URL the user pasted.
  */
-export async function fetchGistMarkdown(
-  url: string,
-): Promise<{ markdown: string; filename: string }> {
+async function fetchGistApi(url: string): Promise<Record<string, GistApiFile | null>> {
   const parsed = parseGistUrl(url);
   if (!parsed) {
     throw new Error("That doesn't look like a Gist URL. Expected https://gist.github.com/…");
@@ -153,21 +180,92 @@ export async function fetchGistMarkdown(
     throw new Error('That Gist did not contain any files.');
   }
 
-  const file = pickResumeFile(data.files);
-  if (!file) {
+  return data.files;
+}
+
+/**
+ * Normalise GitHub's `files` map into the array shape the UI consumes.
+ * Preserves the iteration order GitHub returned (which is the insertion
+ * order in the gist) and skips null entries. Each entry is stamped with
+ * its markdown heuristic for downstream consumers.
+ */
+function normaliseFiles(apiFiles: Record<string, GistApiFile | null>): GistFile[] {
+  const out: GistFile[] = [];
+  for (const [key, file] of Object.entries(apiFiles)) {
+    if (file === null || file === undefined) continue;
+    out.push({
+      // GitHub keys the map by filename; fall back to the key if the
+      // payload itself omits it (defensive — shouldn't happen in practice).
+      filename: file.filename ?? key,
+      content: typeof file.content === 'string' ? file.content : '',
+      isMarkdown: isMarkdownFile(file),
+      truncated: file.truncated === true,
+    });
+  }
+  return out;
+}
+
+/**
+ * Issue a single anonymous GET to GitHub's Gists API and return ALL files
+ * in the gist, plus the index of the file the heuristic would have picked.
+ *
+ * This is the multi-file-aware entry point added in #76 — the picker UI
+ * uses it to show every file as an option while still defaulting to the
+ * smartest guess. `fetchGistMarkdown` (below) remains the single-file
+ * back-compat wrapper.
+ *
+ * Throws a friendly `Error` on any failure mode — callers surface
+ * `error.message` directly in the UI.
+ *
+ * @param url The gist URL the user pasted.
+ */
+export async function fetchGistFiles(
+  url: string,
+): Promise<{ files: GistFile[]; defaultIndex: number }> {
+  const apiFiles = await fetchGistApi(url);
+  const files = normaliseFiles(apiFiles);
+
+  if (files.length === 0) {
+    throw new Error('That Gist did not contain any files.');
+  }
+
+  const defaultIndex = pickDefaultIndex(files);
+  if (defaultIndex === -1) {
     throw new Error('That Gist had no Markdown or text content to import.');
   }
 
-  if (typeof file.content !== 'string' || file.content.length === 0) {
-    // GitHub truncates large files; surface that distinctly.
-    if (file.truncated) {
+  const picked = files[defaultIndex];
+  if (picked.content.length === 0) {
+    // GitHub truncates large files; surface that distinctly so the user
+    // knows the gist itself isn't broken — it's just too big for the API.
+    if (picked.truncated) {
       throw new Error('That Gist is too large to import via the API. Try downloading it manually.');
     }
     throw new Error('The chosen Gist file was empty.');
   }
 
+  return { files, defaultIndex };
+}
+
+/**
+ * Back-compat wrapper: returns just the heuristically-picked file's body
+ * and filename, matching the pre-#76 contract. Implemented as a thin
+ * wrapper over `fetchGistFiles` so the network behaviour, error messages,
+ * and pick heuristic stay in exactly one place.
+ *
+ * Prefer `fetchGistFiles` for any caller that wants to expose the
+ * multi-file picker; this signature exists only to keep older callers
+ * compiling without a forced edit.
+ *
+ * @param url The gist URL the user pasted.
+ */
+export async function fetchGistMarkdown(
+  url: string,
+): Promise<{ markdown: string; filename: string }> {
+  const { files, defaultIndex } = await fetchGistFiles(url);
+  const picked = files[defaultIndex];
   return {
-    markdown: file.content,
-    filename: file.filename ?? 'gist.md',
+    markdown: picked.content,
+    filename: picked.filename || 'gist.md',
   };
 }

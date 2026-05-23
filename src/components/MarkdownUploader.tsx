@@ -21,10 +21,10 @@
  * clear error; an oversized file produces a non-blocking warning but still
  * loads. Browsers without the File API degrade to a plain message.
  */
-import { useCallback, useId, useRef, useState } from 'react';
+import { useCallback, useId, useMemo, useRef, useState } from 'react';
 import Icon from './Icon';
 import { fromJsonResume } from '../utils/jsonresume';
-import { fetchGistMarkdown, isGistUrl } from '../utils/gist';
+import { fetchGistFiles, isGistUrl, type GistFile } from '../utils/gist';
 
 /** Files larger than this trigger a soft warning (not a hard failure). */
 const SOFT_SIZE_LIMIT = 1024 * 1024; // 1 MB
@@ -86,6 +86,7 @@ export default function MarkdownUploader({
   const gistInputId = useId();
   const gistDisclosureId = useId();
   const gistPreviewId = useId();
+  const gistPickerId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const gistDetailsRef = useRef<HTMLDetailsElement>(null);
@@ -95,13 +96,14 @@ export default function MarkdownUploader({
   const [isLoadingSample, setIsLoadingSample] = useState(false);
   const [gistUrl, setGistUrl] = useState('');
   const [isFetchingGist, setIsFetchingGist] = useState(false);
-  /* Preview before commit (#68). Holds the fetched gist body until the
-     user clicks "Use this" — only then is `onLoad` called. The form
-     remains visible underneath so cancelling drops the user back at the
-     URL field with the value intact. */
+  /* Preview before commit (#68, #76). Holds every file in the fetched
+     gist plus the index currently chosen for preview/commit. `onLoad` is
+     only called when the user clicks "Use this" with the active index.
+     The form remains visible underneath so cancelling drops the user
+     back at the URL field with the value intact. */
   const [gistPreview, setGistPreview] = useState<{
-    markdown: string;
-    filename: string;
+    files: GistFile[];
+    selectedIndex: number;
   } | null>(null);
 
   const fileApiAvailable = hasFileApi();
@@ -253,9 +255,12 @@ export default function MarkdownUploader({
    * requires no auth. The CSP in BaseLayout.astro grants `api.github.com`
    * exactly for this path.
    *
-   * Behaviour (#68): on success we DO NOT commit the gist to the editor —
-   * we stash it as `gistPreview` and let the user inspect the resolved
-   * filename + the first few lines before deciding to keep or cancel.
+   * Behaviour (#68, #76): on success we DO NOT commit the gist to the
+   * editor — we stash every file in `gistPreview` together with the
+   * heuristic-picked default index, and let the user inspect (and, for
+   * multi-file gists, switch between) the candidates before deciding to
+   * keep or cancel. Switching files in the picker is purely a state
+   * update — there is no second network call.
    */
   const importFromGist = useCallback(async () => {
     setError(null);
@@ -272,8 +277,8 @@ export default function MarkdownUploader({
     }
     setIsFetchingGist(true);
     try {
-      const { markdown, filename } = await fetchGistMarkdown(url);
-      setGistPreview({ markdown, filename: filename || 'gist.md' });
+      const { files, defaultIndex } = await fetchGistFiles(url);
+      setGistPreview({ files, selectedIndex: defaultIndex });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not import the Gist.');
     } finally {
@@ -289,10 +294,26 @@ export default function MarkdownUploader({
     [importFromGist],
   );
 
-  /** Commit the previewed gist: hand it upstream and reset the preview. */
+  /**
+   * Commit the CURRENTLY-selected file (not necessarily the heuristic
+   * default) — hand it upstream and reset the preview. Empty content
+   * shouldn't be reachable in practice (`fetchGistFiles` errors out if
+   * the default candidate has no body), but a multi-file gist could
+   * legitimately contain an empty companion file, so we guard explicitly.
+   */
   const commitGistPreview = useCallback(() => {
     if (!gistPreview) return;
-    onLoad(gistPreview.markdown, gistPreview.filename);
+    const picked = gistPreview.files[gistPreview.selectedIndex];
+    if (!picked) return;
+    if (picked.content.length === 0) {
+      setError(
+        picked.truncated
+          ? 'That file is too large to import via the API. Try downloading it manually.'
+          : 'That file is empty — pick another file from the Gist.',
+      );
+      return;
+    }
+    onLoad(picked.content, picked.filename || 'gist.md');
     setGistPreview(null);
     setGistUrl('');
   }, [gistPreview, onLoad]);
@@ -300,6 +321,20 @@ export default function MarkdownUploader({
   /** Drop the previewed gist — returns the user to the URL input. */
   const cancelGistPreview = useCallback(() => {
     setGistPreview(null);
+  }, []);
+
+  /**
+   * Switch which file the preview is showing. Pure state update — no
+   * re-fetch. Ignored if the index is out of range (defensive: the
+   * `<select>` only emits valid indices, but the typed handler reads a
+   * string off the DOM, so bounds-check anyway).
+   */
+  const selectGistFile = useCallback((index: number) => {
+    setGistPreview((prev) => {
+      if (!prev) return prev;
+      if (index < 0 || index >= prev.files.length) return prev;
+      return { ...prev, selectedIndex: index };
+    });
   }, []);
 
   /**
@@ -497,40 +532,115 @@ export default function MarkdownUploader({
           </p>
         </form>
 
-        {/* ----- Preview-before-commit card (#68) -----
+        {/* ----- Preview-before-commit card (#68, #76) -----
             Rendered as plain text inside <pre> — never as Markdown — so the
-            fetched gist body cannot inject markup into the app chrome. */}
+            fetched gist body cannot inject markup into the app chrome. For
+            multi-file gists a <select> sits above the body letting the user
+            switch the pick before committing; the picker is suppressed for
+            single-file gists (the most common case). */}
         {gistPreview && (
-          <section
-            className="uploader__gist-preview"
-            aria-labelledby={gistPreviewId}
-            aria-live="polite"
-          >
-            <header className="uploader__gist-preview-header">
-              <h3 id={gistPreviewId} className="uploader__gist-preview-title">
-                Preview before importing
-              </h3>
-              <span className="uploader__gist-preview-filename" title={gistPreview.filename}>
-                <Icon name="file" size={13} />
-                <span>{gistPreview.filename}</span>
-              </span>
-            </header>
-            <pre className="uploader__gist-preview-body" aria-label="Gist file preview">
-              {gistPreviewSnippet(gistPreview.markdown)}
-            </pre>
-            <div className="uploader__gist-preview-actions">
-              <button type="button" className="btn btn--primary" onClick={commitGistPreview}>
-                Use this
-              </button>
-              <button type="button" className="btn" onClick={cancelGistPreview}>
-                Cancel
-              </button>
-            </div>
-          </section>
+          <GistPreviewCard
+            preview={gistPreview}
+            titleId={gistPreviewId}
+            pickerId={gistPickerId}
+            onSelect={selectGistFile}
+            onCommit={commitGistPreview}
+            onCancel={cancelGistPreview}
+          />
         )}
       </details>
 
       {messages}
     </div>
+  );
+}
+
+/**
+ * Preview-before-commit card with optional multi-file picker (#68, #76).
+ *
+ * Multi-file UX decision: we use a native `<select>` rather than a radio
+ * group. The radio group looked tempting for accessibility, but gists
+ * routinely have 5–10 files of similar-looking names — laying them out as
+ * radios bloats the card vertically and crowds out the preview body that
+ * actually helps the user decide. A native `<select>` collapses to a single
+ * row, is keyboard-operable for free (arrow keys, type-ahead, Enter), and
+ * carries the right `<label htmlFor>` association for screen readers
+ * without extra ARIA scaffolding.
+ *
+ * Single-file gists short-circuit the picker entirely so the card looks
+ * exactly like the pre-#76 preview.
+ */
+interface GistPreviewCardProps {
+  preview: { files: GistFile[]; selectedIndex: number };
+  titleId: string;
+  pickerId: string;
+  onSelect: (index: number) => void;
+  onCommit: () => void;
+  onCancel: () => void;
+}
+
+function GistPreviewCard({
+  preview,
+  titleId,
+  pickerId,
+  onSelect,
+  onCommit,
+  onCancel,
+}: GistPreviewCardProps) {
+  const { files, selectedIndex } = preview;
+  const active = files[selectedIndex];
+  // Recompute the snippet only when the active file changes — multi-file
+  // gists can hold non-trivial bodies, and the user might flick through
+  // several options.
+  const snippet = useMemo(() => gistPreviewSnippet(active?.content ?? ''), [active]);
+
+  if (!active) return null;
+
+  const showPicker = files.length > 1;
+
+  return (
+    <section className="uploader__gist-preview" aria-labelledby={titleId} aria-live="polite">
+      <header className="uploader__gist-preview-header">
+        <h3 id={titleId} className="uploader__gist-preview-title">
+          Preview before importing
+        </h3>
+        <span className="uploader__gist-preview-filename" title={active.filename}>
+          <Icon name="file" size={13} />
+          <span>{active.filename}</span>
+        </span>
+      </header>
+      {showPicker && (
+        <div className="uploader__gist-preview-picker">
+          <label htmlFor={pickerId} className="uploader__gist-preview-picker-label">
+            File ({files.length})
+          </label>
+          <select
+            id={pickerId}
+            className="uploader__gist-preview-picker-select"
+            value={selectedIndex}
+            onChange={(event) => onSelect(Number(event.target.value))}
+          >
+            {files.map((file, index) => (
+              <option key={`${index}:${file.filename}`} value={index}>
+                {file.filename}
+                {file.isMarkdown ? ' — Markdown' : ''}
+                {file.content.length === 0 ? ' (empty)' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      <pre className="uploader__gist-preview-body" aria-label="Gist file preview">
+        {snippet}
+      </pre>
+      <div className="uploader__gist-preview-actions">
+        <button type="button" className="btn btn--primary" onClick={onCommit}>
+          Use this
+        </button>
+        <button type="button" className="btn" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </section>
   );
 }
