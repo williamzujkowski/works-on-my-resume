@@ -16,20 +16,17 @@
 
 @media print {
   /* --------------------------------------------------------------
-   * Hide all app chrome — print only the resume document.
+   * Collapse the workbench framing so the resume fills the page.
+   *
+   * IMPORTANT (#79): the previous version targeted the unmodified
+   * `.studio__pane` here, which has the same specificity as the
+   * `.studio__pane--editor` hide rule below — and came LATER in source
+   * order, so `display: block` won and the editor pane reappeared,
+   * leaking the uploader bar, the draft-toggle card, and the textarea
+   * onto page 1 of every printed PDF. We now neutralize ONLY the
+   * preview pane's chrome. The editor pane is hidden outright by the
+   * `display: none` rule further down.
    * ------------------------------------------------------------ */
-  .app-header,
-  .privacy-notice,
-  .studio__toolbar,
-  .studio__shortcuts,
-  .skip-link,
-  .editor,
-  [data-print-hide],
-  .studio__pane--editor {
-    display: none !important;
-  }
-
-  /* Collapse the workbench framing so the resume fills the page. */
   html,
   body {
     background: #fff;
@@ -40,8 +37,8 @@
   .app-shell,
   .studio,
   .studio__split,
-  .studio__pane,
-  .studio__pane-body,
+  .studio__pane--preview,
+  .studio__pane--preview .studio__pane-body,
   .preview-frame {
     display: block !important;
     max-width: none !important;
@@ -53,7 +50,26 @@
     overflow: visible !important;
   }
 
-  .studio__pane-header {
+  /* --------------------------------------------------------------
+   * Hide all app chrome — print only the resume document.
+   *
+   * Listed AFTER the framing-reset block above so the `display: none`
+   * declarations always win at equal specificity, no matter what
+   * elements end up matching both rules.
+   * ------------------------------------------------------------ */
+  .app-header,
+  .privacy-notice,
+  .studio__toolbar,
+  .studio__shortcuts,
+  .studio__pane-header,
+  .skip-link,
+  .editor,
+  [data-print-hide],
+  .studio__pane--editor,
+  .studio__draft-toggle,
+  .uploader,
+  .toast,
+  .kbd-help__overlay {
     display: none !important;
   }
 
