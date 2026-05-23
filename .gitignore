@@ -22,3 +22,8 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# Playwright e2e artifacts (snapshots under tests/e2e/screenshots/ ARE committed).
+playwright-report/
+test-results/
+playwright/.cache/

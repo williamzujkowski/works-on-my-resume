@@ -1,0 +1,88 @@
+/**
+ * Playwright config for the Works on My Resume end-to-end suite.
+ *
+ * The app is fully static. We build it once and serve it with `astro
+ * preview`, which honours the configured `base: '/works-on-my-resume'`
+ * — so every test navigates to URLs under that base.
+ *
+ * Two projects:
+ *  - `chromium-desktop` at 1280×800: the canonical desktop viewport for
+ *    the studio layout and the visual-regression baselines.
+ *  - `mobile-iphone-13`: smoke coverage of the mobile journey so any
+ *    layout assumption that breaks at narrow widths is surfaced.
+ */
+import { defineConfig, devices } from '@playwright/test';
+
+const PORT = 4321;
+const BASE_URL = `http://localhost:${PORT}/works-on-my-resume/`;
+
+export default defineConfig({
+  testDir: 'tests/e2e',
+  /* Snapshots live under tests/e2e/screenshots, keyed only by snapshot
+     name — never by project / OS — so the same baseline file serves the
+     desktop project on every developer machine and CI. */
+  snapshotPathTemplate: '{testDir}/screenshots/{arg}{ext}',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 1 : 0,
+  /* Single worker keeps the dev preview server's lifecycle predictable
+     and the visual baselines deterministic. The suite is small. */
+  workers: 1,
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  timeout: 30_000,
+  expect: {
+    timeout: 5_000,
+    /* OKLCH theme rendering can produce sub-pixel anti-aliasing
+       differences between local and CI Chromium builds. A small
+       per-pixel tolerance keeps the visual baseline meaningful without
+       flagging cosmetic noise. */
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.02,
+      animations: 'disabled',
+    },
+  },
+  use: {
+    baseURL: BASE_URL,
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'off',
+  },
+  projects: [
+    {
+      name: 'chromium-desktop',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 800 },
+      },
+    },
+    {
+      name: 'mobile-iphone-13',
+      /* Smoke-test the mobile journey using the iPhone 13 viewport + UA
+         on the Chromium engine. We intentionally do NOT use the full
+         `devices['iPhone 13']` preset because that hard-pins
+         `browserName: 'webkit'`, which would require an extra browser
+         binary in CI. Chromium with the same viewport gives meaningful
+         coverage of the narrow-width layout for a fraction of the cost. */
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+        userAgent:
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) ' +
+          'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+      },
+    },
+  ],
+  webServer: {
+    /* `astro preview` serves dist/ on the configured base path. We
+       build once before tests so preview has something to serve. */
+    command: 'npm run build && npm run preview -- --port 4321 --host 127.0.0.1',
+    url: BASE_URL,
+    timeout: 180_000,
+    reuseExistingServer: !process.env.CI,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  },
+});

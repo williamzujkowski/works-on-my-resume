@@ -1,0 +1,67 @@
+# Playwright end-to-end + visual-regression suite.
+#
+# Runs on every pull request and every push to `main`. Builds the static
+# Astro site, installs the Chromium browser, and runs `npm run test:e2e`,
+# which spawns `astro preview` via Playwright's webServer config.
+#
+# Artifacts (HTML report + raw test results) are uploaded on failure so
+# a broken run can be diagnosed without re-running locally.
+name: E2E tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel an older in-flight run for the same ref when a new commit lands.
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Playwright (chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        # `--with-deps` pulls in the headless-Chromium system libraries
+        # that GitHub's ubuntu-latest image does not ship by default.
+        run: npx playwright install --with-deps chromium
+
+      - name: Build the static site
+        run: npm run build
+
+      - name: Run Playwright tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright HTML report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload Playwright raw test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results/
+          retention-days: 14
