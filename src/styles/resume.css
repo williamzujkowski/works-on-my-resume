@@ -42,18 +42,18 @@
   box-sizing: border-box;
 }
 
-.resume-preview {
+:root {
   /* Sensible light-theme fallbacks so the document is readable even when
      no theme has been applied (e.g. a stripped export). The theme engine
      and global.css both override these with the same semantic names. */
-  --resume-bg: var(--resume-bg, #ffffff);
-  --resume-fg: var(--resume-fg, #1f2328);
-  --resume-muted: var(--resume-muted, #57606a);
-  --resume-accent: var(--resume-accent, #0b5cae);
-  --resume-accent-2: var(--resume-accent-2, #8a3ffc);
-  --resume-border: var(--resume-border, #d6dbe1);
-  --resume-card: var(--resume-card, #f6f8fa);
-  --resume-code-bg: var(--resume-code-bg, #f0f2f5);
+  --resume-bg: #ffffff;
+  --resume-fg: #1f2328;
+  --resume-muted: #57606a;
+  --resume-accent: #0b5cae;
+  --resume-accent-2: #8a3ffc;
+  --resume-border: #d6dbe1;
+  --resume-card: #f6f8fa;
+  --resume-code-bg: #f0f2f5;
 }
 
 .resume-preview {
