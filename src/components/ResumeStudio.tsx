@@ -474,10 +474,17 @@ export default function ResumeStudio() {
    * scroll the preview into view and announce the load (#53).         *
    * ---------------------------------------------------------------- */
   const handleResumeLoaded = useCallback((text: string, name: string) => {
+    const isOverwritingDraft = isDraftPersistenceEnabled() && getDraft().trim().length > 0;
+
     setMarkdown(text);
     setSourceName(name || 'resume.md');
     const lines = text.length === 0 ? 0 : text.split('\n').length;
-    setLoadAnnouncement(`Resume loaded — ${lines} ${lines === 1 ? 'line' : 'lines'}.`);
+    
+    if (isOverwritingDraft) {
+      setLoadAnnouncement('Saved draft replaced with imported resume.');
+    } else {
+      setLoadAnnouncement(`Resume loaded - ${lines} ${lines === 1 ? 'line' : 'lines'}.`);
+    }
     // Defer the scroll until the preview has rendered.
     window.setTimeout(() => {
       previewRef.current?.scrollIntoView({
