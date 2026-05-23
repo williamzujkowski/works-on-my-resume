@@ -1865,3 +1865,6 @@ a {
   line-height: 1.6;
   color: var(--ui-fg-muted);
 }
+
+.uploader__gist-preview { margin-top: 1rem; padding: 1rem; border: 1px solid var(--resume-border); border-radius: 6px; }
+.uploader__gist-snippet { max-height: 200px; overflow-y: auto; background: var(--resume-code-bg); padding: 1rem; border-radius: 4px; font-size: 0.85rem; font-family: ui-monospace, monospace; margin: 1rem 0; }

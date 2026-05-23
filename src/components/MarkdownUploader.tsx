@@ -78,6 +78,7 @@ export default function MarkdownUploader({
   const [isLoadingSample, setIsLoadingSample] = useState(false);
   const [gistUrl, setGistUrl] = useState('');
   const [isFetchingGist, setIsFetchingGist] = useState(false);
+  const [gistPreview, setGistPreview] = useState<{ url: string; markdown: string; filename: string } | null>(null);
 
   const fileApiAvailable = hasFileApi();
 
@@ -243,14 +244,13 @@ export default function MarkdownUploader({
     setIsFetchingGist(true);
     try {
       const { markdown, filename } = await fetchGistMarkdown(url);
-      onLoad(markdown, filename || 'gist.md');
-      setGistUrl('');
+      setGistPreview({ url, markdown, filename: filename || 'gist.md' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not import the Gist.');
     } finally {
       setIsFetchingGist(false);
     }
-  }, [gistUrl, onLoad]);
+  }, [gistUrl]);
 
   const handleGistSubmit = useCallback(
     (event: React.SyntheticEvent<HTMLFormElement>) => {
@@ -396,39 +396,70 @@ export default function MarkdownUploader({
       {/* ----- Optional: import from a public GitHub Gist (#33) ----- */}
       <details className="uploader__gist">
         <summary className="uploader__gist-summary">Import from a public GitHub Gist</summary>
-        <form className="uploader__gist-form" onSubmit={handleGistSubmit}>
-          <label htmlFor={gistInputId} className="uploader__gist-label">
-            Gist URL
-          </label>
-          <div className="uploader__gist-row">
-            <input
-              id={gistInputId}
-              className="text-input uploader__gist-input"
-              type="url"
-              inputMode="url"
-              placeholder="https://gist.github.com/you/abc123…"
-              value={gistUrl}
-              onChange={(event) => setGistUrl(event.target.value)}
-              aria-describedby={gistDisclosureId}
-              disabled={isFetchingGist}
-            />
-            <button
-              type="submit"
-              className="btn btn--primary"
-              disabled={isFetchingGist || gistUrl.trim().length === 0}
-            >
-              {isFetchingGist ? 'Importing…' : 'Import'}
-            </button>
+        {gistPreview ? (
+          <div className="uploader__gist-preview">
+            <p><strong>{gistPreview.filename}</strong></p>
+            <pre className="uploader__gist-snippet">
+              {gistPreview.markdown.slice(0, 300)}
+              {gistPreview.markdown.length > 300 ? '\n...' : ''}
+            </pre>
+            <p>Replace your editor with this content?</p>
+            <div className="uploader__actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setGistPreview(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => {
+                  onLoad(gistPreview.markdown, gistPreview.filename);
+                  setGistPreview(null);
+                  setGistUrl('');
+                }}
+              >
+                Confirm Import
+              </button>
+            </div>
           </div>
-          <p id={gistDisclosureId} className="uploader__gist-disclosure">
-            <Icon name="info" size={13} />
-            <span>
-              Heads up — this is a network request. When you click Import, the app fetches the Gist
-              anonymously from <code>api.github.com</code>: no login, no resume content sent
-              outbound, only the Gist ID in the URL. The Gist must be public.
-            </span>
-          </p>
-        </form>
+        ) : (
+          <form className="uploader__gist-form" onSubmit={handleGistSubmit}>
+            <label htmlFor={gistInputId} className="uploader__gist-label">
+              Gist URL
+            </label>
+            <div className="uploader__gist-row">
+              <input
+                id={gistInputId}
+                className="text-input uploader__gist-input"
+                type="url"
+                inputMode="url"
+                placeholder="https://gist.github.com/you/abc123…"
+                value={gistUrl}
+                onChange={(event) => setGistUrl(event.target.value)}
+                aria-describedby={gistDisclosureId}
+                disabled={isFetchingGist}
+              />
+              <button
+                type="submit"
+                className="btn btn--primary"
+                disabled={isFetchingGist || gistUrl.trim().length === 0}
+              >
+                {isFetchingGist ? 'Importing…' : 'Import'}
+              </button>
+            </div>
+            <p id={gistDisclosureId} className="uploader__gist-disclosure">
+              <Icon name="info" size={13} />
+              <span>
+                Heads up — this is a network request. When you click Import, the app fetches the Gist
+                anonymously from <code>api.github.com</code>: no login, no resume content sent
+                outbound, only the Gist ID in the URL. The Gist must be public.
+              </span>
+            </p>
+          </form>
+        )}
       </details>
 
       {messages}
