@@ -3590,3 +3590,243 @@ details.studio__pane--editor {
   border: 1px solid color-mix(in oklch, var(--ui-accent) 60%, transparent);
   border-radius: var(--radius-sm);
 }
+
+/* ------------------------------------------------------------------ */
+/* Tailor for a role — JD keyword overlap (#91)                        */
+/* ------------------------------------------------------------------ */
+
+/* The disclosure lives in the editor pane beneath the textarea. Default
+   closed; opening it never persists anything (component-state only). */
+.tailor {
+  margin-top: var(--space-3);
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  background: var(--ui-bg);
+  font-size: 0.78rem;
+}
+
+.tailor__summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  color: var(--ui-fg);
+}
+
+.tailor__summary::-webkit-details-marker {
+  display: none;
+}
+
+.tailor__summary:hover {
+  background: var(--ui-bg-elevated);
+}
+
+.tailor__summary:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.tailor__summary-label {
+  flex: 1;
+}
+
+.tailor__summary-chip {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--ui-success) 18%, var(--ui-bg-elevated));
+  color: var(--ui-success);
+  border: 1px solid color-mix(in oklch, var(--ui-success) 35%, transparent);
+}
+
+.tailor__summary-caret {
+  transition: transform 0.18s ease;
+}
+
+.tailor[open] .tailor__summary-caret {
+  transform: rotate(180deg);
+}
+
+.tailor__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-top: 1px solid var(--ui-border);
+}
+
+.tailor__field-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ui-fg-muted);
+  text-transform: uppercase;
+}
+
+.tailor__textarea {
+  width: 100%;
+  min-height: 6.5rem;
+  max-height: 16rem;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.tailor__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.tailor__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--ui-fg-muted);
+  margin: 0;
+}
+
+.tailor__hint svg {
+  flex-shrink: 0;
+}
+
+.tailor__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+}
+
+.tailor__empty {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px dashed var(--ui-border);
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.tailor__results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tailor__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tailor__section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.tailor__section-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ui-fg);
+}
+
+.tailor__section-count {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ui-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tailor__section-empty {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ui-fg-muted);
+  line-height: 1.5;
+}
+
+.tailor__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tailor__list-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-bg-elevated);
+  color: var(--ui-fg);
+}
+
+.tailor__list--matches .tailor__list-item {
+  border-color: color-mix(in oklch, var(--ui-success) 45%, transparent);
+  color: var(--ui-success);
+  background: color-mix(in oklch, var(--ui-success) 10%, var(--ui-bg-elevated));
+}
+
+.tailor__list--gaps .tailor__list-item {
+  border-color: color-mix(in oklch, var(--ui-warning) 50%, transparent);
+  color: var(--ui-warning);
+  background: color-mix(in oklch, var(--ui-warning) 10%, var(--ui-bg-elevated));
+}
+
+.tailor__list-term {
+  font-weight: 500;
+}
+
+.tailor__list-count {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+/* The mark element painted onto the rendered resume preview when a JD
+   match is found. Subtle green underline + slightly tinted background so
+   the highlight reads as "annotated" rather than "selected". Stays
+   theme-aware via color-mix on --ui-success. Print-hidden because the
+   tailoring overlay is an authoring aid, not a publication artifact. */
+.tailor-match {
+  background: color-mix(in oklch, var(--ui-success) 14%, transparent);
+  color: inherit;
+  border-bottom: 2px solid color-mix(in oklch, var(--ui-success) 70%, transparent);
+  border-radius: 2px;
+  padding: 0 0.05em;
+  /* Bullets that wrap retain a continuous underline across the wrap. */
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+@media print {
+  .tailor-match {
+    background: transparent;
+    border-bottom: 0;
+    padding: 0;
+  }
+}

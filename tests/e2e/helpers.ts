@@ -113,7 +113,10 @@ export async function expandMobileEditor(page: Page): Promise<void> {
   if ((await details.count()) === 0) return;
   const isOpen = await details.evaluate((el) => (el as HTMLDetailsElement).open);
   if (!isOpen) {
-    await details.locator('summary').click();
+    // Use a direct-child selector — the editor pane now nests its own
+    // <details> for "Tailor for a role" (#91), so a bare `summary` lookup
+    // matches the inner disclosure's summary too.
+    await details.locator('> summary').click();
   }
 }
 

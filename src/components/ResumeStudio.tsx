@@ -56,6 +56,7 @@ import ExportPanel from './ExportPanel';
 import SnapshotsMenu from './SnapshotsMenu';
 import KeyboardHelp, { getStoredShortcutsEnabled, setStoredShortcutsEnabled } from './KeyboardHelp';
 import PageFitIndicator from './PageFitIndicator';
+import TailorForRole from './TailorForRole';
 import Icon from './Icon';
 import Toast from './Toast';
 import { wcagLevel } from '../utils/wcag';
@@ -1153,6 +1154,14 @@ export default function ResumeStudio() {
               </label>
             </div>
             <MarkdownEditor value={markdown} onChange={setMarkdown} editorRef={editorHandleRef} />
+            {/* Tailor for a role (#91). Local-only JD keyword overlap.
+                Mounted below the editor so it sits alongside the textarea
+                the user is editing — the actionable view is "your draft +
+                this JD side by side". Gated on a present resume because
+                matching against an empty body would be noise. The
+                disclosure defaults closed; opening it never persists
+                anything. */}
+            {hasResume && <TailorForRole previewRef={previewRef} resumeVersion={parsed} />}
           </div>
         </details>
 
