@@ -16,14 +16,39 @@
  * Every keystroke is still emitted up to ResumeStudio, which debounces
  * re-parsing. The editor holds no parsing logic.
  */
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type { Ref } from 'react';
 import Icon from './Icon';
+
+/**
+ * Imperative handle exposed via the `editorRef` prop. ResumeStudio uses this
+ * to drive the textarea from outside the component when the Resume Health
+ * panel asks to "Jump to line N" — see `onJumpToLine` in ResumeStudio.tsx.
+ *
+ * Kept narrow on purpose: the only outside-the-component need is to highlight
+ * a specific line, so we expose just enough to do that without leaking the
+ * textarea DOM node.
+ */
+export interface MarkdownEditorHandle {
+  /** Scroll to a 1-based line and select that line (visual highlight). */
+  jumpToLine(line: number): void;
+}
 
 interface MarkdownEditorProps {
   /** Current Markdown source string (controlled). */
   value: string;
   /** Called with the new value on every edit. */
   onChange: (value: string) => void;
+  /** Imperative-handle ref. Optional — most callers don't need it. */
+  editorRef?: Ref<MarkdownEditorHandle>;
 }
 
 /** Session-scoped key for the soft-wrap preference. */
@@ -132,7 +157,7 @@ One or two sentences describing who you are and what you do.
    list all five so nothing is unreachable. */
 const QUICK_SNIPPETS: Snippet[] = SNIPPETS.filter((s) => s.quickLabel !== undefined);
 
-export default function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
+export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownEditorProps) {
   const textareaId = useId();
   const snippetMenuId = useId();
 
@@ -244,6 +269,54 @@ export default function MarkdownEditor({ value, onChange }: MarkdownEditorProps)
       }, 0);
     },
     [value, onChange],
+  );
+
+  /* ----- Imperative jump-to-line (#85 integration) -----
+     Resume Health surfaces "Jump to line N" buttons; clicking one tells
+     ResumeStudio to drive the editor here. We focus the textarea, select
+     the entire target line so the user sees a clear highlight, and scroll
+     the viewport to the line proportionally to its position in the file.
+
+     Lines are 1-based to match what the analyzer emits. We clamp into range
+     so a finding referring to a now-deleted line still does something
+     sensible (snap to the nearest valid line). */
+  useImperativeHandle(
+    editorRef,
+    () => ({
+      jumpToLine(line: number) {
+        const ta = textareaRef.current;
+        if (!ta) return;
+        const text = ta.value;
+        if (text.length === 0) {
+          ta.focus();
+          return;
+        }
+        // Find the start/end character offsets for the requested 1-based line.
+        // `split('\n')` keeps newlines out of each entry, so the running offset
+        // is the cumulative length plus one newline per preceding line.
+        const parts = text.split('\n');
+        const totalLines = parts.length;
+        const clamped = Math.max(1, Math.min(line, totalLines));
+        let start = 0;
+        for (let i = 0; i < clamped - 1; i++) {
+          start += parts[i].length + 1; // +1 for the consumed '\n'
+        }
+        const end = start + parts[clamped - 1].length;
+
+        ta.focus();
+        ta.setSelectionRange(start, end);
+
+        // Approximate scroll: position the target line near the top third of
+        // the viewport. Browsers don't expose per-line offsets cheaply, so we
+        // pro-rate by line index over the textarea's total scrollHeight.
+        const ratio = totalLines > 1 ? (clamped - 1) / Math.max(1, totalLines - 1) : 0;
+        const maxScroll = Math.max(0, ta.scrollHeight - ta.clientHeight);
+        ta.scrollTop = Math.round(maxScroll * ratio);
+        // Keep the gutter aligned.
+        if (gutterRef.current) gutterRef.current.scrollTop = ta.scrollTop;
+      },
+    }),
+    [],
   );
 
   return (

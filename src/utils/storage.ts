@@ -25,6 +25,13 @@ const THEME_KEY = 'womr:theme';
 const TEMPLATE_KEY = 'womr:template';
 
 /**
+ * Namespaced key for the career-stage preference (#85). The career stage
+ * tunes the Resume Health rubric (junior / mid / senior); like the theme
+ * slug and the template slug, it's a UI preference with no personal data.
+ */
+const CAREER_STAGE_KEY = 'womr:career-stage';
+
+/**
  * Opt-in draft persistence (#32).
  *
  * Two keys, deliberately separate:
@@ -212,6 +219,51 @@ export function setStoredTemplate(slug: string): void {
   if (!store) return;
   try {
     store.setItem(TEMPLATE_KEY, slug);
+  } catch {
+    /* no-op: persistence is best-effort only */
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Career-stage preference (#85)                                       */
+/* ------------------------------------------------------------------ */
+
+/** The career-stage rubric the Resume Health panel scores against. */
+export type CareerStage = 'junior' | 'mid' | 'senior';
+
+/** True when `value` is a known career stage. */
+function isCareerStage(value: unknown): value is CareerStage {
+  return value === 'junior' || value === 'mid' || value === 'senior';
+}
+
+/**
+ * Read the persisted career-stage preference for the Resume Health panel.
+ *
+ * Returns `null` when nothing is stored, storage is unavailable, or the
+ * stored value isn't one of the known stages — the caller substitutes its
+ * own default (`'mid'`) so a legacy / corrupted value can't produce an
+ * unknown stage.
+ */
+export function getStoredCareerStage(): CareerStage | null {
+  const store = safeLocalStorage();
+  if (!store) return null;
+  try {
+    const value = store.getItem(CAREER_STAGE_KEY);
+    return isCareerStage(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persist the chosen career stage. Silently no-ops when storage is
+ * unavailable — the stage preference is a convenience, never correctness.
+ */
+export function setStoredCareerStage(stage: CareerStage): void {
+  const store = safeLocalStorage();
+  if (!store) return;
+  try {
+    store.setItem(CAREER_STAGE_KEY, stage);
   } catch {
     /* no-op: persistence is best-effort only */
   }
