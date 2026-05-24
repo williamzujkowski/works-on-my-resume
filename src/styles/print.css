@@ -198,6 +198,17 @@
     background: none !important;
   }
 
+  /* Italic body emphasis (#113). A saturated theme (e.g. popping-and-locking)
+     derives its `em` color from a low-chroma OKLCH var that's meant to sit on
+     the theme's dark background. When conservative print flips the background
+     to white, that muted hue falls below WCAG AA (3.46:1 on the offender).
+     Clamp em/i to the same secondary-text shade other conservative rules use
+     (#222 → ~16:1 on white, well clear of AA). Keep them visually distinct from
+     body text — italic styling carries the emphasis; color doesn't have to. */
+  body:not([data-print-mode='theme']) .resume-preview :is(em, i) {
+    color: #222 !important;
+  }
+
   body:not([data-print-mode='theme']) .resume-preview h2 {
     border-bottom-color: #000 !important;
   }

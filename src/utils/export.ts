@@ -270,6 +270,11 @@ html:has(body[data-print-mode='theme']) {
     background: none !important;
   }
 
+  /* Italic body emphasis — pin to a print-safe shade on white (#113). */
+  body:not([data-print-mode='theme']) .resume-preview :is(em, i) {
+    color: #222 !important;
+  }
+
   body:not([data-print-mode='theme']) .resume-preview h2 {
     border-bottom-color: #000 !important;
   }

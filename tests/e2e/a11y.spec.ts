@@ -173,13 +173,10 @@ test('themed sample under print media has no serious or critical a11y violations
   // Switch to print media emulation so axe evaluates the printed appearance.
   await page.emulateMedia({ media: 'print' });
 
-  // TODO(#113): Re-enable `color-contrast` once theme variables are
-  // print-safe. `popping-and-locking` (and likely other saturated themes)
-  // currently render `<em>` text at ~3.46:1 contrast on the white print
-  // background — below WCAG AA's 4.5:1 floor. This is a real theme bug
-  // tracked separately so the a11y gate can ship green. The other gates
-  // (focus order, ARIA, landmarks…) still apply in print mode.
-  await expectNoSeriousOrCritical(page, 'print-themed', ['color-contrast']);
+  // Fixed in #113 — em/i are now pinned to #222 (~16:1 on white) in
+  // conservative print regardless of the active theme, so `color-contrast`
+  // is back in the active rule set for the print-themed gate.
+  await expectNoSeriousOrCritical(page, 'print-themed');
 
   // Restore default media so the after-test teardown is consistent with
   // every other spec — Playwright re-uses pages within a worker.
