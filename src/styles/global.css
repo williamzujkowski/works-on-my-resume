@@ -3298,3 +3298,295 @@ details.studio__pane--editor {
     cursor: default;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Page-fit indicator (#92)                                            */
+/*                                                                     */
+/* Toolbar pill that surfaces an approximate "how many printed pages"  */
+/* estimate. Click opens a popover with per-section heights, 2-3 trim  */
+/* suggestions, and a toggle for a visual page-break ruler overlay on  */
+/* the preview. The estimate is intentionally approximate: signal, not */
+/* precision. See src/utils/pageFit.ts for the math; this is just CSS. */
+/* ------------------------------------------------------------------ */
+
+.page-fit {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The pill itself — visually a peer of the shortcut chip + ATS exit pill,
+   sized to read as a status chip rather than a primary action. The
+   severity modifiers (--ok / --warn / --danger) shift the accent color
+   and the leading status dot; the dot carries the meaning so the cue is
+   never colour-only. */
+.page-fit__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-fg);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease,
+    border-color 110ms ease;
+}
+
+.page-fit__pill:hover,
+.page-fit__pill:focus-visible {
+  background: var(--ui-panel-hover);
+  border-color: var(--ui-accent);
+}
+
+.page-fit__pill--ok {
+  color: var(--ui-accent);
+  border-color: color-mix(in oklch, var(--ui-accent) 55%, var(--ui-border-strong));
+}
+
+.page-fit__pill--warn {
+  color: #b45309; /* amber-700 */
+  border-color: color-mix(in oklch, #f59e0b 55%, var(--ui-border-strong));
+}
+
+.page-fit__pill--danger {
+  color: #b91c1c; /* red-700 */
+  border-color: color-mix(in oklch, #ef4444 60%, var(--ui-border-strong));
+}
+
+.page-fit__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  /* Slight opacity dip keeps the dot from yelling at the wordmark. */
+  opacity: 0.85;
+}
+
+.page-fit__label {
+  letter-spacing: 0.01em;
+}
+
+/* The click-to-open popover. Anchors the right edge under the pill so it
+   stays inside the toolbar even when the pill is near the right side of a
+   wide layout. Width is bounded so long section names don't blow it out. */
+.page-fit__popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(360px, 80vw);
+  padding: var(--space-3);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-panel);
+  color: var(--ui-fg);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.page-fit__popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.page-fit__popover-title {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-fg);
+}
+
+.page-fit__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg-muted);
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease,
+    border-color 110ms ease;
+}
+
+.page-fit__close:hover,
+.page-fit__close:focus-visible {
+  color: var(--ui-fg);
+  background: var(--ui-panel);
+  border-color: var(--ui-border-strong);
+}
+
+.page-fit__hint {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--ui-fg-muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.page-fit__hint-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--ui-fg-subtle);
+}
+
+.page-fit__sections-title,
+.page-fit__suggestions-title {
+  margin: 0 0 var(--space-1) 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ui-fg-muted);
+}
+
+.page-fit__sections-list,
+.page-fit__suggestions-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.page-fit__section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0.25rem 0;
+  border-bottom: 1px dashed var(--ui-border);
+}
+
+.page-fit__section:last-child {
+  border-bottom: none;
+}
+
+.page-fit__section-name {
+  color: var(--ui-fg);
+}
+
+.page-fit__section-pages {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-fg-muted);
+}
+
+.page-fit__suggestion {
+  padding: var(--space-2);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+}
+
+.page-fit__suggestion-title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ui-fg);
+}
+
+.page-fit__suggestion-detail {
+  margin: 0.15rem 0 0 0;
+  font-size: 0.74rem;
+  color: var(--ui-fg-muted);
+  line-height: 1.4;
+}
+
+.page-fit__ruler-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-top: var(--space-1);
+  font-size: 0.78rem;
+  color: var(--ui-fg);
+  cursor: pointer;
+  border-top: 1px solid var(--ui-border);
+}
+
+.page-fit__ruler-toggle input[type='checkbox'] {
+  margin: 0;
+}
+
+/* Narrow viewports: anchor the popover to the LEFT edge of the pill
+   instead of the right. On a phone the toolbar wraps multiple rows and
+   the pill commonly sits near the left side of its row, so a
+   right-anchored popover hangs off the left edge of the viewport. The
+   left-anchored variant keeps the popover inside the screen on phones,
+   while desktop keeps the right-anchored default (which keeps the
+   popover from running into Save-as-PDF and Export buttons that sit to
+   the right of the pill at desktop widths). */
+@media (max-width: 720px) {
+  .page-fit__popover {
+    right: auto;
+    left: 0;
+    width: min(320px, calc(100vw - var(--space-3) * 2));
+  }
+}
+
+/* ----- Ruler overlay -----
+   Portal-mounted into the preview pane (`.studio__pane-body`), absolutely
+   positioned over the rendered `.resume-preview` article. Each line is a
+   1px dashed horizontal at y = N * page-content-height. Pointer-events
+   off so the overlay never blocks editing/scrolling. */
+.studio__pane-body--has-ruler {
+  position: relative;
+}
+
+.page-fit-ruler {
+  position: absolute;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.page-fit-ruler__line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px dashed color-mix(in oklch, var(--ui-accent) 70%, transparent);
+}
+
+.page-fit-ruler__label {
+  position: absolute;
+  top: -0.85rem;
+  right: 0;
+  padding: 0.1rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ui-accent);
+  background: color-mix(in oklch, var(--ui-bg-elevated) 90%, transparent);
+  border: 1px solid color-mix(in oklch, var(--ui-accent) 60%, transparent);
+  border-radius: var(--radius-sm);
+}

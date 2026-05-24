@@ -55,6 +55,7 @@ import AtsModeToggle from './AtsModeToggle';
 import ExportPanel from './ExportPanel';
 import SnapshotsMenu from './SnapshotsMenu';
 import KeyboardHelp, { getStoredShortcutsEnabled, setStoredShortcutsEnabled } from './KeyboardHelp';
+import PageFitIndicator from './PageFitIndicator';
 import Icon from './Icon';
 import Toast from './Toast';
 import { wcagLevel } from '../utils/wcag';
@@ -951,6 +952,15 @@ export default function ResumeStudio() {
               onRandom={randomTheme}
             />
           </div>
+
+          {/* Page-fit indicator (#92). Reads `.resume-preview` height with
+              getBoundingClientRect, divides by US-Letter @ 0.6in content
+              height for a quick "Fits 1 page" / "Fit: 1.4 pages" signal.
+              Click opens a popover with per-section heights, 2-3 trim
+              suggestions, and a checkbox to overlay page-break ruler lines
+              on the preview. Sits next to Save-as-PDF so the estimate and
+              the export action read as a pair. */}
+          <PageFitIndicator previewRef={previewRef} layout={template} parsed={parsed} />
 
           {/* Save as PDF — primary toolbar action (#90). A direct,
               single-click path to the most common export. Lives as a peer
