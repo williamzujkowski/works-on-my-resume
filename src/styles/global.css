@@ -3392,13 +3392,14 @@ details.studio__pane--editor {
   letter-spacing: 0.01em;
 }
 
-/* The click-to-open popover. Anchors the right edge under the pill so it
-   stays inside the toolbar even when the pill is near the right side of a
-   wide layout. Width is bounded so long section names don't blow it out. */
+/* The click-to-open popover. Anchors to the left edge of the pill (pill sits
+   in row 2 of the two-row toolbar after #112, on the left side; right-anchored
+   would overflow the viewport). Width is bounded so long section names don't
+   blow it out. */
 .page-fit__popover {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
+  left: 0;
   z-index: 20;
   display: flex;
   flex-direction: column;
@@ -3557,15 +3558,10 @@ details.studio__pane--editor {
 /* Narrow viewports: anchor the popover to the LEFT edge of the pill
    instead of the right. On a phone the toolbar wraps multiple rows and
    the pill commonly sits near the left side of its row, so a
-   right-anchored popover hangs off the left edge of the viewport. The
-   left-anchored variant keeps the popover inside the screen on phones,
-   while desktop keeps the right-anchored default (which keeps the
-   popover from running into Save-as-PDF and Export buttons that sit to
-   the right of the pill at desktop widths). */
+   left-anchored popover (default since #112) needs a tighter width budget
+   so it doesn't bleed off the right edge of the viewport on narrow screens. */
 @media (max-width: 720px) {
   .page-fit__popover {
-    right: auto;
-    left: 0;
     width: min(320px, calc(100vw - var(--space-3) * 2));
   }
 }
