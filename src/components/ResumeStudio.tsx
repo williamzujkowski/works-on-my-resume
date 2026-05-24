@@ -785,6 +785,42 @@ export default function ResumeStudio() {
     editorHandleRef.current?.jumpToLine(line);
   }, []);
 
+  /**
+   * Resume Health → editor jump with a literal offender (#115). Selects the
+   * substring on the target line rather than the whole line, so the
+   * highlight reads as "this is the bit to change". The editor's handle
+   * gracefully falls back to whole-line selection when the offender has
+   * been edited away since the finding was computed.
+   */
+  const handleJumpToOffender = useCallback((line: number, offender: string) => {
+    editorHandleRef.current?.jumpToOffender(line, offender);
+  }, []);
+
+  /**
+   * Resume Health → editor rewrite insertion (#115). Inserts a candidate
+   * rewrite as a sibling bullet directly above the original, mirroring the
+   * in-editor rewrite tray (#93). The original bullet is never destroyed —
+   * the writer can pick the one they prefer and delete the rest.
+   *
+   * Suggested rewrites are inserted into the editor textarea, never into
+   * the preview DOM, so the DOMPurify-sanitized markdown pipeline still
+   * owns the trust boundary on its way to the rendered HTML.
+   */
+  const handleInsertRewrite = useCallback((targetLine: number, rewrittenLine: string) => {
+    editorHandleRef.current?.insertRewriteAboveLine(targetLine, rewrittenLine);
+  }, []);
+
+  /**
+   * Resume Health → "Open an example" affordance (#115). Jumps the editor
+   * textarea to the named H2 section so the writer can see a worked
+   * example of the pattern the heuristic is asking for. No-op when the
+   * section isn't present — the Health panel still surfaces the message,
+   * but the example button is hidden by the panel for that path.
+   */
+  const handleJumpToSection = useCallback((sectionTitle: string) => {
+    editorHandleRef.current?.jumpToSection(sectionTitle);
+  }, []);
+
   /* ----- Snapshot handlers (#94). Each is gated on `draftEnabled` via the
      helpers in storage.ts; we also short-circuit here so the in-memory
      list stays consistent if the user races the toggle. */
@@ -1279,7 +1315,14 @@ export default function ResumeStudio() {
               aria-labelledby={healthTabId}
               data-print-hide
             >
-              <ResumeHealth markdown={markdown} parsed={parsed} onJumpToLine={handleJumpToLine} />
+              <ResumeHealth
+                markdown={markdown}
+                parsed={parsed}
+                onJumpToLine={handleJumpToLine}
+                onJumpToOffender={handleJumpToOffender}
+                onInsertRewrite={handleInsertRewrite}
+                onJumpToSection={handleJumpToSection}
+              />
             </div>
           )}
         </section>
