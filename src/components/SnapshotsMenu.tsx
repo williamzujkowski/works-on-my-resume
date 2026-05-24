@@ -144,27 +144,50 @@ export default function SnapshotsMenu({
   );
 
   const count = snapshots.length;
-  const triggerLabel = `Snapshots (${count})`;
+  /* Zero-state collapse (#112): until at least one snapshot exists, the
+     trigger renders as a quiet icon-only button rather than the full
+     `Snapshots (N)` pill. The Snapshots count was eating toolbar real
+     estate while displaying "0", which carried no information for users
+     who hadn't engaged with snapshots yet. Once the user saves their
+     first snapshot, the full labeled dropdown returns for the lifetime
+     of the session.
+
+     The button's accessible name still says "Save snapshot" / "Snapshots"
+     so AT users (and the e2e suite) have a stable hook. */
+  const hasSnapshots = count >= 1;
+  /* "Save snapshot" reads as both an icon-only button and the popover's
+     dialog title — both are correct (the affordance saves a snapshot, and
+     the dialog it opens contains a "Save snapshot" section). Tests target
+     the button via role='button', so the dialog's own labelledby never
+     collides with this. */
+  const triggerLabel = hasSnapshots ? `Snapshots (${count})` : 'Save snapshot';
+  /* Class modifier signals to CSS that the trigger should render as a
+     compact icon-only button. The label sits in aria-label only. */
+  const triggerClass = hasSnapshots
+    ? 'btn snapshots-menu__trigger'
+    : 'btn btn--icon snapshots-menu__trigger snapshots-menu__trigger--icon-only';
 
   /* Off-gate path: render a DISABLED trigger so the affordance is
      discoverable but inert. The native `title` attribute provides the
      "enable Remember this resume…" hint on hover/long-press; we also wire
-     it into aria-describedby so AT users get the same message. */
+     it into aria-describedby so AT users get the same message. The
+     zero-state collapse from #112 applies here too — a disabled,
+     never-saved trigger reads as an icon button rather than `Snapshots (0)`. */
   if (!enabled) {
     const hint = 'Enable Remember this resume on this device to use snapshots.';
     return (
       <div className="snapshots-menu">
         <button
           type="button"
-          className="btn snapshots-menu__trigger snapshots-menu__trigger--disabled"
+          className={`${triggerClass} snapshots-menu__trigger--disabled`}
           disabled
           aria-disabled="true"
           title={hint}
           aria-label={`${triggerLabel}. ${hint}`}
         >
           <Icon name="layers" size={14} />
-          {triggerLabel}
-          <Icon name="chevron-down" size={14} />
+          {hasSnapshots && <>{triggerLabel}</>}
+          {hasSnapshots && <Icon name="chevron-down" size={14} />}
         </button>
       </div>
     );
@@ -175,14 +198,16 @@ export default function SnapshotsMenu({
       <button
         type="button"
         ref={triggerRef}
-        className="btn snapshots-menu__trigger"
+        className={triggerClass}
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-label={hasSnapshots ? undefined : triggerLabel}
+        title={hasSnapshots ? undefined : triggerLabel}
         onClick={() => setOpen((v) => !v)}
       >
         <Icon name="layers" size={14} />
-        {triggerLabel}
-        <Icon name="chevron-down" size={14} />
+        {hasSnapshots && <>{triggerLabel}</>}
+        {hasSnapshots && <Icon name="chevron-down" size={14} />}
       </button>
       {open && (
         <div

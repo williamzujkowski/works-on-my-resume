@@ -887,7 +887,16 @@ export default function ResumeStudio() {
            SEE that those controls are inert in ATS mode without us actually
            disabling them — they can still pre-select a theme to return to
            when they exit ATS. The persistent "Exit ATS preview" pill below
-           gives a one-click way out. */}
+           gives a one-click way out.
+
+           Row structure (#112): the toolbar is intentionally laid out as
+           TWO rows on common desktop widths (1280, 1440), with a hard
+           row-break element separating them. The wrap class on the toolbar
+           still uses `flex-wrap: wrap` so narrow viewports degrade
+           gracefully, but the explicit divider keeps the grouping legible:
+             Row 1 — theme & layout choice (presets, picker, layout, ATS).
+             Row 2 — review aids & save/export (theme nav, page-fit, Save
+                     as PDF, Export, Snapshots, shortcuts help). */}
       {hasResume && (
         <div
           className={
@@ -897,6 +906,7 @@ export default function ResumeStudio() {
           }
           data-print-hide
         >
+          {/* ----- Row 1: theme + layout choice ----- */}
           <div className="studio__toolbar-themable">
             {/* Curated audience presets (#95). One-click theme + layout
                 combos that sit ahead of the picker so a fresh visitor can
@@ -943,8 +953,14 @@ export default function ResumeStudio() {
             </button>
           )}
 
-          <div className="studio__toolbar-spacer" />
+          {/* Hard row break (#112). `flex-basis: 100%` forces the next
+              child onto a new line regardless of how much horizontal room
+              is left, so the toolbar always reads as two grouped rows on
+              wide viewports. On narrow viewports the toolbar still
+              wraps additionally via the normal flex-wrap rules. */}
+          <span className="studio__toolbar-rowbreak" aria-hidden="true" />
 
+          {/* ----- Row 2: review aids + save/export ----- */}
           <div className="studio__toolbar-themable">
             <ThemeControls
               current={theme}
@@ -962,6 +978,12 @@ export default function ResumeStudio() {
               on the preview. Sits next to Save-as-PDF so the estimate and
               the export action read as a pair. */}
           <PageFitIndicator previewRef={previewRef} layout={template} parsed={parsed} />
+
+          {/* Soft spacer between the review-aids cluster (theme nav, page
+              fit) and the save/export cluster. `flex: 1` so the two
+              clusters anchor to opposite ends of the row, which preserves
+              the visual hierarchy: review on the left, save on the right. */}
+          <div className="studio__toolbar-spacer" />
 
           {/* Save as PDF — primary toolbar action (#90). A direct,
               single-click path to the most common export. Lives as a peer

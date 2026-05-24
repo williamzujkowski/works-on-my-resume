@@ -32,7 +32,12 @@ test('gate: with draft autosave OFF the Snapshots trigger is disabled and the pr
   // The trigger button is in the DOM but `disabled`. We assert on the
   // `disabled` attribute rather than visibility because it's still rendered
   // so the affordance is discoverable.
-  const trigger = page.getByRole('button', { name: /Snapshots \(0\)/i });
+  //
+  // #112 zero-state collapse: with no snapshots saved, the trigger renders
+  // as an icon-only button labelled "Save snapshot" rather than the labelled
+  // "Snapshots (0)" pill. The disabled gate path inherits the same icon
+  // form so a privacy-gated never-saved trigger doesn't shout a count.
+  const trigger = page.getByRole('button', { name: /Save snapshot/i });
   await expect(trigger).toBeDisabled();
 
   // The aria-label carries the explanatory hint so AT users hear the
@@ -62,7 +67,9 @@ test('save round-trip: snapshot the sample, replace the body, then Load restores
 
   // Open the Snapshots popover and confirm the default save name reflects
   // the resume's frontmatter.name (Avery Quinn in the bundled sample).
-  await page.getByRole('button', { name: /Snapshots \(0\)/i }).click();
+  // #112: with zero snapshots saved the trigger is icon-only and labelled
+  // "Save snapshot"; clicking it still toggles the same popover open.
+  await page.getByRole('button', { name: 'Save snapshot', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: /Save snapshot/i });
   await expect(dialog).toBeVisible();
 
@@ -114,7 +121,8 @@ test('cap: saving 11 snapshots keeps the visible count at 10 (oldest evicted)', 
   await page.locator('.studio__draft-toggle input[type="checkbox"]').check();
 
   // Save 11 snapshots, naming each so we can verify which one was evicted.
-  await page.getByRole('button', { name: /Snapshots \(0\)/i }).click();
+  // #112: zero-state trigger is icon-only and labelled "Save snapshot".
+  await page.getByRole('button', { name: 'Save snapshot', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: /Save snapshot/i });
   const nameInput = dialog.getByLabel(/Snapshot name/i);
   const saveBtn = dialog.getByRole('button', { name: /^Save$/ });
@@ -152,7 +160,8 @@ test('delete: removing a snapshot decrements the count and removes the row', asy
   await page.locator('.studio__draft-toggle input[type="checkbox"]').check();
 
   // Save two snapshots so we have something to delete and something to keep.
-  await page.getByRole('button', { name: /Snapshots \(0\)/i }).click();
+  // #112: zero-state trigger is icon-only and labelled "Save snapshot".
+  await page.getByRole('button', { name: 'Save snapshot', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: /Save snapshot/i });
   const nameInput = dialog.getByLabel(/Snapshot name/i);
   const saveBtn = dialog.getByRole('button', { name: /^Save$/ });

@@ -13,7 +13,7 @@
  * first print-mode radio, not the Close button). It dismisses on Escape and
  * on outside-click, and on close it restores focus to the Export trigger.
  */
-import { useEffect, useId, useRef } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ParsedResume, PrintMode, ResumeTemplate, ResumeTheme } from '../types';
 import { DEFAULT_RESUME_TEMPLATE } from '../types';
 import {
@@ -68,6 +68,33 @@ export default function ExportPanel({
   const firstControlRef = useRef<HTMLInputElement>(null);
   const headingId = useId();
   const hasResume = parsed !== null;
+
+  /* "Copy theme link" — relocated from ThemeControls in #112. Sits inside the
+     Share group below the downloads; it's a low-frequency action and didn't
+     deserve a permanent toolbar slot. Confirmation pip auto-clears after 2 s,
+     same UX as the old toolbar affordance. */
+  const [linkCopied, setLinkCopied] = useState(false);
+  const linkCopyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (linkCopyTimer.current) clearTimeout(linkCopyTimer.current);
+    };
+  }, []);
+
+  const copyThemeLink = useCallback(async () => {
+    const url = `${location.origin}${location.pathname}?theme=${theme.slug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      if (linkCopyTimer.current) clearTimeout(linkCopyTimer.current);
+      linkCopyTimer.current = setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Clipboard API unavailable or denied — degrade to a prompt so the
+      // user can still copy the link manually.
+      window.prompt('Copy this theme link:', url);
+    }
+  }, [theme.slug]);
 
   /* On open: focus the first actionable control (not the Close button). */
   useEffect(() => {
@@ -250,6 +277,31 @@ export default function ExportPanel({
         <p className="export-panel__note">
           Downloads are generated in your browser. Nothing is uploaded. The .zip bundles the
           Markdown, the standalone HTML, and the theme CSS.
+        </p>
+      </div>
+
+      {/* ----- Share group (#112) -----
+           "Copy theme link" used to sit in the toolbar's ThemeControls cluster.
+           It was a low-frequency action and contributed to the toolbar growing
+           to three rows on common desktop widths. Relocated here so the
+           toolbar can fit in two rows; the affordance is still discoverable
+           from `e` → Export. Only the theme slug is copied; never resume
+           content. */}
+      <div className="export-panel__group">
+        <span className="export-panel__group-label">Share</span>
+        <div className="export-panel__buttons">
+          <button type="button" className="btn" onClick={copyThemeLink}>
+            Copy theme link
+          </button>
+          {linkCopied && (
+            <span className="export-panel__copied" role="status">
+              <Icon name="check" size={13} /> Copied
+            </span>
+          )}
+        </div>
+        <p className="export-panel__note">
+          Copies a URL that opens this app with the same theme pre-selected. No resume content is
+          included.
         </p>
       </div>
     </div>

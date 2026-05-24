@@ -571,6 +571,21 @@ a {
   min-width: var(--space-3);
 }
 
+/* Hard row-break for the toolbar (#112). `flex-basis: 100%` forces the
+   next sibling onto a new flex line regardless of remaining horizontal
+   room, so the toolbar reads as two grouped rows on wide viewports
+   instead of arbitrarily wrapping at the third or fourth control.
+   Height collapses to 0 so the break doesn't add visible space on its
+   own — the toolbar's own `gap` provides the vertical breathing room
+   between rows. */
+.studio__toolbar-rowbreak {
+  flex-basis: 100%;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+
 /* ----- ATS preview — toolbar greyed-out state (#98) -----
    When ATS mode is on, the theme/layout controls are still INTERACTIVE
    (the user may want to pre-select the theme they'll return to when
@@ -1981,26 +1996,11 @@ a {
   margin-left: -1px;
 }
 
-.theme-controls__current {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0.3rem var(--space-2);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  background: var(--ui-bg);
-  border: 1px solid var(--ui-border);
-  border-radius: var(--radius-sm);
-}
-
-/* Small swatch shown inside the accent-contrast badge. */
-.theme-controls__accent-dot {
-  width: 0.6rem;
-  height: 0.6rem;
-  border-radius: 50%;
-  border: 1px solid var(--ui-border-strong);
-  flex-shrink: 0;
-}
+/* `.theme-controls__current` and `.theme-controls__accent-dot` were
+   removed in #112 — the toolbar no longer hosts the dark/light + WCAG
+   contrast chips. The canonical WCAG signal lives in the preview pane
+   header (#88) instead. The picker still surfaces per-theme badges in
+   its option list, so `.badge*` rules below are kept intact. */
 
 .badge {
   display: inline-flex;
@@ -2039,13 +2039,9 @@ a {
   color: var(--ui-warning);
 }
 
-.theme-controls__copied {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  color: var(--ui-success);
-}
+/* `.theme-controls__copied` was the inline copy-confirmation pip next to
+   the toolbar's "Copy theme link" button; both moved into the Export
+   panel in #112 (see `.export-panel__copied`). */
 
 /* ------------------------------------------------------------------ */
 /* Export panel                                                        */
@@ -2137,6 +2133,17 @@ a {
 .export-panel__note {
   font-size: 0.74rem;
   color: var(--ui-fg-subtle);
+}
+
+/* Confirmation pip for the "Copy theme link" action (#112). Mirrors the
+   tone of the old `.theme-controls__copied` pill, but inside the Export
+   panel's share group rather than the toolbar. */
+.export-panel__copied {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--ui-success);
 }
 
 /* ------------------------------------------------------------------ */
@@ -3070,6 +3077,16 @@ a {
 .snapshots-menu__trigger {
   /* Match the Export trigger's gap so the two reads as a peer cluster. */
   gap: 0.4rem;
+}
+
+/* Zero-state collapse (#112). When no snapshots exist yet, the trigger
+   renders as an icon-only button rather than `Snapshots (0)`. The .btn--icon
+   class already handles sizing; this modifier just opts out of the
+   labelled-trigger gap so the single icon centers cleanly. The disabled
+   state (off-gate) reuses this same compact form so the privacy-gated
+   surface doesn't shout an empty count either. */
+.snapshots-menu__trigger--icon-only {
+  gap: 0;
 }
 
 .snapshots-menu__popover {
