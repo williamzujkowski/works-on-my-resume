@@ -40,8 +40,9 @@ import {
   setStoredThemeSlug,
 } from '../utils/storage';
 import MarkdownUploader from './MarkdownUploader';
-import MarkdownEditor from './MarkdownEditor';
+import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor';
 import ResumePreview from './ResumePreview';
+import ResumeHealth from './ResumeHealth';
 import ThemePicker from './ThemePicker';
 import ThemeControls from './ThemeControls';
 import LayoutSelector from './LayoutSelector';
@@ -50,12 +51,28 @@ import ExportPanel from './ExportPanel';
 import KeyboardHelp, { getStoredShortcutsEnabled, setStoredShortcutsEnabled } from './KeyboardHelp';
 import Icon from './Icon';
 import Toast from './Toast';
+import { wcagLevel } from '../utils/wcag';
 
 /** sessionStorage key for the ATS preview mode (#31). */
 const ATS_MODE_SESSION_KEY = 'womr:ats-mode';
 
 /** Debounce window for re-parsing Markdown as the user types. */
 const PARSE_DEBOUNCE_MS = 200;
+
+/**
+ * Debounce window for the arrow-key theme commit (#89).
+ *
+ * Holding ← / → previews the next theme on every keypress (synchronous, via
+ * `applyThemeToDocument`), but defers the *commit* — URL write, storage
+ * write, the preview-pane crossfade — until the user stops stepping for this
+ * many milliseconds. 350 ms is long enough that mash-stepping through a
+ * dozen themes counts as a single commit, and short enough that a deliberate
+ * single press still feels immediate.
+ */
+const ARROW_COMMIT_DEBOUNCE_MS = 350;
+
+/** Which tab the preview pane is currently showing (#85). */
+type PreviewTab = 'preview' | 'health';
 
 /** Tags whose keystrokes must NOT trigger app shortcuts. */
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -140,11 +157,34 @@ export default function ResumeStudio() {
 
   const themeSearchInputId = useId();
   const draftCheckboxId = useId();
+  /* IDs the preview/health tab control uses for aria-controls + aria-labelledby
+     so screen readers can announce the active tab and which region it owns. */
+  const previewTabId = useId();
+  const healthTabId = useId();
+  const previewPanelId = useId();
+  const healthPanelId = useId();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /* Debounce timer for arrow-key theme stepping (#89). On every ← / → step we
+     apply the next theme to the document synchronously and reset this timer;
+     when it fires we commit the (now-stable) theme through `changeTheme`
+     (URL + storage + crossfade). `r` (random) intentionally bypasses this. */
+  const arrowDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /* The theme we're previewing under the debounce — `null` when no preview
+     is in flight. Read by the commit callback so a stale `theme` closure
+     can't lie about which theme should be committed. */
+  const pendingThemeRef = useRef<ResumeTheme | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const exportTriggerRef = useRef<HTMLButtonElement>(null);
   const helpTriggerRef = useRef<HTMLButtonElement>(null);
+  /* Imperative handle for "Jump to line N" from the Resume Health panel.
+     ResumeStudio owns this ref because Health and the editor live in
+     sibling sub-trees (the split panes); the ref is the cross-pane bridge. */
+  const editorHandleRef = useRef<MarkdownEditorHandle>(null);
+
+  /* Which tab the preview pane is showing (#85). Default to the resume
+     itself; users switch to Health when they want feedback. */
+  const [previewTab, setPreviewTab] = useState<PreviewTab>('preview');
 
   /** A resume is present once Markdown has been entered. */
   const hasResume = markdown.trim() !== '';
@@ -442,6 +482,17 @@ export default function ResumeStudio() {
    * rather than a flicker (reduced-motion users get an instant swap). *
    * ---------------------------------------------------------------- */
   const changeTheme = useCallback((next: ResumeTheme) => {
+    // Any pending arrow-step commit is superseded by an explicit commit
+    // (#89). Clearing here is defensive — `stepTheme`'s timer fires this
+    // callback itself, so the timer ref is usually already null by the
+    // time we land here. But a picker selection or a Random press also
+    // routes through changeTheme; for those paths we must drop the timer.
+    if (arrowDebounceRef.current) {
+      clearTimeout(arrowDebounceRef.current);
+      arrowDebounceRef.current = null;
+    }
+    pendingThemeRef.current = null;
+
     setTheme(next);
     applyThemeToDocument(next);
     setStoredThemeSlug(next.slug);
@@ -463,21 +514,70 @@ export default function ResumeStudio() {
     }
   }, []);
 
-  /* ----- Theme navigation helpers ----- */
+  /* ----- Theme navigation helpers -----
+     `stepTheme` is the arrow-key entry point. To keep mash-stepping cheap
+     (#89) it splits the work into two paths:
+
+       - PREVIEW (synchronous, every keypress): set React state so the UI
+         reflects the new theme name + WCAG badge, and apply the theme to
+         the document so the resume re-paints. NO URL write, NO storage
+         write, NO crossfade animation — those are commit-side concerns.
+       - COMMIT (debounced, 350 ms after the last step): run the existing
+         `changeTheme` which handles URL + storage + the crossfade. The
+         debounce timer is reset on every keypress and on unmount.
+
+     Toolbar prev/next buttons share this path, so a button-mash also
+     debounces. A real selection from the picker (the `choose` path) still
+     goes through `changeTheme` directly, bypassing the debounce. */
   const stepTheme = useCallback(
     (delta: number) => {
       if (!theme || themes.length === 0) return;
-      const index = themes.findIndex((t) => t.slug === theme.slug);
-      const base = index === -1 ? 0 : index;
-      const nextIndex = (base + delta + themes.length) % themes.length;
+      // Step from the *currently-previewed* theme so two ← in a row move two
+      // steps, not one. Falls back to the committed theme when no preview is
+      // in flight.
+      const base = pendingThemeRef.current ?? theme;
+      const index = themes.findIndex((t) => t.slug === base.slug);
+      const baseIndex = index === -1 ? 0 : index;
+      const nextIndex = (baseIndex + delta + themes.length) % themes.length;
       const next = themes[nextIndex];
-      if (next) changeTheme(next);
+      if (!next) return;
+
+      // Preview path — reflect in React state + the document, nothing else.
+      pendingThemeRef.current = next;
+      setTheme(next);
+      applyThemeToDocument(next);
+
+      // Reset the commit timer.
+      if (arrowDebounceRef.current) clearTimeout(arrowDebounceRef.current);
+      arrowDebounceRef.current = setTimeout(() => {
+        const pending = pendingThemeRef.current;
+        pendingThemeRef.current = null;
+        arrowDebounceRef.current = null;
+        if (pending) changeTheme(pending);
+      }, ARROW_COMMIT_DEBOUNCE_MS);
     },
     [theme, themes, changeTheme],
   );
 
+  /* On unmount: cancel any pending commit. The previewed theme is already
+     applied to the document, so nothing visual is lost — we just don't
+     persist a choice the user never finished making. */
+  useEffect(() => {
+    return () => {
+      if (arrowDebounceRef.current) clearTimeout(arrowDebounceRef.current);
+    };
+  }, []);
+
   const randomTheme = useCallback(() => {
     if (themes.length === 0) return;
+    // Random is an intentional, single-shot pick — commit immediately. If a
+    // pending arrow-step commit is in flight, drop it (the random pick is
+    // the user's new intent).
+    if (arrowDebounceRef.current) {
+      clearTimeout(arrowDebounceRef.current);
+      arrowDebounceRef.current = null;
+      pendingThemeRef.current = null;
+    }
     let pick = themes[Math.floor(Math.random() * themes.length)];
     // Avoid picking the current theme when there's a choice.
     if (themes.length > 1 && theme && pick.slug === theme.slug) {
@@ -610,6 +710,19 @@ export default function ResumeStudio() {
     }, 60);
   }, []);
 
+  /**
+   * Resume Health → editor jump. The Health panel calls this with a 1-based
+   * line number; we drive the editor through its imperative handle (the
+   * editor focuses the textarea, selects the line, and scrolls to it).
+   *
+   * If the Health tab is the one currently rendered in the preview pane, the
+   * user might lose the highlight when their eye returns to the editor —
+   * which is fine; the editor itself has focus and the selection is visible.
+   */
+  const handleJumpToLine = useCallback((line: number) => {
+    editorHandleRef.current?.jumpToLine(line);
+  }, []);
+
   /** Clear the resume — resets to the empty Phase 1 state. */
   const handleClear = useCallback(() => {
     setMarkdown('');
@@ -618,6 +731,9 @@ export default function ResumeStudio() {
     setExportOpen(false);
     setThemePickerOpen(false);
     setHelpOpen(false);
+    // The preview pane is collapsed in Phase 1, but reset the tab anyway so
+    // a fresh upload lands the user on the preview rather than Health.
+    setPreviewTab('preview');
     // Clear is destructive by user intent — drop any saved draft too, so
     // a Clear that the user thought was permanent is actually permanent.
     clearDraft();
@@ -676,6 +792,20 @@ export default function ResumeStudio() {
             onNext={() => stepTheme(1)}
             onRandom={randomTheme}
           />
+
+          {/* Save as PDF — primary toolbar action (#90). A direct,
+              single-click path to the most common export. Lives as a peer
+              to the Export popover trigger (not inside it) because the
+              popover is for the long-tail exports and the radio-toggled
+              print modes; Save-as-PDF is the path the toolbar's loudest
+              button should ride. Calling window.print() picks up
+              document.body.dataset.printMode (set by the existing print
+              mode state) so the user's choice of conservative vs theme
+              print is honoured. */}
+          <button type="button" className="btn btn--primary" onClick={() => window.print()}>
+            <Icon name="file" size={14} />
+            Save as PDF
+          </button>
 
           <div className="export-panel">
             <button
@@ -814,7 +944,7 @@ export default function ResumeStudio() {
                 </span>
               </label>
             </div>
-            <MarkdownEditor value={markdown} onChange={setMarkdown} />
+            <MarkdownEditor value={markdown} onChange={setMarkdown} editorRef={editorHandleRef} />
           </div>
         </section>
 
@@ -825,11 +955,82 @@ export default function ResumeStudio() {
               <span className="studio__pane-dot" />
               <span className="studio__pane-dot" />
             </span>
-            <span className="studio__pane-tab">preview · {theme.name}</span>
+            {/* ----- Preview / Health tab toggle (#85) -----
+                Real <button> elements with role="tab", aria-selected, and
+                aria-controls pointing at the panel they govern. The pair is
+                hidden from the printed export via data-print-hide. */}
+            <div
+              className="studio__pane-tabs"
+              role="tablist"
+              aria-label="Preview pane"
+              data-print-hide
+            >
+              <button
+                type="button"
+                id={previewTabId}
+                role="tab"
+                aria-selected={previewTab === 'preview'}
+                aria-controls={previewPanelId}
+                tabIndex={previewTab === 'preview' ? 0 : -1}
+                className={
+                  previewTab === 'preview'
+                    ? 'studio__pane-tab studio__pane-tab--active'
+                    : 'studio__pane-tab'
+                }
+                onClick={() => setPreviewTab('preview')}
+              >
+                Preview
+              </button>
+              <button
+                type="button"
+                id={healthTabId}
+                role="tab"
+                aria-selected={previewTab === 'health'}
+                aria-controls={healthPanelId}
+                tabIndex={previewTab === 'health' ? 0 : -1}
+                className={
+                  previewTab === 'health'
+                    ? 'studio__pane-tab studio__pane-tab--active'
+                    : 'studio__pane-tab'
+                }
+                onClick={() => setPreviewTab('health')}
+              >
+                Health
+              </button>
+            </div>
+
+            {/* Theme name + WCAG badge (#88). The badge carries text + a
+                glyph, so the conformance level is never colour-only.
+                Shown only on the Preview tab — the Health tab has its own
+                score banner and the theme is irrelevant there. */}
+            {previewTab === 'preview' && (
+              <span className="studio__pane-meta">
+                <span className="studio__pane-theme-name">{theme.name}</span>
+                <WcagBadge ratio={theme.contrastRatio} />
+              </span>
+            )}
           </div>
-          <div className="studio__pane-body" ref={previewRef}>
-            <ResumePreview parsed={parsed} template={template} mode={previewMode} />
-          </div>
+          {previewTab === 'preview' ? (
+            <div
+              className="studio__pane-body"
+              ref={previewRef}
+              id={previewPanelId}
+              role="tabpanel"
+              aria-labelledby={previewTabId}
+            >
+              <ResumePreview parsed={parsed} template={template} mode={previewMode} />
+            </div>
+          ) : (
+            <div
+              className="studio__pane-body studio__pane-body--health"
+              id={healthPanelId}
+              role="tabpanel"
+              aria-labelledby={healthTabId}
+              data-print-hide
+            >
+              <ResumeHealth markdown={markdown} parsed={parsed} onJumpToLine={handleJumpToLine} />
+            </div>
+          )}
         </section>
       </div>
 
@@ -857,4 +1058,39 @@ function matchesDark(): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Small WCAG conformance badge for the preview pane header (#88).
+ *
+ * Carries text + a glyph so the level is never conveyed by colour alone:
+ *  - AAA → check glyph + green tint
+ *  - AA  → 'AA' literal + amber tint
+ *  - fails AA → ⚠ + red tint
+ *
+ * The numeric ratio appears alongside the level so a reader who knows the
+ * thresholds can sanity-check at a glance.
+ */
+function WcagBadge({ ratio }: { ratio: number }) {
+  const level = wcagLevel(ratio);
+  const className =
+    level === 'AAA'
+      ? 'studio__pane-wcag studio__pane-wcag--aaa'
+      : level === 'AA'
+        ? 'studio__pane-wcag studio__pane-wcag--aa'
+        : 'studio__pane-wcag studio__pane-wcag--fail';
+  // Glyph + literal carry the meaning; the colour is reinforcement only.
+  const glyph = level === 'AAA' ? '✓' : level === 'AA' ? 'AA' : '⚠';
+  // Full sentence for AT — same tone as the picker/controls labels.
+  const label = `Body text contrast ${ratio.toFixed(1)}:1 — WCAG ${level}`;
+  return (
+    <span className={className} title={label} aria-label={label} role="img">
+      <span className="studio__pane-wcag-glyph" aria-hidden="true">
+        {glyph}
+      </span>
+      <span className="studio__pane-wcag-text">
+        {level === 'fails AA' ? 'fails' : level} · {ratio.toFixed(1)}:1
+      </span>
+    </span>
+  );
 }
