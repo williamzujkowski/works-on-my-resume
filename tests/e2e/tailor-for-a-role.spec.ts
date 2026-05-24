@@ -81,19 +81,20 @@ test('pasting a JD surfaces Matches and Gaps and overlays marks on the preview',
   await expect(chip).toBeVisible({ timeout: 5_000 });
   await expect(chip).toHaveText(/\d+ \/ \d+ \(\d+%\)/);
 
-  // Matches: at least Kubernetes and Terraform land here. Case-insensitive
-  // text matches on the rendered list.
-  const matchesList = tailor.locator('.tailor__list--matches');
-  await expect(matchesList).toBeVisible();
-  await expect(matchesList).toContainText(/Kubernetes/i);
-  await expect(matchesList).toContainText(/Terraform/i);
+  // Matches: at least Kubernetes and Terraform land in *some* category
+  // group's matches list. After #116 there can be multiple matches lists
+  // (one per category) so we check across the union of them.
+  const allMatchItems = tailor.locator('.tailor__list--matches .tailor__list-item');
+  await expect(allMatchItems.first()).toBeVisible();
+  await expect(allMatchItems.filter({ hasText: /Kubernetes/i })).toHaveCount(1);
+  await expect(allMatchItems.filter({ hasText: /Terraform/i })).toHaveCount(1);
 
   // Gaps: Salesforce and Java appear in the JD multiple times and don't
-  // appear in the sample resume — they must be in the gaps list.
-  const gapsList = tailor.locator('.tailor__list--gaps');
-  await expect(gapsList).toBeVisible();
-  await expect(gapsList).toContainText(/Salesforce/i);
-  await expect(gapsList).toContainText(/Java/i);
+  // appear in the sample resume — they must show up in some gaps list.
+  const allGapItems = tailor.locator('.tailor__list--gaps .tailor__list-item');
+  await expect(allGapItems.first()).toBeVisible();
+  await expect(allGapItems.filter({ hasText: /Salesforce/i }).first()).toBeVisible();
+  await expect(allGapItems.filter({ hasText: /Java/i }).first()).toBeVisible();
 
   // Overlay marks: at least one <mark class="tailor-match"> wraps text in
   // the rendered resume article.
@@ -167,8 +168,15 @@ test('preview/health tab: marks unmount with the article and re-appear on return
 
   // The Matches/Gaps results stay on screen — the disclosure lives in
   // the editor pane, which is unaffected by the preview pane's tab.
-  await expect(tailor.locator('.tailor__list--matches')).toContainText(/Kubernetes/i);
-  await expect(tailor.locator('.tailor__list--gaps')).toContainText(/Salesforce/i);
+  await expect(
+    tailor.locator('.tailor__list--matches .tailor__list-item').filter({ hasText: /Kubernetes/i }),
+  ).toHaveCount(1);
+  await expect(
+    tailor
+      .locator('.tailor__list--gaps .tailor__list-item')
+      .filter({ hasText: /Salesforce/i })
+      .first(),
+  ).toBeVisible();
   // And the cached hit-rate chip is unchanged — no recompute ran while
   // the article was absent.
   await expect(chip).toHaveText(chipBefore ?? '');
