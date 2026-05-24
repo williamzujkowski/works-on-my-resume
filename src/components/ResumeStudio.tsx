@@ -55,6 +55,7 @@ import AtsModeToggle from './AtsModeToggle';
 import ExportPanel from './ExportPanel';
 import SnapshotsMenu from './SnapshotsMenu';
 import KeyboardHelp, { getStoredShortcutsEnabled, setStoredShortcutsEnabled } from './KeyboardHelp';
+import ExampleDialog from './ExampleDialog';
 import PageFitIndicator from './PageFitIndicator';
 import TailorForRole from './TailorForRole';
 import Icon from './Icon';
@@ -149,6 +150,17 @@ export default function ResumeStudio() {
 
   /* ----- Keyboard-shortcut help overlay (#58) ----- */
   const [helpOpen, setHelpOpen] = useState(false);
+
+  /* ----- "Open an example" dialog (#120) -----
+     When the Resume Health panel asks to open an example for a section the
+     writer's resume DOESN'T have, we open this dialog rather than no-op.
+     Null when closed; otherwise carries the H2 section name to show. The
+     section presence check happens in `handleJumpToSection` below — Health
+     just hands the section name up, and the parent picks editor-jump vs
+     dialog. */
+  const [exampleSection, setExampleSection] = useState<string | null>(null);
+  /* The button that opened the dialog, so focus can return on close. */
+  const exampleTriggerRef = useRef<HTMLElement | null>(null);
   /* Single-key shortcuts can be disabled for WCAG 2.1.4 mitigation. The
      stored preference is read once on mount (after hydration) to avoid an
      SSR/client mismatch — default `true` until then. */
@@ -811,14 +823,61 @@ export default function ResumeStudio() {
   }, []);
 
   /**
-   * Resume Health → "Open an example" affordance (#115). Jumps the editor
-   * textarea to the named H2 section so the writer can see a worked
-   * example of the pattern the heuristic is asking for. No-op when the
-   * section isn't present — the Health panel still surfaces the message,
-   * but the example button is hidden by the panel for that path.
+   * Resume Health → "Open an example" affordance (#115, #120).
+   *
+   * Two paths, picked by whether the writer's resume already carries the
+   * requested section:
+   *  - PRESENT: jump the editor textarea to the matching H2 so the writer
+   *    sees their own pattern (the original #115 behavior).
+   *  - ABSENT: open the ExampleDialog (#120) on the bundled sample, which
+   *    fetches `public/sample-resume.md`, slices the section, runs it
+   *    through `parseResume`, and renders it in a small modal. This avoids
+   *    the previous no-op when, say, a Junior resume didn't have a
+   *    Selected Impact section.
+   *
+   * The presence check reads the live `markdown` for H2 headings — same
+   * regex shape `editorHandleRef.current?.jumpToSection` uses internally,
+   * kept in sync deliberately so the routing decision matches the editor's
+   * actual ability to find the section.
    */
-  const handleJumpToSection = useCallback((sectionTitle: string) => {
-    editorHandleRef.current?.jumpToSection(sectionTitle);
+  const handleJumpToSection = useCallback(
+    (sectionTitle: string) => {
+      const want = sectionTitle.toLowerCase().trim();
+      const lines = markdown.split('\n');
+      let present = false;
+      for (const line of lines) {
+        const m = /^##\s+(?!#)(.+?)\s*$/.exec(line);
+        if (m && m[1].toLowerCase().trim() === want) {
+          present = true;
+          break;
+        }
+      }
+      if (present) {
+        editorHandleRef.current?.jumpToSection(sectionTitle);
+        return;
+      }
+      // Capture the currently-focused element so we can restore focus when
+      // the dialog closes — matches the KeyboardHelp UX. activeElement
+      // belongs to the Health panel's Open-an-example button by the time
+      // this callback fires from a click handler.
+      if (typeof document !== 'undefined') {
+        const active = document.activeElement;
+        exampleTriggerRef.current = active instanceof HTMLElement ? active : null;
+      }
+      setExampleSection(sectionTitle);
+    },
+    [markdown],
+  );
+
+  /** Close the example dialog and restore focus to its trigger. */
+  const closeExampleDialog = useCallback(() => {
+    setExampleSection(null);
+    // Defer so the dialog has unmounted before we move focus, matching the
+    // KeyboardHelp close pattern.
+    window.setTimeout(() => {
+      exampleTriggerRef.current?.focus();
+      exampleTriggerRef.current = null;
+    }, 0);
   }, []);
 
   /* ----- Snapshot handlers (#94). Each is gated on `draftEnabled` via the
@@ -1335,6 +1394,17 @@ export default function ResumeStudio() {
           onShortcutsEnabledChange={changeShortcutsEnabled}
           onClose={closeHelp}
         />
+      )}
+
+      {/* ----- Resume Health → Open-an-example dialog (#120) -----
+           Mounted only when the Health panel asks for an example AND the
+           writer's resume doesn't already have that section. Shows the
+           bundled sample's section, sanitized through the same parseResume
+           pipeline a real upload uses. Close affordances: Esc, click
+           outside, explicit close button — all routed through
+           `closeExampleDialog`, which also restores focus to the trigger. */}
+      {exampleSection !== null && (
+        <ExampleDialog sectionTitle={exampleSection} onClose={closeExampleDialog} />
       )}
 
       {/* ----- Overwrite toast (#77). Visual companion to the aria-live

@@ -177,7 +177,122 @@ test('selecting a rewrite inserts a sibling bullet above the original line', asy
 });
 
 /* ------------------------------------------------------------------ */
-/* 4. Existing rewrite-tray affordance (#93) is unaffected             */
+/* 4. Open-an-example fallback dialog (#120)                           */
+/* ------------------------------------------------------------------ */
+/* The Resume Health panel's "Open an example" button points at a section
+ * of the bundled sample. When the writer's resume already has that
+ * section, the editor textarea scrolls to it (the existing #115 behavior).
+ * When it DOESN'T — e.g. a Junior-shaped resume with no Selected Impact —
+ * we open a small modal showing the bundled sample's section. Previously
+ * the button was a no-op on that path, leaving the writer stuck.
+ *
+ * The fixture below uses a first-person bullet ("I shipped …") so the
+ * `first-person` rule fires; that rule's `suggest.section` is
+ * "Selected Impact", and we deliberately omit that section from the
+ * fixture so the fallback path is exercised.
+ */
+const RESUME_WITHOUT_SELECTED_IMPACT = [
+  '---',
+  'name: Test User',
+  'role: Engineer',
+  'email: test@example.com',
+  'links:',
+  '  - GitHub: https://example.com',
+  '---',
+  '',
+  '## Summary',
+  '',
+  'Body text so the preview renders.',
+  '',
+  '## Experience',
+  '',
+  '### Engineer — Acme',
+  '',
+  '- I shipped the cache layer and the deploy pipeline.',
+  '- Built a feature that mattered.',
+  '- Built another nice thing.',
+  '',
+  '## Skills',
+  '',
+  '- Things',
+  '',
+].join('\n');
+
+test('first-person "Open an example" opens the bundled sample fallback dialog', async ({
+  page,
+}) => {
+  await expandMobileEditor(page);
+  await page.getByLabel(/markdown source/i).fill(RESUME_WITHOUT_SELECTED_IMPACT);
+  await expect(page.getByRole('article', { name: /rendered resume/i })).toBeVisible();
+  await openHealthTab(page);
+
+  const panel = healthPanel(page);
+  const finding = panel.locator('.health__list [data-rule="first-person"]').first();
+  // The example button is now always offered for example-shaped findings
+  // (#120) — the panel no longer hides it on section-missing.
+  const exampleButton = finding.getByRole('button', { name: /open an example/i });
+  await expect(exampleButton).toBeVisible();
+  await exampleButton.click();
+
+  // Modal: role=dialog, labelled "Example: Selected Impact". Carries the
+  // sanitized bundled sample slice, including the H2 heading.
+  const dialog = page.getByRole('dialog', { name: /example: selected impact/i });
+  await expect(dialog).toBeVisible();
+  // Two H2s share the dialog: the modal's own "Example: Selected Impact"
+  // title and the rendered slice's "Selected Impact" heading. Match the
+  // slice one exactly so we don't accidentally accept the title and miss
+  // the case where the body didn't render.
+  await expect(
+    dialog.getByRole('heading', { name: 'Selected Impact', exact: true }),
+  ).toBeVisible();
+  // One of the bundled sample's bullets — assert the body content rendered,
+  // not just the heading. The sample's first Selected Impact bullet opens
+  // with "Cut median CI time".
+  await expect(dialog.getByText(/cut median ci time/i)).toBeVisible();
+
+  // Esc closes the dialog and focus returns to the trigger button.
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(exampleButton).toBeFocused();
+});
+
+test('first-person "Open an example" jumps the editor when the section IS present', async ({
+  page,
+}) => {
+  // Same first-person trigger, but this time the writer DOES have a
+  // Selected Impact section. The button should jump the editor textarea
+  // to that heading rather than opening the fallback dialog.
+  const withSelectedImpact = RESUME_WITHOUT_SELECTED_IMPACT.replace(
+    '## Summary',
+    '## Selected Impact\n\n- Outcome bullet.\n\n## Summary',
+  );
+  await expandMobileEditor(page);
+  await page.getByLabel(/markdown source/i).fill(withSelectedImpact);
+  await expect(page.getByRole('article', { name: /rendered resume/i })).toBeVisible();
+  await openHealthTab(page);
+
+  const panel = healthPanel(page);
+  const finding = panel.locator('.health__list [data-rule="first-person"]').first();
+  const exampleButton = finding.getByRole('button', { name: /open an example/i });
+  await expect(exampleButton).toBeVisible();
+
+  await expandMobileEditor(page);
+  await exampleButton.click();
+
+  // No dialog — the existing #115 path is taken.
+  await expect(page.getByRole('dialog', { name: /example: selected impact/i })).toHaveCount(0);
+
+  // The editor textarea selection lands on the "## Selected Impact" heading.
+  const textarea = page.getByLabel(/markdown source/i);
+  const selection = await textarea.evaluate((el) => {
+    const ta = el as HTMLTextAreaElement;
+    return ta.value.slice(ta.selectionStart, ta.selectionEnd);
+  });
+  expect(selection).toBe('## Selected Impact');
+});
+
+/* ------------------------------------------------------------------ */
+/* 5. Existing rewrite-tray affordance (#93) is unaffected             */
 /* ------------------------------------------------------------------ */
 test('in-editor rewrite tray still surfaces when caret lands on an Experience bullet', async ({
   page,

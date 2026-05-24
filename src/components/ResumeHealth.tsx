@@ -49,8 +49,11 @@ interface Props {
    */
   onInsertRewrite?: (targetLine: number, rewrittenLine: string) => void;
   /**
-   * Hook for "Open an example" (#115). Scrolls the editor textarea to the
-   * named H2 section. No-op when the section isn't present in the source.
+   * Hook for "Open an example" (#115, #120). The parent decides what to do
+   * with the section name: when the writer's resume already has it, jump
+   * the editor textarea to that H2; otherwise open a dialog showing the
+   * bundled sample's section so the writer sees a worked example. The
+   * Health panel always shows the button — the parent owns the fallback.
    */
   onJumpToSection?: (sectionTitle: string) => void;
 }
@@ -96,26 +99,6 @@ export default function ResumeHealth({
     if (!parsed) return null;
     return analyzeResume(markdown, parsed, stage);
   }, [markdown, parsed, stage]);
-
-  /**
-   * Pre-compute which H2 sections are present in the source markdown so
-   * the "Open an example" affordance can hide itself when the example
-   * section is missing (e.g. the writer hasn't added a Summary yet).
-   * Pure read against the document; no DOM, no IO.
-   */
-  const sectionTitles = useMemo(() => {
-    const titles = new Set<string>();
-    const lines = markdown.split('\n');
-    for (const line of lines) {
-      const m = /^##\s+(?!#)(.+?)\s*$/.exec(line);
-      if (m) titles.add(m[1].toLowerCase().trim());
-    }
-    return titles;
-  }, [markdown]);
-  const hasResumeSection = useMemo(
-    () => (sectionTitle: string) => sectionTitles.has(sectionTitle.toLowerCase().trim()),
-    [sectionTitles],
-  );
 
   /* ----- Empty state: no resume loaded yet ----- */
   if (!parsed || !report) {
@@ -175,7 +158,6 @@ export default function ResumeHealth({
               // every offending line); include the index for uniqueness.
               key={`${finding.id}-${finding.line ?? 'doc'}-${i}`}
               finding={finding}
-              hasResumeSection={hasResumeSection}
               onJumpToLine={onJumpToLine}
               onJumpToOffender={onJumpToOffender}
               onInsertRewrite={onInsertRewrite}
@@ -223,15 +205,12 @@ function labelFor(stage: CareerStage): string {
  */
 function FindingItem({
   finding,
-  hasResumeSection,
   onJumpToLine,
   onJumpToOffender,
   onInsertRewrite,
   onJumpToSection,
 }: {
   finding: HealthFinding;
-  /** True when the sample section the finding references is present. */
-  hasResumeSection: (sectionTitle: string) => boolean;
   onJumpToLine?: (line: number) => void;
   onJumpToOffender?: (line: number, offender: string) => void;
   onInsertRewrite?: (targetLine: number, rewrittenLine: string) => void;
@@ -274,10 +253,14 @@ function FindingItem({
     rewriteCandidates.length > 0 &&
     onInsertRewrite !== undefined &&
     finding.line !== undefined;
+  /* "Open an example" is offered whenever the finding is shaped as an
+     example suggestion. We always show the button — the parent (ResumeStudio)
+     routes the click: if the writer's resume already has the section, jump
+     there in the editor; otherwise open a dialog showing the bundled
+     sample's section (#120). The Health panel intentionally doesn't know
+     about the dialog fallback — it just hands the section name up. */
   const canOpenExample =
-    finding.suggest?.kind === 'example' &&
-    onJumpToSection !== undefined &&
-    hasResumeSection(finding.suggest.section);
+    finding.suggest?.kind === 'example' && onJumpToSection !== undefined;
 
   /**
    * Apply a candidate rewrite: insert above the offending line, close the

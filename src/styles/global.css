@@ -2453,6 +2453,89 @@ a {
 }
 
 /* ------------------------------------------------------------------ */
+/* Resume Health "Open an example" fallback dialog (#120)              */
+/* ------------------------------------------------------------------ */
+/* Mirrors the KeyboardHelp modal: a centered card on a dimmed overlay,
+   focus-trapped, dismissable via Esc, click-outside, or the close button.
+   Styling lives behind a separate class root (`health-example-dialog__*`)
+   so the rules can never bleed into other modals or into the in-pane
+   resume preview that the dialog body re-uses for its rendered slice. */
+
+.health-example-dialog__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(4, 6, 10, 0.66);
+  animation: kbd-help-fade 140ms ease-out;
+}
+
+.health-example-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(40rem, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--space-5);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+}
+
+.health-example-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.health-example-dialog__title {
+  font-family: var(--font-mono);
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--ui-fg);
+  margin: 0;
+}
+
+.health-example-dialog__intro {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--ui-fg-muted);
+  margin: 0;
+}
+
+/* The slice container uses `resume-preview` for typography so the section
+   renders with the same heading/list styles a real preview gets, but the
+   dialog wrapper here gives it a softer card around itself so it reads
+   as an embedded example rather than a real export. */
+.health-example-dialog__body {
+  padding: var(--space-4);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+}
+
+.health-example-dialog__body h2 {
+  margin-top: 0;
+}
+
+.health-example-dialog__fallback {
+  margin: 0;
+  padding: var(--space-4);
+  font-size: 0.85rem;
+  color: var(--ui-fg-muted);
+  background: var(--ui-bg);
+  border: 1px dashed var(--ui-border);
+  border-radius: var(--radius-md);
+}
+
+/* ------------------------------------------------------------------ */
 /* Overwrite toast (#77) — visual companion to the aria-live notice    */
 /* ------------------------------------------------------------------ */
 
