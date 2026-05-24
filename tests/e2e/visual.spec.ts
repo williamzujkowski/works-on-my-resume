@@ -16,7 +16,7 @@
  * disabled via the global config.
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, loadSampleResume } from './helpers';
+import { clearAppStorage, loadSampleResume, waitForThemesReady } from './helpers';
 
 /* Mobile baselines would multiply the snapshot count without adding much
    signal — keep visual regression desktop-only. */
@@ -39,6 +39,11 @@ for (const { slug, label } of CASES) {
     await clearAppStorage(page);
     await page.goto(`?theme=${slug}`);
     await loadSampleResume(page);
+    /* After #80 the dataset loads lazily on idle — wait for it to be in
+       place before snapshotting. Without this, the trigger could still
+       show "WOMR Default" (the boot fallback) at snapshot time, then
+       swap to the requested theme moments later. */
+    await waitForThemesReady(page);
 
     /* Confirm the theme actually committed before snapshotting — both the
        URL slug AND the `data-resume-mode` attribute the engine sets when

@@ -14,7 +14,7 @@
  * preference starts at its default (true).
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, loadSampleResume } from './helpers';
+import { clearAppStorage, loadSampleResume, waitForThemesReady } from './helpers';
 
 /** Read the document-level CSS var so a "theme changed" assertion is honest. */
 async function readBgVar(page: import('@playwright/test').Page): Promise<string> {
@@ -27,6 +27,12 @@ test.beforeEach(async ({ page }) => {
   await clearAppStorage(page);
   await page.goto('');
   await loadSampleResume(page);
+  // After #80 the theme dataset loads lazily on idle. Several tests below
+  // snapshot `--resume-bg` and assert it does NOT change — but if the
+  // dataset's post-load re-resolve fires mid-test (swapping the boot
+  // fallback for a curated light theme), the snapshot would flip. Wait for
+  // the dataset to be in place before anyone reads CSS variables.
+  await waitForThemesReady(page);
   // Move focus to the document body via the skip-link sink — body is
   // non-editable, so global shortcuts are eligible to fire and the keydown's
   // `event.target` is not a button that might intercept Escape itself.
@@ -84,6 +90,9 @@ test('arrow keys shuffle the theme when shortcuts are enabled and focus is non-e
      of the dataset; stepping forward lands on something different. */
   await page.goto('?theme=dracula');
   await loadSampleResume(page);
+  // The dataset is lazy-loaded on idle (#80); wait until it's in place
+  // before asserting that the URL slug has been resolved to a real theme.
+  await waitForThemesReady(page);
   await expect(page.locator('.theme-picker__trigger-name').first()).toHaveText('Dracula');
 
   // Park focus on a non-editable, focusable element so `event.target` in the

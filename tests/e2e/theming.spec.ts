@@ -10,12 +10,21 @@
  *  - Closing the popover without selecting reverts a hover preview.
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, loadSampleResume, openThemePickerReady } from './helpers';
+import {
+  clearAppStorage,
+  loadSampleResume,
+  openThemePickerReady,
+  waitForThemesReady,
+} from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await clearAppStorage(page);
   await page.goto('');
   await loadSampleResume(page);
+  // After #80 the dataset loads lazily on idle. Settle the committed theme
+  // BEFORE the test body runs so any `--resume-bg` snapshot taken before
+  // opening the picker is not invalidated by a mid-test re-resolution.
+  await waitForThemesReady(page);
 });
 
 test('opening the picker shows the search input and the option list', async ({ page }) => {

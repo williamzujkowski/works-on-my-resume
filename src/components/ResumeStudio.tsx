@@ -151,18 +151,32 @@ export default function ResumeStudio() {
   const lineCount = markdown.length === 0 ? 0 : markdown.split('\n').length;
 
   /* ---------------------------------------------------------------- *
-   * Mount: resolve and apply the initial theme, then async-load the   *
-   * full theme dataset (#78). Two-stage so first paint is never       *
-   * blocked on the ~600 kB JSON chunk:                                *
+   * Mount: resolve and apply the initial theme. Deferred lazy-load    *
+   * of the full dataset (#78, #80).                                   *
+   *                                                                   *
+   * Two-stage so first paint is never blocked on the ~600 kB JSON     *
+   * chunk:                                                            *
    *                                                                   *
    *   1. Sync: resolve from URL/storage/curated and apply             *
    *      `HARDCODED_FALLBACK` (the only theme available before the    *
    *      dataset loads). For a URL or stored slug we hold the slug    *
    *      and reapply post-load — `findTheme` returns undefined for    *
    *      now since the cache is empty.                                *
-   *   2. Async: dynamic-import the dataset, hand the full list to     *
-   *      state, and re-resolve the active theme so a `?theme=foo`     *
-   *      URL ends up displaying `foo` rather than the boot fallback.  *
+   *   2. Async: dynamic-import the dataset on `requestIdleCallback`   *
+   *      (falling back to `setTimeout` on Safari), hand the full      *
+   *      list to state, and re-resolve the active theme so a          *
+   *      `?theme=foo` URL ends up displaying `foo` rather than the    *
+   *      boot fallback.                                                *
+   *                                                                   *
+   * Why idle, not eager (#80): the ThemePicker also triggers          *
+   * `loadAllThemesAsync()` the first time the popover opens — the     *
+   * same memoized promise — so a user who never browses themes pays   *
+   * nothing for the chunk. But a user with `?theme=tomorrow-night-    *
+   * blue` (or a stored slug not in HARDCODED_FALLBACK) never opens    *
+   * the picker; they just want their saved theme applied. The idle    *
+   * callback honors that invariant — the dataset still loads, just    *
+   * not until after the resume preview has painted, so it never       *
+   * costs first-paint latency.                                         *
    * ---------------------------------------------------------------- */
   useEffect(() => {
     const slug = resolveInitialThemeSlug();
@@ -170,31 +184,56 @@ export default function ResumeStudio() {
     setTheme(initial);
     applyThemeToDocument(initial);
 
-    // Kick off the lazy load. If it has already happened (HMR, fast nav)
-    // `loadAllThemesAsync` returns the cached array immediately.
     let cancelled = false;
-    loadAllThemesAsync()
-      .then((all) => {
-        if (cancelled) return;
-        setThemes(all);
-        setThemesReady(true);
-        // Re-resolve the active theme now that the full dataset is here.
-        // If the URL/stored slug points at a real theme we did not have
-        // synchronously, swap it in (and re-apply). Otherwise leave the
-        // boot fallback alone — the user hasn't expressed an opinion yet.
-        const resolved = resolveInitialThemeSlug();
-        const real = findTheme(resolved);
-        if (real && real.slug !== initial.slug) {
-          setTheme(real);
-          applyThemeToDocument(real);
-        }
-      })
-      .catch(() => {
-        // Network / chunk-load failure: keep the boot fallback. The picker
-        // remains usable on just the fallback theme — degraded but legible.
-      });
+    // Promise the post-load resolve/apply step, regardless of which trigger
+    // (idle-callback here, or ThemePicker open) actually kicks off the
+    // dynamic import. Both call paths share the memoized `loadPromise` in
+    // themes.ts, so this `.then` chain runs exactly once.
+    function applyOnceLoaded(): void {
+      loadAllThemesAsync()
+        .then((all) => {
+          if (cancelled) return;
+          setThemes(all);
+          setThemesReady(true);
+          // Re-resolve the active theme now that the full dataset is here.
+          // If the URL/stored slug points at a real theme we did not have
+          // synchronously, swap it in (and re-apply). Otherwise leave the
+          // boot fallback alone — the user hasn't expressed an opinion yet.
+          const resolved = resolveInitialThemeSlug();
+          const real = findTheme(resolved);
+          if (real && real.slug !== initial.slug) {
+            setTheme(real);
+            applyThemeToDocument(real);
+          }
+          // Expose a small deterministic signal on <html> so e2e tests can
+          // wait for the dataset to be in place before asserting on theme
+          // state. Cheap, idempotent, and invisible to users.
+          if (typeof document !== 'undefined') {
+            document.documentElement.dataset.themesReady = 'true';
+          }
+        })
+        .catch(() => {
+          // Network / chunk-load failure: keep the boot fallback. The picker
+          // remains usable on just the fallback theme — degraded but legible.
+        });
+    }
+
+    // Defer the trigger until the browser is idle (or ~200 ms have passed on
+    // engines without `requestIdleCallback`, notably Safari). This lets the
+    // resume preview paint first; the picker can also trigger the same load
+    // earlier if the user opens it — `loadAllThemesAsync` dedupes either way.
+    let handle: number;
+    const useIdle = 'requestIdleCallback' in window;
+    if (useIdle) {
+      handle = window.requestIdleCallback(applyOnceLoaded);
+    } else {
+      handle = window.setTimeout(applyOnceLoaded, 200);
+    }
+
     return () => {
       cancelled = true;
+      if (useIdle) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
     };
   }, []);
 

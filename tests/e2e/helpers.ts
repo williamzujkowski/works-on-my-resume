@@ -70,6 +70,25 @@ export async function loadSampleResume(page: Page): Promise<void> {
   await expect(article.getByText('Avery Quinn')).toBeVisible({ timeout: 10_000 });
 }
 
+/**
+ * Wait until the lazy-loaded ~545-theme dataset (#78, #80) is in place.
+ *
+ * After #80 the dataset is no longer eagerly imported on ResumeStudio mount —
+ * it loads on `requestIdleCallback` (or when the picker first opens). Any
+ * test that asserts on a theme NAME, on a theme-derived CSS variable, or on a
+ * `?theme=<slug>` round-trip must wait for this signal first; otherwise the
+ * `--resume-bg` snapshot it captures may still be the boot fallback and swap
+ * underneath the test as the idle callback fires.
+ *
+ * The signal is `<html data-themes-ready="true">`, set in ResumeStudio's
+ * post-load handler. The 10 s timeout absorbs cold-cache CI runs.
+ */
+export async function waitForThemesReady(page: Page): Promise<void> {
+  await page.waitForFunction(() => document.documentElement.dataset.themesReady === 'true', {
+    timeout: 10_000,
+  });
+}
+
 /** Convenience locator for the resume preview article. */
 export function previewArticle(page: Page): Locator {
   return page.getByRole('article', { name: /rendered resume/i });

@@ -25,7 +25,7 @@
  */
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ResumeTheme } from '../types';
-import { applyThemeToDocument, filterThemes } from '../utils/themes';
+import { applyThemeToDocument, filterThemes, loadAllThemesAsync } from '../utils/themes';
 import Icon from './Icon';
 
 /* ----------------------------------------------------------------------------
@@ -185,6 +185,17 @@ export default function ThemePicker({
      a preview never lingers as if it had been chosen. */
   useEffect(() => {
     if (!open) return;
+    // Lazy-load the ~545-theme dataset (#80): the dynamic import is the
+    // primary trigger here, so a user who never opens the picker pays
+    // nothing for the chunk. `loadAllThemesAsync` memoizes the in-flight /
+    // completed promise, so reopening the popover is a no-op — and the
+    // ResumeStudio idle-callback path that handles `?theme=` users hits the
+    // same cache. Fire-and-forget: ResumeStudio's `.then` handler picks up
+    // the dataset, switches `themesLoading` off, and re-resolves the active
+    // slug if needed. Errors are absorbed there too.
+    void loadAllThemesAsync().catch(() => {
+      /* surfaced by ResumeStudio's load-handler */
+    });
     baseThemeRef.current = current;
     committedRef.current = false;
     // Seed the preview slug with the already-applied theme: highlighting it on
