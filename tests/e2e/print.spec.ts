@@ -463,6 +463,62 @@ test('modern layout × conservative print — content is not missing', async ({ 
 });
 
 /* ------------------------------------------------------------------ *
+ * Page-counter footer (#109)                                          *
+ * `@page` rules are document-scoped, so we can't easily assert the    *
+ * footer renders pixel-perfect in Playwright without driving a real   *
+ * PDF. Instead we lock in that the rule is loaded into the stylesheet *
+ * — that is the contract that makes the footer appear when the user   *
+ * prints, and a regression that removes the rule would also remove    *
+ * the matching CSS text from the cssRules tree.                       *
+ * ------------------------------------------------------------------ */
+
+/**
+ * True iff any same-origin stylesheet on the page contains a rule whose
+ * cssText includes `counter(pages)`. Cross-origin stylesheets throw on
+ * `.cssRules` access — we swallow that per-sheet and keep scanning.
+ */
+async function pageCounterRuleLoaded(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const sheets = [...document.styleSheets];
+    return sheets.some((sheet) => {
+      try {
+        const rules = [...(sheet.cssRules ?? [])];
+        return rules.some((rule) => rule.cssText.includes('counter(pages)'));
+      } catch {
+        return false;
+      }
+    });
+  });
+}
+
+test('print.css declares the @page footer with counter(pages) for multi-page resumes (#109)', async ({
+  page,
+}) => {
+  // The footer is a conservative-mode feature; emulate print and assert the
+  // rule is present in the loaded stylesheet tree. We do not assert on the
+  // actual rendered footer (no real paginated PDF in Playwright) — the rule
+  // being parsed and loaded is the contract.
+  await setPrintMode(page, 'conservative');
+
+  const loaded = await pageCounterRuleLoaded(page);
+  expect(loaded, 'print.css should declare counter(pages) for the @page footer').toBe(true);
+});
+
+test('print.css @page footer rule remains loaded in theme mode (#109)', async ({ page }) => {
+  // `@page` rules are document-scoped: switching print modes does not unload
+  // the rule from `document.styleSheets`. Theme-mode suppression is wired via
+  // a CSS custom property (`--print-page-footer`) that the @page margin box
+  // reads — overriding it to the empty string under
+  // `html:has(body[data-print-mode='theme'])`. That override lives in the
+  // same stylesheet, so the rule itself stays present; we just verify it is
+  // still parseable here (catches future syntax regressions).
+  await setPrintMode(page, 'theme');
+
+  const loaded = await pageCounterRuleLoaded(page);
+  expect(loaded, '@page rule should remain in the stylesheet tree under theme mode').toBe(true);
+});
+
+/* ------------------------------------------------------------------ *
  * Standalone HTML export — sanity check                               *
  * Validates the OTHER artifact users get out of the studio: the       *
  * downloadable .html file built by `buildStandaloneHtml`.              *
@@ -539,6 +595,11 @@ test('Download HTML export defaults to data-print-mode="conservative"', async ({
   // The body carries the conservative attribute — that is what the embedded
   // print.css branches off when the recipient prints.
   expect(html).toMatch(/<body[^>]*data-print-mode="conservative"/);
+  // The embedded print CSS includes the multi-page footer rule (#109) so a
+  // downloaded HTML PDF matches the in-app print output.
+  expect(html, 'embedded print CSS includes the @page page-counter footer').toContain(
+    'counter(pages)',
+  );
   // And the document is otherwise complete: every sample section heading is
   // still present (the print-mode attribute changes the print CSS, not the
   // rendered content).

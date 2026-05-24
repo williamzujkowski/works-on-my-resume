@@ -85,6 +85,64 @@
   }
 
   /* --------------------------------------------------------------
+   * Multi-page footer (#109) — "Page X of Y" in the bottom-right
+   * margin box for conservative print mode only.
+   *
+   * Design choices, all driven by the constraint that `@page` rules
+   * are document-scoped (not selector-scoped), so we cannot key the
+   * footer directly off `body[data-print-mode]`:
+   *
+   *   1. Suppress on page 1 via `@page :first`. CSS cannot read the
+   *      value of `counter(pages)` conditionally, so we cannot say
+   *      "hide on single-page resumes only". The next best thing is
+   *      to omit page 1's footer ALWAYS — which means a one-page
+   *      resume shows no footer at all (the desired outcome), and a
+   *      multi-page resume starts numbering at "Page 2 of N". That
+   *      reads cleanly and avoids a useless "1 / 1" on the common case.
+   *
+   *   2. Honor theme print mode by routing the footer text through a
+   *      custom property defined at the document root. Theme mode
+   *      sets it to the empty string; conservative mode (the default)
+   *      sets it to the full "Page X of Y" expression. `@page` margin
+   *      boxes inherit custom properties from the document root, so
+   *      this cleanly toggles the footer without duplicating the rule.
+   *
+   *   3. Use `html:has(body[data-print-mode='theme'])` to detect the
+   *      theme-mode body attribute from the root element, since the
+   *      app writes the attribute on `<body>` but `@page` only reads
+   *      properties cascaded from the root.
+   * ------------------------------------------------------------ */
+  :root {
+    --print-page-footer: 'Page ' counter(page) ' of ' counter(pages);
+  }
+
+  /* Theme print mode suppresses the footer — the theme has its own
+     visual identity and the page-counter would clutter it. */
+  html:has(body[data-print-mode='theme']) {
+    --print-page-footer: '';
+  }
+
+  @page {
+    @bottom-right {
+      content: var(--print-page-footer);
+      font: 10pt 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif;
+      color: rgb(0 0 0 / 0.6);
+      /* Pull the footer in from the page edge so it sits inside the
+         body's 0.6in padding visually, matching the resume's margin. */
+      padding: 0 0.6in 0.4in 0;
+    }
+  }
+
+  /* Suppress the footer on page 1 always — a single-page resume needs no
+     "1 / 1" footer, and a multi-page resume reads more naturally starting
+     at "Page 2 of N" than "Page 1 of N" on the cover page. */
+  @page :first {
+    @bottom-right {
+      content: none;
+    }
+  }
+
+  /* --------------------------------------------------------------
    * The resume document itself.
    * ------------------------------------------------------------ */
   .resume-preview {

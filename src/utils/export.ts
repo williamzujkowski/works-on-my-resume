@@ -175,6 +175,32 @@ body {
   margin: 0;
 }
 
+/* Multi-page footer (#109) — see src/styles/print.css for the full rationale.
+   Conservative-mode default is "Page X of Y"; theme mode suppresses it; page 1
+   is always blank so single-page resumes show nothing at all. */
+:root {
+  --print-page-footer: 'Page ' counter(page) ' of ' counter(pages);
+}
+
+html:has(body[data-print-mode='theme']) {
+  --print-page-footer: '';
+}
+
+@page {
+  @bottom-right {
+    content: var(--print-page-footer);
+    font: 10pt 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif;
+    color: rgb(0 0 0 / 0.6);
+    padding: 0 0.6in 0.4in 0;
+  }
+}
+
+@page :first {
+  @bottom-right {
+    content: none;
+  }
+}
+
 @media print {
   body {
     padding: 0.6in;
