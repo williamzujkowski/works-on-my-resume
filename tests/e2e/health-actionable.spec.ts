@@ -84,6 +84,13 @@ test('weak-verb "Jump to line" selects the offender substring', async ({ page })
   await expect(jumpButton).toBeVisible();
   await jumpButton.click();
 
+  // On mobile the editor pane collapses into a <details> accordion once a
+  // resume is loaded (#100). The jump-to-line call still focuses the
+  // textarea and writes the selection, but inside a collapsed <details>
+  // the selection isn't observable. Re-expand so the assertion reads the
+  // same DOM state a sighted mobile user sees.
+  await expandMobileEditor(page);
+
   // After the jump, the textarea selection should land on "Worked on".
   // We read the live DOM selection — `selectionStart`/`selectionEnd` are
   // the canonical signal that a substring (not the whole line) was picked.
@@ -149,6 +156,8 @@ test('selecting a rewrite inserts a sibling bullet above the original line', asy
     .getByRole('menuitem', { name: /verb upgrade.*worked on.*built/i });
   await upgrade.click();
 
+  // Re-expand the mobile accordion (#100) so the textarea is observable.
+  await expandMobileEditor(page);
   const textareaValue = await page
     .getByLabel(/markdown source/i)
     .evaluate((el) => (el as HTMLTextAreaElement).value);
@@ -177,6 +186,9 @@ test('in-editor rewrite tray still surfaces when caret lands on an Experience bu
   const textarea = page.getByLabel(/markdown source/i);
   await textarea.fill(RESUME_WITH_WEAK_VERB);
   await expect(page.getByRole('article', { name: /rendered resume/i })).toBeVisible();
+  // Mobile accordion collapses on hasResume transition (#100); re-expand
+  // so the textarea is interactable.
+  await expandMobileEditor(page);
 
   // Place the caret inside the weak-verb bullet and force React to re-derive
   // caret state through its real event handlers. We position via the DOM
