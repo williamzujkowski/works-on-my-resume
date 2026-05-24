@@ -31,7 +31,11 @@
   body {
     background: #fff;
     margin: 0;
-    padding: 0;
+    /* Page margins live on the body (not on @page) so the body's background
+       reaches the printed page edges — otherwise theme print mode shows the
+       printer's default white paper as a frame around the themed content
+       (#106). Conservative mode is unaffected: white-on-white looks identical. */
+    padding: 0.6in;
   }
 
   .app-shell,
@@ -72,10 +76,12 @@
     display: none !important;
   }
 
-  /* Letter-size friendly margins. */
+  /* Letter-size pages with zero page margin — the body's 0.6in padding (set
+     above) provides the visible margin. This is what lets theme print mode
+     paint its background all the way to the page edge (#106). */
   @page {
     size: letter;
-    margin: 0.6in;
+    margin: 0;
   }
 
   /* --------------------------------------------------------------
@@ -287,9 +293,17 @@
 
   /* --------------------------------------------------------------
    * THEME mode — print with the active theme colors. The resume
-   * already consumes --resume-* vars, so we only need to ask the
-   * browser to actually print background colors.
+   * already consumes --resume-* vars; we ask the browser to actually
+   * print background colors AND extend the themed background to the
+   * page edges. Pair: @page { margin: 0 } above + the body's 0.6in
+   * padding becomes the themed-margin frame around the resume (#106).
    * ------------------------------------------------------------ */
+  body[data-print-mode='theme'] {
+    background: var(--resume-bg) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   body[data-print-mode='theme'] .resume-preview {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;

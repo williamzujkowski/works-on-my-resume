@@ -166,10 +166,18 @@ body {
   margin-inline: auto;
 }
 
-/* Print: drop the page padding and the sheet chrome, keep breaks clean. */
+/* Print: page margin moves from @page onto the body so the body's background
+   reaches the printed page edges — otherwise theme print mode shows the
+   printer's default white paper as a frame around the themed content (#106).
+   Conservative mode looks identical (white-on-white). */
+@page {
+  size: letter;
+  margin: 0;
+}
+
 @media print {
   body {
-    padding: 0;
+    padding: 0.6in;
   }
 
   .resume-preview {
@@ -205,6 +213,8 @@ body {
    * -------------------------------------------------------------- */
   body[data-print-mode='theme'] {
     background: var(--resume-bg, #ffffff);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   body[data-print-mode='theme'] .resume-preview {
