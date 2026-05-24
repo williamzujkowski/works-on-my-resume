@@ -36,7 +36,6 @@ import {
   extractTerms,
   formatHitRate,
   matchResume,
-  summarizeOverlap,
   summarizeOverlapByCategory,
   type TailorCategory,
   type TailorCategoryStats,
@@ -50,10 +49,6 @@ import Icon from './Icon';
 
 /** Debounce window between textarea edits and recompute. */
 const COMPUTE_DEBOUNCE_MS = 400;
-
-/** Top-N gaps surfaced overall (the per-category buckets are uncapped, but
-   the overall summary still caps for the live-region announcement). */
-const MAX_GAPS = 8;
 
 /** Class applied to the `<mark>` wrapper inserted into resume text nodes. */
 const MARK_CLASS = 'tailor-match';
@@ -406,11 +401,9 @@ export default function TailorForRole({
     () => (matches ? matches.filter((m) => m.matched) : []),
     [matches],
   );
-  const summary = useMemo(() => (matches ? summarizeOverlap(matches, MAX_GAPS) : null), [matches]);
   /* Per-category roll-up (#116). Cheap; only re-runs when matches change.
-     Cached separately from `summary` because category counts are
-     surfaced in two places (the summary chip + the section headers) and
-     a single derivation keeps the two in lockstep. */
+     Carries the matches and gaps for each bucket in JD-frequency order,
+     so the lists render in stable, predictable sequence. */
   const byCategory = useMemo(
     () => (matches ? summarizeOverlapByCategory(matches) : null),
     [matches],
