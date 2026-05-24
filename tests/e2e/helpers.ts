@@ -95,6 +95,29 @@ export function previewArticle(page: Page): Locator {
 }
 
 /**
+ * Expand the mobile editor accordion (#100) when running on the
+ * `mobile-iphone-13` Playwright project, no-op otherwise.
+ *
+ * Background: below 640px the editor pane collapses to a <details>
+ * accordion as soon as a resume is loaded, so the preview is the first
+ * thing the user sees. Any mobile test that interacts with the editor
+ * (textarea, insert-section menu, draft-toggle, the snapshots gate)
+ * must first expand the accordion. The summary tap is the natural,
+ * accessible way to do that. Idempotent: if the accordion is already
+ * open the call is a no-op.
+ */
+export async function expandMobileEditor(page: Page): Promise<void> {
+  const details = page.locator('details.studio__pane--editor');
+  // The element always exists in Phase 2 — but guard for the rare cases
+  // where a test asserts the empty-state pane.
+  if ((await details.count()) === 0) return;
+  const isOpen = await details.evaluate((el) => (el as HTMLDetailsElement).open);
+  if (!isOpen) {
+    await details.locator('summary').click();
+  }
+}
+
+/**
  * Open the theme picker and wait for the lazy-loaded ~545-theme dataset
  * (#78) to be in place before returning. Tests that count or filter the
  * option list MUST call this rather than clicking the trigger directly,

@@ -14,7 +14,12 @@
  * preference starts at its default (true).
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, loadSampleResume, waitForThemesReady } from './helpers';
+import {
+  clearAppStorage,
+  expandMobileEditor,
+  loadSampleResume,
+  waitForThemesReady,
+} from './helpers';
 
 /** Read the document-level CSS var so a "theme changed" assertion is honest. */
 async function readBgVar(page: import('@playwright/test').Page): Promise<string> {
@@ -120,6 +125,10 @@ test('arrow keys shuffle the theme when shortcuts are enabled and focus is non-e
 
 test('arrow keys do NOT shuffle the theme when focus is in the editor', async ({ page }) => {
   const before = await readBgVar(page);
+  // On mobile (#100) the editor pane collapses after a resume loads; the
+  // textarea sits inside the collapsed accordion, so expand it before
+  // trying to park focus there.
+  await expandMobileEditor(page);
   // Park focus in the Markdown source textarea.
   await page.getByLabel(/markdown source/i).click();
   await page.keyboard.press('ArrowRight');

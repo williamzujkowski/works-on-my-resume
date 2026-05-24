@@ -31,13 +31,17 @@ import {
 } from '../utils/themes';
 import {
   clearDraft,
+  deleteSnapshot,
   getDraft,
+  getSnapshots,
   getStoredTemplate,
   isDraftPersistenceEnabled,
+  saveSnapshot,
   setDraft,
   setDraftPersistenceEnabled,
   setStoredTemplate,
   setStoredThemeSlug,
+  type ResumeSnapshot,
 } from '../utils/storage';
 import MarkdownUploader from './MarkdownUploader';
 import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor';
@@ -49,6 +53,7 @@ import ThemeControls from './ThemeControls';
 import LayoutSelector from './LayoutSelector';
 import AtsModeToggle from './AtsModeToggle';
 import ExportPanel from './ExportPanel';
+import SnapshotsMenu from './SnapshotsMenu';
 import KeyboardHelp, { getStoredShortcutsEnabled, setStoredShortcutsEnabled } from './KeyboardHelp';
 import Icon from './Icon';
 import Toast from './Toast';
@@ -156,6 +161,13 @@ export default function ResumeStudio() {
   const [draftEnabled, setDraftEnabled] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
 
+  /* ----- Resume version snapshots (#94) -----
+     Local, gated on the same opt-in as draft autosave. The list is hydrated
+     from storage once on mount (alongside the draft restore) and then kept
+     in lockstep with storage via the save / delete callbacks. Empty when
+     the gate is off. */
+  const [snapshots, setSnapshots] = useState<ResumeSnapshot[]>([]);
+
   const themeSearchInputId = useId();
   const draftCheckboxId = useId();
   /* IDs the preview/health tab control uses for aria-controls + aria-labelledby
@@ -182,6 +194,19 @@ export default function ResumeStudio() {
      ResumeStudio owns this ref because Health and the editor live in
      sibling sub-trees (the split panes); the ref is the cross-pane bridge. */
   const editorHandleRef = useRef<MarkdownEditorHandle>(null);
+
+  /* Mobile editor accordion state (#100). Controlled: `open` flows from
+     state into the `<details>` element, and the element's native onToggle
+     event flows back here when the user taps the summary. The only
+     non-user driver is the `hasResume` transition below — when a resume
+     loads we auto-collapse so the preview is the first thing on mobile.
+     CSS forces the body visible on desktop (≥ 640px) regardless of
+     state, so the React-controlled `open` is genuinely just the mobile
+     accordion's open/closed state. */
+  const [editorOpen, setEditorOpen] = useState<boolean>(true);
+  /* Tracks the previous `hasResume` so we only auto-collapse/auto-open on
+     a transition — leaving the user's mid-session toggles alone. */
+  const prevHasResumeRef = useRef<boolean>(false);
 
   /* Which tab the preview pane is showing (#85). Default to the resume
      itself; users switch to Health when they want feedback. */
@@ -349,9 +374,35 @@ export default function ResumeStudio() {
         setSourceName('saved-draft.md');
         setLoadAnnouncement('Restored your saved draft.');
       }
+      // Snapshots (#94) live behind the same gate — only hydrate when the
+      // user has opted in. `getSnapshots()` itself enforces this, but
+      // calling it conditionally avoids an extra storage hit when off.
+      setSnapshots(getSnapshots());
     }
     setDraftRestored(true);
   }, []);
+
+  /* ---------------------------------------------------------------- *
+   * Mobile editor accordion (#100): set `open` on hasResume transitions.*
+   *                                                                   *
+   * Mounts with the right initial state, then only writes the attribute*
+   * when hasResume CHANGES — so the user's native summary clicks       *
+   * (which flip `open` on the element directly) are never overridden by*
+   * a stale React render. Two transitions matter:                      *
+   *                                                                   *
+   *   - false → true (resume loaded): collapse the accordion so the    *
+   *     preview is the first thing the user sees on mobile. Desktop is *
+   *     unaffected — CSS forces the body visible at ≥ 640px.           *
+   *   - true → false (cleared): re-open so the empty Phase 1 editor IS *
+   *     visible again, including on mobile.                            *
+   * ---------------------------------------------------------------- */
+  useEffect(() => {
+    // Only act on a real transition — never on incidental re-renders, so
+    // the user's mid-session summary taps aren't overridden.
+    if (prevHasResumeRef.current === hasResume) return;
+    prevHasResumeRef.current = hasResume;
+    setEditorOpen(!hasResume);
+  }, [hasResume]);
 
   /** Toggle single-key shortcuts and persist the choice. */
   const changeShortcutsEnabled = useCallback((enabled: boolean) => {
@@ -375,8 +426,16 @@ export default function ResumeStudio() {
         // Capture whatever is on screen right now so the opt-in feels
         // immediate rather than "this will save what you type next".
         if (markdown.length > 0) setDraft(markdown);
+        // Snapshots are gated on the same flag (#94). On opt-IN there is
+        // nothing in storage yet, but rehydrate the in-memory list anyway
+        // so a future opt-out → opt-in cycle stays consistent.
+        setSnapshots(getSnapshots());
         setLoadAnnouncement('Draft saving is on for this device.');
       } else {
+        // The opt-out path in storage.ts already purges the snapshots key
+        // (#94). Mirror that in component state so the popover empties
+        // without a reload.
+        setSnapshots([]);
         setLoadAnnouncement('Draft saving is off. Any saved draft was removed from this device.');
       }
     },
@@ -724,6 +783,65 @@ export default function ResumeStudio() {
     editorHandleRef.current?.jumpToLine(line);
   }, []);
 
+  /* ----- Snapshot handlers (#94). Each is gated on `draftEnabled` via the
+     helpers in storage.ts; we also short-circuit here so the in-memory
+     list stays consistent if the user races the toggle. */
+
+  /**
+   * Build a default snapshot name from `frontmatter.name` + theme + template.
+   * The user can edit before confirming — this is just the seed value.
+   */
+  const suggestedSnapshotName = (() => {
+    const personName =
+      parsed?.frontmatter && typeof parsed.frontmatter.name === 'string'
+        ? parsed.frontmatter.name
+        : '';
+    const themeLabel = theme?.name ?? 'theme';
+    const tail = `${themeLabel} · ${template}`;
+    return personName.trim().length > 0 ? `${personName.trim()} — ${tail}` : tail;
+  })();
+
+  const handleSaveSnapshot = useCallback(
+    (input: { name: string }) => {
+      if (!draftEnabled || !theme) return;
+      const created = saveSnapshot({
+        name: input.name,
+        markdown,
+        themeSlug: theme.slug,
+        template,
+      });
+      if (!created) return;
+      // Re-read so the cap-eviction (oldest dropped on overflow) is reflected.
+      setSnapshots(getSnapshots());
+      setLoadAnnouncement(`Snapshot saved: ${created.name}.`);
+    },
+    [draftEnabled, theme, markdown, template],
+  );
+
+  const handleLoadSnapshot = useCallback(
+    (snap: ResumeSnapshot) => {
+      setMarkdown(snap.markdown);
+      setSourceName(`snapshot · ${snap.name}`);
+      // Restore the theme + template the snapshot was captured with, if
+      // they still exist in the dataset. A missing theme degrades to the
+      // current one — informational, not fatal.
+      const restoredTheme = findTheme(snap.themeSlug);
+      if (restoredTheme) changeTheme(restoredTheme);
+      if (isResumeTemplate(snap.template)) changeTemplate(snap.template);
+      setLoadAnnouncement(`Snapshot loaded: ${snap.name}.`);
+    },
+    [changeTheme, changeTemplate],
+  );
+
+  const handleDeleteSnapshot = useCallback(
+    (id: string) => {
+      if (!draftEnabled) return;
+      deleteSnapshot(id);
+      setSnapshots(getSnapshots());
+    },
+    [draftEnabled],
+  );
+
   /** Clear the resume — resets to the empty Phase 1 state. */
   const handleClear = useCallback(() => {
     setMarkdown('');
@@ -874,6 +992,19 @@ export default function ResumeStudio() {
             )}
           </div>
 
+          {/* Resume version snapshots (#94). Sits between the Export popover
+              and the help chip. Disabled (with tooltip) when draft autosave
+              is OFF — snapshots are gated on the same opt-in so the privacy
+              invariant from #32 is preserved. */}
+          <SnapshotsMenu
+            snapshots={snapshots}
+            enabled={draftEnabled}
+            suggestedName={suggestedSnapshotName}
+            onSave={handleSaveSnapshot}
+            onLoad={handleLoadSnapshot}
+            onDelete={handleDeleteSnapshot}
+          />
+
           {/* Shortcut legend chip (#99). Collapsed from the multi-row
               legend to a single discreet "shortcuts (?)" affordance. Hover
               / keyboard focus reveals a small inline popover listing the
@@ -943,19 +1074,39 @@ export default function ResumeStudio() {
 
       {/* ----- Split workbench: editor (left) / preview (right) ----- */}
       <div className="studio__split">
-        <section
+        {/* The editor pane is a <details> so on mobile it collapses to a
+            one-line summary when a resume is loaded (#100). The `open`
+            attribute is set imperatively in a useLayoutEffect — passing
+            it via JSX would make React fight the user's native summary
+            taps. On desktop, CSS forces the body visible regardless of
+            the `open` state, so the accordion is a no-op above 640px.
+              - Phase 1 (no resume): open. The uploader IS the experience.
+              - Phase 2 (resume loaded): closed on mobile; CSS forces it
+                back open on viewports ≥ 640px so desktop is unaffected. */}
+        <details
           className="studio__pane studio__pane--editor"
           aria-label="Markdown editor"
           data-print-hide
+          open={editorOpen}
+          onToggle={(event) => setEditorOpen(event.currentTarget.open)}
         >
-          <div className="studio__pane-header">
+          <summary className="studio__pane-header studio__pane-header--summary">
             <span className="studio__pane-dots" aria-hidden="true">
               <span className="studio__pane-dot" />
               <span className="studio__pane-dot" />
               <span className="studio__pane-dot" />
             </span>
             <span className="studio__pane-tab">{sourceName}</span>
-          </div>
+            {/* Mobile-only accordion affordance (#100). Visible below 640px
+                when a resume is loaded; CSS hides it on wider viewports
+                where the editor pane is always expanded as a peer of the
+                preview. */}
+            {hasResume && (
+              <span className="studio__pane-summary-meta" aria-hidden="true">
+                {lineCount} {lineCount === 1 ? 'line' : 'lines'} · edit
+              </span>
+            )}
+          </summary>
           <div className="studio__pane-body">
             <MarkdownUploader
               onLoad={handleResumeLoaded}
@@ -993,7 +1144,7 @@ export default function ResumeStudio() {
             </div>
             <MarkdownEditor value={markdown} onChange={setMarkdown} editorRef={editorHandleRef} />
           </div>
-        </section>
+        </details>
 
         <section className="studio__pane studio__pane--preview" aria-label="Resume preview">
           <div className="studio__pane-header">

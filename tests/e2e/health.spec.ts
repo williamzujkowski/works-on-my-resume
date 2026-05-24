@@ -11,7 +11,7 @@
  * target to flip and re-run the suite.
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, loadSampleResume } from './helpers';
+import { clearAppStorage, expandMobileEditor, loadSampleResume } from './helpers';
 
 /** Convenience locator for the Resume Health section once it's mounted. */
 function healthPanel(page: import('@playwright/test').Page) {
@@ -192,6 +192,7 @@ test('quantification ignores non-Experience bullets but counts Experience ones',
     '',
   ].join('\n');
 
+  await expandMobileEditor(page);
   await page.getByLabel(/markdown source/i).fill(goodExperience);
   await expect(page.getByRole('article', { name: /rendered resume/i })).toBeVisible();
   await openHealthTab(page);
@@ -236,6 +237,7 @@ test('quantification ignores non-Experience bullets but counts Experience ones',
     '',
   ].join('\n');
 
+  await expandMobileEditor(page);
   await page.getByLabel(/markdown source/i).fill(weakExperience);
   await expect(panel.locator('.health__list [data-rule="quantification"]')).toHaveCount(1);
 });

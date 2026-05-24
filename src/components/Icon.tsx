@@ -24,7 +24,8 @@ export type IconName =
   | 'help'
   | 'list-numbers'
   | 'wrap-text'
-  | 'plus';
+  | 'plus'
+  | 'layers';
 
 interface IconProps {
   name: IconName;
@@ -126,6 +127,15 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M12 5v14" />
       <path d="M5 12h14" />
+    </>
+  ),
+  /* A simple three-sheet stack — semantically "saved versions". Used by the
+     Snapshots dropdown (#94). */
+  layers: (
+    <>
+      <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+      <path d="m3 13 9 5 9-5" />
+      <path d="m3 18 9 5 9-5" />
     </>
   ),
 };

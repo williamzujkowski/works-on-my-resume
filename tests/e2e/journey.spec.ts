@@ -89,8 +89,50 @@ test('faded sample preview (#96): empty pane renders the bundled sample dimmed w
   await expect(page.locator('.faded-sample')).toHaveCount(0);
 });
 
-test('clear: returns to the empty Phase 1 state', async ({ page }) => {
+test('mobile (#100): editor pane collapses to a <details> accordion when a resume is loaded', async ({
+  page,
+}, testInfo) => {
+  /* The mobile-collapse behavior is wired to a 640px breakpoint. Skip on
+     the desktop project — the editor pane is always expanded there. */
+  test.skip(
+    testInfo.project.name !== 'mobile-iphone-13',
+    'Mobile accordion only applies below 640px',
+  );
+
+  // Phase 1 (no resume): the editor <details> is OPEN so the uploader IS
+  // the experience. Mark sure the element exists and is open.
+  const editorDetails = page.locator('details.studio__pane--editor');
+  await expect(editorDetails).toHaveCount(1);
+  await expect(editorDetails).toHaveAttribute('open', /.*/);
+
+  // Phase 2: load the sample. The accordion should now be CLOSED so the
+  // preview is the first thing the user sees on mobile.
   await loadSampleResume(page);
+  await expect(editorDetails).not.toHaveAttribute('open', /.*/);
+
+  // The summary carries the "N lines · edit" affordance.
+  const summary = editorDetails.locator('summary.studio__pane-header--summary');
+  await expect(summary).toContainText(/\d+ lines? · edit/);
+
+  // The textarea is not visible while the accordion is collapsed — native
+  // <details> hides non-summary children.
+  await expect(page.getByLabel(/markdown source/i)).not.toBeVisible();
+
+  // Tap the summary to expand; the textarea becomes visible.
+  await summary.click();
+  await expect(editorDetails).toHaveAttribute('open', /.*/);
+  await expect(page.getByLabel(/markdown source/i)).toBeVisible();
+});
+
+test('clear: returns to the empty Phase 1 state', async ({ page }, testInfo) => {
+  await loadSampleResume(page);
+
+  // On mobile (#100) the editor pane collapses when a resume is loaded so
+  // the preview reads first. The Clear button lives inside the (now-
+  // collapsed) editor pane — expand the accordion before reaching for it.
+  if (testInfo.project.name === 'mobile-iphone-13') {
+    await page.locator('details.studio__pane--editor > summary').click();
+  }
 
   await page.getByRole('button', { name: /^clear$/i }).click();
 
