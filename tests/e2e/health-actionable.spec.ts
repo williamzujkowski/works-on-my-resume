@@ -82,14 +82,13 @@ test('weak-verb "Jump to line" selects the offender substring', async ({ page })
   // The "Worked on …" bullet is on line 17 of the markdown above.
   const jumpButton = finding.getByRole('button', { name: /jump to line 17/i });
   await expect(jumpButton).toBeVisible();
-  await jumpButton.click();
 
   // On mobile the editor pane collapses into a <details> accordion once a
-  // resume is loaded (#100). The jump-to-line call still focuses the
-  // textarea and writes the selection, but inside a collapsed <details>
-  // the selection isn't observable. Re-expand so the assertion reads the
-  // same DOM state a sighted mobile user sees.
+  // resume is loaded (#100). Re-expand BEFORE the jump click — focusing
+  // a textarea inside a collapsed <details> can drop the selection on
+  // mobile WebKit (the engine playwright emulates for mobile-iphone-13).
   await expandMobileEditor(page);
+  await jumpButton.click();
 
   // After the jump, the textarea selection should land on "Worked on".
   // We read the live DOM selection — `selectionStart`/`selectionEnd` are
@@ -143,6 +142,9 @@ test('selecting a rewrite inserts a sibling bullet above the original line', asy
   await expandMobileEditor(page);
   await page.getByLabel(/markdown source/i).fill(RESUME_WITH_WEAK_VERB);
   await expect(page.getByRole('article', { name: /rendered resume/i })).toBeVisible();
+  // Mobile accordion collapses on hasResume = true (#100); re-expand so the
+  // editor textarea remains reachable for the rewrite-insert path below.
+  await expandMobileEditor(page);
   await openHealthTab(page);
 
   const panel = healthPanel(page);
@@ -156,8 +158,6 @@ test('selecting a rewrite inserts a sibling bullet above the original line', asy
     .getByRole('menuitem', { name: /verb upgrade.*worked on.*built/i });
   await upgrade.click();
 
-  // Re-expand the mobile accordion (#100) so the textarea is observable.
-  await expandMobileEditor(page);
   const textareaValue = await page
     .getByLabel(/markdown source/i)
     .evaluate((el) => (el as HTMLTextAreaElement).value);
