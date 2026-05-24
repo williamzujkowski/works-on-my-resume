@@ -129,6 +129,12 @@ theme. The gate fails CI on any `serious` or `critical` WCAG 2.1 A/AA
 violation; `moderate` and `minor` findings are logged for follow-up but do
 not break the build. New UI work is expected to keep this gate green.
 
+**Bundle size budget**: `npm run size` runs `size-limit` against the three
+biggest chunks (`ResumeStudio.*.js`, `client.*.js`, `themes.*.js`). CI's
+[`perf-budget`](.github/workflows/perf-budget.yml) workflow enforces the
+same caps on every PR. To raise a cap, edit
+[`.size-limit.cjs`](.size-limit.cjs) and explain why in the commit message.
+
 ## Deployment
 
 The site is built as fully static output and deployed to **GitHub Pages** via

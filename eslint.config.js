@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import astro from 'eslint-plugin-astro';
+import globals from 'globals';
 
 export default [
   { ignores: ['dist/', 'node_modules/', '.astro/', 'src/data/themes.json'] },
@@ -10,6 +11,15 @@ export default [
   {
     rules: {
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    // CommonJS config files (e.g. .size-limit.cjs) need `module`/`require`
+    // recognized as globals so `no-undef` doesn't fire on them.
+    files: ['**/*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: { ...globals.node },
     },
   },
 ];
