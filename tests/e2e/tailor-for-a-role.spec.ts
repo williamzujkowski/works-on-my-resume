@@ -206,20 +206,22 @@ test('#116 surfaces per-category groups (Tech / Soft / Domain) with consistent c
   await tailor.locator('summary').click();
   const textarea = tailor.getByLabel(/paste a job description/i);
   /* A richer JD than SYNTHETIC_JD so all three buckets land at least
-     one term. Tech: Kubernetes / Terraform / AWS / Postgres. Soft:
-     incident response / mentorship / stakeholder management. Domain:
-     Logistics, Supply (as a likely Domain noun once the extractor
-     spots it). The exact distribution is verified below via counts,
-     not by hard-coded term lists. */
+     one term. The extractor keeps tokens that are EITHER capitalized
+     OR appear lowercase as a bigram >= 2 times, so for soft phrases to
+     survive extraction we capitalize them and repeat the key one.
+     Tech: Kubernetes / Terraform / AWS / Postgres. Soft: Mentorship /
+     Stakeholder / Incident Response (capitalized, repeated). Domain:
+     Logistics / Warehouse / Supply Chain. */
   await textarea.fill(
     [
       'Senior Platform Engineer for our Logistics platform.',
       'Required: deep Kubernetes experience, hands-on Terraform on AWS,',
       'Postgres at scale, OpenTelemetry observability, Datadog dashboards.',
-      'Soft skills: incident response and postmortem facilitation,',
-      'mentorship, stakeholder management, cross-functional collaboration.',
-      'Domain: deep familiarity with Logistics, Supply Chain Operations,',
-      'and Warehouse Management Systems.',
+      'Mentorship of junior platform engineers is part of the role.',
+      'Stakeholder Management across product and infra teams.',
+      'Incident Response is core to this role.',
+      'Incident Response and on-call rotation ownership.',
+      'Domain experience: Logistics, Warehouse Management, and Supply Chain Operations.',
     ].join('\n'),
   );
 
