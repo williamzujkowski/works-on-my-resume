@@ -18,6 +18,7 @@ import type { ParsedResume, PrintMode, ResumeTemplate, ResumeTheme } from '../ty
 import { DEFAULT_RESUME_TEMPLATE } from '../types';
 import {
   downloadMarkdown,
+  downloadPlainText,
   downloadResumeHtml,
   downloadResumeZip,
   downloadThemeCss,
@@ -44,6 +45,12 @@ interface ExportPanelProps {
   onClose: () => void;
   /** The trigger button that opened the panel — focus returns here on close. */
   triggerRef: React.RefObject<HTMLButtonElement | null>;
+  /**
+   * Live ref to the preview pane wrapper — the plain-text export (#110)
+   * walks the rendered `.resume-preview` article inside it to produce its
+   * output, so the file mirrors exactly what the user sees on screen.
+   */
+  previewRef: React.RefObject<HTMLElement | null>;
 }
 
 export default function ExportPanel({
@@ -55,6 +62,7 @@ export default function ExportPanel({
   onPrintModeChange,
   onClose,
   triggerRef,
+  previewRef,
 }: ExportPanelProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstControlRef = useRef<HTMLInputElement>(null);
@@ -173,6 +181,26 @@ export default function ExportPanel({
             }}
           >
             Download Markdown (.md)
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={!hasResume}
+            onClick={() => {
+              if (!parsed) return;
+              /* Walk the live preview's `.resume-preview` article. The
+                 preview ref points at the pane wrapper; the article is
+                 mounted inside it whenever the Preview tab is active.
+                 If the wrapper is not mounted (e.g. user on the Health
+                 tab when they hit the shortcut), fall back to a no-op
+                 to avoid a silent malformed download. */
+              const article =
+                previewRef.current?.querySelector<HTMLElement>('.resume-preview') ?? null;
+              if (!article) return;
+              downloadPlainText(article, parsed.frontmatter);
+            }}
+          >
+            Download plain text (.txt)
           </button>
           <button
             type="button"

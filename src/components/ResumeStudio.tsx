@@ -999,6 +999,7 @@ export default function ResumeStudio() {
                 onPrintModeChange={setPrintMode}
                 onClose={() => setExportOpen(false)}
                 triggerRef={exportTriggerRef}
+                previewRef={previewRef}
               />
             )}
           </div>
