@@ -25,6 +25,7 @@ import { useCallback, useId, useMemo, useRef, useState } from 'react';
 import Icon from './Icon';
 import { fromJsonResume } from '../utils/jsonresume';
 import { fetchGistFiles, isGistUrl, type GistFile } from '../utils/gist';
+import TemplatePicker, { type TemplateSlug } from './TemplatePicker';
 
 /** Files larger than this trigger a soft warning (not a hard failure). */
 const SOFT_SIZE_LIMIT = 1024 * 1024; // 1 MB
@@ -90,10 +91,16 @@ export default function MarkdownUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const gistDetailsRef = useRef<HTMLDetailsElement>(null);
+  /* The "Start from a template" trigger ref — used to restore focus to the
+     button after the TemplatePicker modal closes. The picker owns its own
+     focus trap; we own the restore. */
+  const templateTriggerRef = useRef<HTMLButtonElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoadingSample, setIsLoadingSample] = useState(false);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
   const [gistUrl, setGistUrl] = useState('');
   const [isFetchingGist, setIsFetchingGist] = useState(false);
   /* Preview before commit (#68, #76). Holds every file in the fetched
@@ -248,6 +255,51 @@ export default function MarkdownUploader({
       setIsLoadingSample(false);
     }
   }, [onLoad]);
+
+  /**
+   * Close the template picker and restore focus to the trigger that opened
+   * it. Deferred to next tick so the dialog has finished unmounting before
+   * focus moves — matches the KeyboardHelp/ExportPanel restore pattern.
+   */
+  const closeTemplatePicker = useCallback(() => {
+    setTemplatePickerOpen(false);
+    window.setTimeout(() => templateTriggerRef.current?.focus(), 0);
+  }, []);
+
+  /**
+   * Load the picked starter template (#86). Fetches the same-origin
+   * `public/templates/<slug>.md` and hands it to `onLoad` — using the same
+   * commit path as "Load sample" so the announcement, draft-overwrite
+   * toast, and source-name chip all work without special-casing.
+   *
+   * On success the picker closes (and focus is restored). On failure we
+   * leave the picker open so the user can pick a different one without
+   * having to re-open the modal — the error notice surfaces beneath the
+   * dropzone, where the rest of the uploader's errors live.
+   */
+  const handleTemplateSelect = useCallback(
+    async (slug: TemplateSlug) => {
+      setError(null);
+      setNotice(null);
+      setIsLoadingTemplate(true);
+      try {
+        // BASE_URL may or may not carry a trailing slash depending on the
+        // Astro `base` config; normalize to exactly one before joining.
+        const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+        const url = `${base}templates/${slug}.md`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const text = await response.text();
+        onLoad(text, `${slug}.md`);
+        closeTemplatePicker();
+      } catch {
+        setError('Could not load the template. Please try again.');
+      } finally {
+        setIsLoadingTemplate(false);
+      }
+    },
+    [onLoad, closeTemplatePicker],
+  );
 
   /**
    * Fetch the gist the user just pasted. This is the SINGLE deliberate
@@ -473,6 +525,17 @@ export default function MarkdownUploader({
             <button type="button" className="btn" onClick={loadSample} disabled={isLoadingSample}>
               {isLoadingSample ? 'Loading sample…' : 'Load sample'}
             </button>
+            <button
+              type="button"
+              ref={templateTriggerRef}
+              className="btn"
+              aria-haspopup="dialog"
+              aria-expanded={templatePickerOpen}
+              onClick={() => setTemplatePickerOpen(true)}
+              disabled={isLoadingTemplate}
+            >
+              {isLoadingTemplate ? 'Loading template…' : 'Start from a template'}
+            </button>
             <label className="btn" htmlFor={jsonInputId}>
               Import JSON Resume
             </label>
@@ -551,6 +614,18 @@ export default function MarkdownUploader({
       </details>
 
       {messages}
+
+      {/* ----- Start-from-template modal (#86). The picker owns its focus
+           trap + Escape handling; we own the trigger ref and the focus
+           restore. Mounted only when open so it stays out of the DOM
+           (and the focus tree) while idle. ----- */}
+      <TemplatePicker
+        open={templatePickerOpen}
+        onClose={closeTemplatePicker}
+        onSelect={(slug) => {
+          void handleTemplateSelect(slug);
+        }}
+      />
     </div>
   );
 }
