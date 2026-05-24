@@ -367,6 +367,22 @@
    * page edges. Pair: @page { margin: 0 } above + the body's 0.6in
    * padding becomes the themed-margin frame around the resume (#106).
    * ------------------------------------------------------------ */
+  /* The PAGE background — html element's own bg, visible in the 0.6in
+     padding zone outside `body`. Both html and body carry the same
+     `padding: 0.6in` above (it provides the printed margin frame), so
+     body's themed bg only fills the inner area; the surrounding strip
+     is painted by html. Without this rule that strip prints as the
+     default #fff, producing a white frame around themed content (#125
+     follow-up to #123 — caught by tests/e2e/downloads.spec.ts's
+     corner-pixel sampling). The `:has()` selector lets a body attribute
+     reach the html element; this is the same pattern the @page footer
+     suppression uses above. */
+  html:has(body[data-print-mode='theme']) {
+    background: var(--resume-bg) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   body[data-print-mode='theme'] {
     background: var(--resume-bg) !important;
     -webkit-print-color-adjust: exact;
