@@ -184,6 +184,128 @@ test('preview/health tab: marks unmount with the article and re-appear on return
   expect(restoredMarkCount).toBe(initialMarkCount);
 });
 
+/* ----------------------------------------------------------------- *
+ * #116 — category clustering (Tech / Soft / Domain)                  *
+ * ----------------------------------------------------------------- */
+
+test('#116 surfaces per-category groups (Tech / Soft / Domain) with consistent counts', async ({
+  page,
+}) => {
+  await loadSampleResume(page);
+  await expandMobileEditor(page);
+
+  const tailor = page.locator('details.tailor');
+  await tailor.locator('summary').click();
+  const textarea = tailor.getByLabel(/paste a job description/i);
+  /* A richer JD than SYNTHETIC_JD so all three buckets land at least
+     one term. Tech: Kubernetes / Terraform / AWS / Postgres. Soft:
+     incident response / mentorship / stakeholder management. Domain:
+     Logistics, Supply (as a likely Domain noun once the extractor
+     spots it). The exact distribution is verified below via counts,
+     not by hard-coded term lists. */
+  await textarea.fill(
+    [
+      'Senior Platform Engineer for our Logistics platform.',
+      'Required: deep Kubernetes experience, hands-on Terraform on AWS,',
+      'Postgres at scale, OpenTelemetry observability, Datadog dashboards.',
+      'Soft skills: incident response and postmortem facilitation,',
+      'mentorship, stakeholder management, cross-functional collaboration.',
+      'Domain: deep familiarity with Logistics, Supply Chain Operations,',
+      'and Warehouse Management Systems.',
+    ].join('\n'),
+  );
+
+  // Wait for the chip to settle.
+  const summaryChip = tailor.locator('.tailor__summary-chip');
+  await expect(summaryChip).toBeVisible({ timeout: 5_000 });
+
+  // The per-category sub-chip carries `Tech 5/12 · Soft 3/8 · Domain 2/4`
+  // style text — at least Tech must be present given the JD content.
+  const categoryChip = tailor.locator('.tailor__category-chip');
+  await expect(categoryChip).toBeVisible();
+  await expect(categoryChip).toContainText(/Tech \d+\/\d+/);
+
+  // Per-category groups present for non-empty buckets. Tech is the
+  // strongest signal in the JD above so it must exist; we don't assert
+  // every group exists because soft/domain could in theory collapse.
+  const techGroup = tailor.locator('.tailor__group--tech');
+  await expect(techGroup).toBeVisible();
+  await expect(techGroup).toHaveAttribute('open', '');
+  // Group label and a fraction count.
+  await expect(techGroup.locator('.tailor__group-label')).toHaveText('Tech');
+  await expect(techGroup.locator('.tailor__group-count')).toHaveText(/^\d+\/\d+$/);
+
+  // Soft and Domain groups: both should appear given the JD; assert on
+  // labels but allow either to be absent if extraction misclassifies an
+  // edge case. (We still hard-require Tech to be present.)
+  const softGroup = tailor.locator('.tailor__group--soft');
+  const domainGroup = tailor.locator('.tailor__group--domain');
+  await expect(softGroup).toBeVisible();
+  await expect(softGroup.locator('.tailor__group-label')).toHaveText('Soft');
+  await expect(domainGroup).toBeVisible();
+  await expect(domainGroup.locator('.tailor__group-label')).toHaveText('Domain');
+
+  // Per-category counts must sum to the overall hit-rate chip.
+  // Parse the `X / Y (Z%)` chip and each `m/t` group-count fraction.
+  const chipText = (await summaryChip.textContent()) ?? '';
+  const overallMatch = chipText.match(/(\d+)\s*\/\s*(\d+)/);
+  expect(overallMatch, `summary chip ${chipText} should match X / Y`).toBeTruthy();
+  const overallMatched = Number(overallMatch![1]);
+  const overallTotal = Number(overallMatch![2]);
+
+  const groupFractions = await tailor.locator('.tailor__group-count').allTextContents();
+  let sumMatched = 0;
+  let sumTotal = 0;
+  for (const frac of groupFractions) {
+    const m = frac.match(/^(\d+)\/(\d+)$/);
+    expect(m, `group count ${frac} should be m/t`).toBeTruthy();
+    sumMatched += Number(m![1]);
+    sumTotal += Number(m![2]);
+  }
+  expect(sumMatched).toBe(overallMatched);
+  expect(sumTotal).toBe(overallTotal);
+});
+
+test('#116 tech-only JD shows the Tech bucket and omits empty buckets', async ({ page }) => {
+  await loadSampleResume(page);
+  await expandMobileEditor(page);
+
+  const tailor = page.locator('details.tailor');
+  await tailor.locator('summary').click();
+  const textarea = tailor.getByLabel(/paste a job description/i);
+  /* A JD made entirely of tech tokens — capitalized acronyms and known
+     tech names. We avoid soft-skill phrases (no `mentorship`, `incident
+     response`, etc.) and avoid sentence-starting nouns that would be
+     classified as Domain. */
+  await textarea.fill(
+    [
+      'Required tools: Kubernetes, Docker, Terraform, AWS, GCP, Azure.',
+      'Languages: Python, JavaScript, TypeScript, Go, Rust.',
+      'Databases: Postgres, MongoDB, Redis, Cassandra.',
+      'Frameworks: React, Django, FastAPI, Spring.',
+    ].join('\n'),
+  );
+
+  // Wait for compute.
+  await expect(tailor.locator('.tailor__summary-chip')).toBeVisible({ timeout: 5_000 });
+
+  const techGroup = tailor.locator('.tailor__group--tech');
+  await expect(techGroup).toBeVisible();
+
+  // The Tech fraction should be non-zero on the total side at least.
+  const techCount = await techGroup.locator('.tailor__group-count').textContent();
+  const techMatch = techCount?.match(/^(\d+)\/(\d+)$/);
+  expect(techMatch).toBeTruthy();
+  expect(Number(techMatch![2])).toBeGreaterThan(0);
+
+  // Soft / Domain buckets contain no terms → groups should NOT be
+  // rendered. (They are omitted when total = 0, not hidden.)
+  // Strict: at most a tiny number of edge-case Domain terms can sneak
+  // through; we accept Domain existing if it does but require Soft to
+  // be empty since there's no soft-skill vocabulary in the JD at all.
+  await expect(tailor.locator('.tailor__group--soft')).toHaveCount(0);
+});
+
 test('privacy: JD content is never written to local- or sessionStorage', async ({ page }) => {
   await loadSampleResume(page);
   await expandMobileEditor(page);
