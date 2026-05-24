@@ -18,9 +18,10 @@
  * No resume content is persisted by this component. The career-stage slug is
  * the only thing written to localStorage, matching the project's posture.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ParsedResume } from '../types';
 import { analyzeResume, type CareerStage, type HealthFinding } from '../utils/health';
+import { getRewriteCandidates, type RewriteCandidate } from '../utils/bulletPatterns';
 import { getStoredCareerStage, setStoredCareerStage } from '../utils/storage';
 
 interface Props {
@@ -28,8 +29,30 @@ interface Props {
   markdown: string;
   /** Parsed view of `markdown`, or `null` when nothing has been loaded. */
   parsed: ParsedResume | null;
-  /** Hook for "Jump to line N" links. The integration agent wires the editor. */
+  /**
+   * Hook for "Jump to line N" buttons. The editor focuses the textarea,
+   * selects the entire target line, and scrolls into view.
+   */
   onJumpToLine?: (line: number) => void;
+  /**
+   * Hook for clickable findings (#115). Selects the literal offender
+   * substring on the target line rather than the whole line. The editor
+   * gracefully falls back to whole-line selection when the offender has
+   * been edited away since the finding was computed.
+   */
+  onJumpToOffender?: (line: number, offender: string) => void;
+  /**
+   * Hook for "Suggest a fix" (#115). Inserts a candidate rewrite as a new
+   * bullet directly above the original line. Routed through the editor's
+   * value/onChange path — never into the preview DOM, so DOMPurify still
+   * owns the trust boundary on the way to rendered HTML.
+   */
+  onInsertRewrite?: (targetLine: number, rewrittenLine: string) => void;
+  /**
+   * Hook for "Open an example" (#115). Scrolls the editor textarea to the
+   * named H2 section. No-op when the section isn't present in the source.
+   */
+  onJumpToSection?: (sectionTitle: string) => void;
 }
 
 /** Ordered stage choices for the segmented control. */
@@ -39,7 +62,14 @@ const STAGES: ReadonlyArray<{ value: CareerStage; label: string }> = [
   { value: 'senior', label: 'Senior' },
 ];
 
-export default function ResumeHealth({ markdown, parsed, onJumpToLine }: Props) {
+export default function ResumeHealth({
+  markdown,
+  parsed,
+  onJumpToLine,
+  onJumpToOffender,
+  onInsertRewrite,
+  onJumpToSection,
+}: Props) {
   /* ----- Stage state -----
      The initial value is `'mid'` so SSR and the first client paint agree
      (localStorage is client-only). A mount-time effect promotes the stored
@@ -66,6 +96,26 @@ export default function ResumeHealth({ markdown, parsed, onJumpToLine }: Props) 
     if (!parsed) return null;
     return analyzeResume(markdown, parsed, stage);
   }, [markdown, parsed, stage]);
+
+  /**
+   * Pre-compute which H2 sections are present in the source markdown so
+   * the "Open an example" affordance can hide itself when the example
+   * section is missing (e.g. the writer hasn't added a Summary yet).
+   * Pure read against the document; no DOM, no IO.
+   */
+  const sectionTitles = useMemo(() => {
+    const titles = new Set<string>();
+    const lines = markdown.split('\n');
+    for (const line of lines) {
+      const m = /^##\s+(?!#)(.+?)\s*$/.exec(line);
+      if (m) titles.add(m[1].toLowerCase().trim());
+    }
+    return titles;
+  }, [markdown]);
+  const hasResumeSection = useMemo(
+    () => (sectionTitle: string) => sectionTitles.has(sectionTitle.toLowerCase().trim()),
+    [sectionTitles],
+  );
 
   /* ----- Empty state: no resume loaded yet ----- */
   if (!parsed || !report) {
@@ -125,7 +175,11 @@ export default function ResumeHealth({ markdown, parsed, onJumpToLine }: Props) 
               // every offending line); include the index for uniqueness.
               key={`${finding.id}-${finding.line ?? 'doc'}-${i}`}
               finding={finding}
+              hasResumeSection={hasResumeSection}
               onJumpToLine={onJumpToLine}
+              onJumpToOffender={onJumpToOffender}
+              onInsertRewrite={onInsertRewrite}
+              onJumpToSection={onJumpToSection}
             />
           ))}
         </ul>
@@ -146,30 +200,173 @@ function labelFor(stage: CareerStage): string {
   }
 }
 
-/** One finding row. Extracted so the jump-button logic doesn't muddy the list. */
+/**
+ * One finding row (#115). Renders the severity dot + message, then up to
+ * two affordance buttons:
+ *
+ *  - "Jump to line N" — present when the finding carries a `line`. Clicking
+ *    selects the offender substring on that line (or the whole line, if no
+ *    `offender` was supplied) and scrolls the editor textarea to it.
+ *  - Either "Suggest a fix" (templated rewrite tray) or "Open an example"
+ *    (jump to a sample section), depending on the finding's `suggest`
+ *    shape. Buttons are mutually exclusive — a finding is either
+ *    actionable via a mechanical rewrite, or it points at an example. We
+ *    never offer both for the same finding because the second option is
+ *    always a fallback for findings without a clean templated fix.
+ *
+ * The "Suggest a fix" tray opens beneath the row and lists 2-3 candidate
+ * rewrites derived from `getRewriteCandidates` against the offending
+ * bullet source line. Picking one inserts it as a sibling bullet above the
+ * original through `onInsertRewrite`; the in-editor rewrite-tray (#93) and
+ * this tray share the exact same pattern library, so the two affordances
+ * cannot disagree on what a rewrite looks like.
+ */
 function FindingItem({
   finding,
+  hasResumeSection,
   onJumpToLine,
+  onJumpToOffender,
+  onInsertRewrite,
+  onJumpToSection,
 }: {
   finding: HealthFinding;
+  /** True when the sample section the finding references is present. */
+  hasResumeSection: (sectionTitle: string) => boolean;
   onJumpToLine?: (line: number) => void;
+  onJumpToOffender?: (line: number, offender: string) => void;
+  onInsertRewrite?: (targetLine: number, rewrittenLine: string) => void;
+  onJumpToSection?: (sectionTitle: string) => void;
 }) {
   const className = `health__item health__item--${finding.severity}`;
   const dotLabel = severityLabel(finding.severity);
 
+  /* Suggest-a-fix tray state. Closed by default; opens only when the user
+     clicks the "Suggest a fix" button. Each tray is per-row so the panel
+     can show two open trays at once (rare in practice — most findings of
+     the same rule are co-located in the bullet list). */
+  const [fixOpen, setFixOpen] = useState(false);
+  const trayRef = useRef<HTMLDivElement>(null);
+
+  /* Close the tray when a pointer-down lands outside it. Mirrors the
+     pattern the in-editor rewrite tray (#93) and snippet popover use. */
+  useEffect(() => {
+    if (!fixOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!trayRef.current?.contains(event.target as Node)) {
+        setFixOpen(false);
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [fixOpen]);
+
+  /* Derive the candidate rewrites when the suggest shape is a 'rewrite'.
+     useMemo: the bullet text rarely changes for a given finding (it's the
+     source line snapshot), and the rewrite library is pure. */
+  const rewriteCandidates: RewriteCandidate[] = useMemo(() => {
+    if (finding.suggest?.kind !== 'rewrite') return [];
+    return getRewriteCandidates(finding.suggest.bulletText);
+  }, [finding.suggest]);
+
+  const canJump = finding.line !== undefined && (onJumpToOffender || onJumpToLine);
+  const canSuggestFix =
+    finding.suggest?.kind === 'rewrite' &&
+    rewriteCandidates.length > 0 &&
+    onInsertRewrite !== undefined &&
+    finding.line !== undefined;
+  const canOpenExample =
+    finding.suggest?.kind === 'example' &&
+    onJumpToSection !== undefined &&
+    hasResumeSection(finding.suggest.section);
+
+  /**
+   * Apply a candidate rewrite: insert above the offending line, close the
+   * tray, and let the editor re-select the inserted text. The Health panel
+   * never mutates the markdown directly; the editor owns that path.
+   */
+  function applyRewrite(candidate: RewriteCandidate) {
+    if (finding.line === undefined || !onInsertRewrite) return;
+    onInsertRewrite(finding.line, candidate.rewrittenLine);
+    setFixOpen(false);
+  }
+
+  /** "Jump to line" click. Prefer the offender-aware jump when available. */
+  function handleJump() {
+    if (finding.line === undefined) return;
+    if (finding.offender && onJumpToOffender) {
+      onJumpToOffender(finding.line, finding.offender);
+    } else if (onJumpToLine) {
+      onJumpToLine(finding.line);
+    }
+  }
+
   return (
     <li className={className} data-rule={finding.id}>
       <span className="health__item-dot" aria-label={dotLabel} role="img" />
-      <span className="health__item-message">{finding.message}</span>
-      {finding.line !== undefined && onJumpToLine && (
-        <button
-          type="button"
-          className="health__item-jump"
-          onClick={() => onJumpToLine(finding.line as number)}
-        >
-          Jump to line {finding.line}
-        </button>
-      )}
+      <div className="health__item-body">
+        <span className="health__item-message">{finding.message}</span>
+        {(canJump || canSuggestFix || canOpenExample) && (
+          <div className="health__item-actions">
+            {canJump && (
+              <button type="button" className="health__item-jump" onClick={handleJump}>
+                Jump to line {finding.line}
+              </button>
+            )}
+            {canSuggestFix && (
+              <button
+                type="button"
+                className="health__item-fix"
+                aria-haspopup="menu"
+                aria-expanded={fixOpen}
+                onClick={() => setFixOpen((open) => !open)}
+              >
+                Suggest a fix
+              </button>
+            )}
+            {!canSuggestFix && canOpenExample && finding.suggest?.kind === 'example' && (
+              <button
+                type="button"
+                className="health__item-example"
+                onClick={() =>
+                  finding.suggest?.kind === 'example' &&
+                  onJumpToSection?.(finding.suggest.section)
+                }
+              >
+                Open an example
+              </button>
+            )}
+          </div>
+        )}
+        {canSuggestFix && fixOpen && (
+          <div className="health__item-tray" ref={trayRef}>
+            <ul
+              className="health__item-tray-list"
+              role="menu"
+              aria-label="Rewrite suggestions"
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.stopPropagation();
+                  setFixOpen(false);
+                }
+              }}
+            >
+              {rewriteCandidates.map((candidate) => (
+                <li key={candidate.id} role="none" className="health__item-tray-li">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="health__item-tray-item"
+                    onClick={() => applyRewrite(candidate)}
+                  >
+                    <span className="health__item-tray-label">{candidate.label}</span>
+                    <span className="health__item-tray-preview">{candidate.rewrittenLine}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </li>
   );
 }
