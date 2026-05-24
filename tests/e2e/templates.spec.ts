@@ -114,6 +114,121 @@ test.describe('Start from template — selection loads the resume', () => {
 });
 
 /* ------------------------------------------------------------------ */
+/* Group 2b — Resume Health validation (#104). ---------------------- */
+/* ------------------------------------------------------------------ */
+/**
+ * The four starter templates double as in-app exemplars of the conventions
+ * the Resume Health rubric scores. If a future edit ever introduces a thin
+ * bullet, a weak verb, a first-person construction, or a buzzword into one
+ * of them, we want the suite to flag it loudly — these tests load each
+ * template into the live preview, switch the Health tab to the matching
+ * career stage, and assert the score clears the bar.
+ *
+ * Stage selection per template:
+ *   - junior.md  → Junior
+ *   - mid.md     → Mid
+ *   - senior.md  → Senior
+ *   - em.md      → Mid (EMs in the rubric land between mid and senior; the
+ *                 Mid stage is the better match because the EM template
+ *                 leads with leadership highlights rather than a Selected
+ *                 Impact framing, which the Senior rubric rewards.)
+ *
+ * Score threshold: `>= 85`. The templates should ace their own rubric —
+ * 85 leaves a small headroom for sub-rule weight tweaks but is firm
+ * enough to catch any real regression. Tune this comment, not the
+ * threshold, if the rubric is rebalanced.
+ */
+
+test.describe('Template Resume Health validation (#104)', () => {
+  /** Card label used to pick a card in the picker grid. */
+  const CARD_LABELS: Record<TemplateSlug, RegExp> = {
+    junior: /junior ic/i,
+    mid: /mid ic/i,
+    senior: /senior ic/i,
+    em: /engineering manager/i,
+  };
+
+  /** Which Health-tab career stage best matches each template. */
+  const STAGE_FOR: Record<TemplateSlug, 'Junior' | 'Mid' | 'Senior'> = {
+    junior: 'Junior',
+    mid: 'Mid',
+    senior: 'Senior',
+    em: 'Mid',
+  };
+
+  /** Frontmatter `name` for each template — used to confirm the resume
+   *  actually loaded before we read the score. */
+  const EXPECTED_NAME: Record<TemplateSlug, string> = {
+    junior: 'Riley Okonkwo',
+    mid: 'Priya Salgado',
+    senior: 'Marcus Halberg',
+    em: 'Dani Velasquez',
+  };
+
+  test.beforeEach(async ({ page }) => {
+    await clearAppStorage(page);
+    await page.goto('');
+  });
+
+  for (const slug of TEMPLATE_SLUGS) {
+    test(`${slug} template scores >= 85 at the ${STAGE_FOR[slug]} stage`, async ({ page }) => {
+      /* Open the picker and select the matching card. Mirrors the wiring
+         contract that Group 2 establishes (`Use this template` per card). */
+      await page.getByRole('button', { name: /start from (a )?template/i }).click();
+      const dialog = page.getByRole('dialog', { name: /start from a template/i });
+      await expect(dialog).toBeVisible();
+      const card = dialog
+        .locator('li', { has: page.getByRole('heading', { name: CARD_LABELS[slug] }) })
+        .first();
+      await card.getByRole('button', { name: /use this template/i }).click();
+
+      /* Confirm the template's resume actually rendered before we switch
+         tabs — otherwise we might read a score from a stale state. */
+      const article = page.getByRole('article', { name: /rendered resume/i });
+      await expect(article).toBeVisible({ timeout: 10_000 });
+      await expect(article.getByText(EXPECTED_NAME[slug])).toBeVisible();
+
+      /* Switch to the Health tab and pick the matching career stage. */
+      await page.getByRole('tab', { name: /^health$/i }).click();
+      const panel = page.getByRole('region', { name: /resume health/i });
+      await expect(panel).toBeVisible();
+      await panel.getByRole('radio', { name: new RegExp(`^${STAGE_FOR[slug]}$`, 'i') }).click();
+
+      /* Read and assert the score. The score number lives in
+         `.health__score-num`; tolerate the analyzer's debounce by
+         polling via expect.poll rather than reading once. */
+      const scoreNode = panel.locator('.health__score-num');
+      await expect(scoreNode).toBeVisible();
+      await expect
+        .poll(
+          async () => {
+            const text = ((await scoreNode.textContent()) ?? '').trim();
+            const n = Number(text);
+            return Number.isFinite(n) ? n : -1;
+          },
+          { timeout: 5_000 },
+        )
+        .toBeGreaterThanOrEqual(85);
+
+      /* Defensive: if any of the three rules below ever escalates to
+         `bad` severity inside a template, the score gate above might
+         still pass (the rubric is generous in the upper band) — so we
+         pin them out explicitly. Scoped to `--bad` so legitimate
+         warn-severity findings (e.g. the template referencing "how we
+         ship" in a section title) do not trip this guard; the goal is
+         to catch a regression that introduces a clear-cut bad bullet,
+         not to police every warning. */
+      const list = panel.locator('.health__list');
+      if (await list.count()) {
+        await expect(list.locator('[data-rule="weak-verb"].health__item--bad')).toHaveCount(0);
+        await expect(list.locator('[data-rule="first-person"].health__item--bad')).toHaveCount(0);
+        await expect(list.locator('[data-rule="buzzwords"].health__item--bad')).toHaveCount(0);
+      }
+    });
+  }
+});
+
+/* ------------------------------------------------------------------ */
 /* Group 3 — template content sanity. Runs today. -------------------- */
 /* ------------------------------------------------------------------ */
 
