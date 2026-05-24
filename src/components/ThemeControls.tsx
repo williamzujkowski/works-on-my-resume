@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ResumeTheme } from '../types';
 import { RESUME_SAFE_MIN_CONTRAST } from '../types';
+import { wcagLevel } from '../utils/wcag';
 import Icon from './Icon';
 
 /**
@@ -24,17 +25,6 @@ function AccentDot({ className, background }: { className: string; background: s
     el.style.setProperty('background-color', background);
   }, [background]);
   return <span ref={ref} className={className} aria-hidden="true" />;
-}
-
-/**
- * Map a WCAG contrast ratio to its conformance level for normal-size text.
- * AAA ≥ 7:1, AA ≥ 4.5:1, otherwise it fails AA. Used to label contrast
- * figures so a reader understands what a number like "15.8:1" means.
- */
-function wcagLevel(ratio: number): 'AAA' | 'AA' | 'fails AA' {
-  if (ratio >= 7) return 'AAA';
-  if (ratio >= 4.5) return 'AA';
-  return 'fails AA';
 }
 
 interface ThemeControlsProps {

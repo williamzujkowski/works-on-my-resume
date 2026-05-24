@@ -27,6 +27,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import type { ResumeTheme, ResumeThemeTag } from '../types';
 import { RESUME_THEME_TAGS } from '../types';
 import { applyThemeToDocument, filterThemes, loadAllThemesAsync } from '../utils/themes';
+import { wcagLevel } from '../utils/wcag';
 import Icon from './Icon';
 
 /* ----------------------------------------------------------------------------
@@ -81,13 +82,6 @@ function AccentDot({ className, background }: AccentDotProps) {
     el.style.setProperty('background-color', background);
   }, [background]);
   return <span ref={ref} className={className} aria-hidden="true" />;
-}
-
-/** WCAG conformance level of a contrast ratio for normal-size text. */
-function wcagLevel(ratio: number): 'AAA' | 'AA' | 'fails AA' {
-  if (ratio >= 7) return 'AAA';
-  if (ratio >= 4.5) return 'AA';
-  return 'fails AA';
 }
 
 // Note: an earlier MAX_RENDERED cap (60) was removed — it hid most of the
