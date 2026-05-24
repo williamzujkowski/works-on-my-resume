@@ -35,14 +35,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build with Astro
         # withastro/action installs dependencies, runs `astro build`, and
         # uploads the `dist/` output as a Pages artifact.
         # node-version 22: Astro 6 requires Node >=22.12 (the action
-        # defaults to Node 20, which Astro 6 rejects).
-        uses: withastro/action@v3
+        # default is newer Node, but we pin to 22 to match the other
+        # workflows and our `engines` field in package.json).
+        uses: withastro/action@v6
         with:
           node-version: 22
 
@@ -56,4 +57,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

@@ -30,13 +30,15 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        # Node 22 matches the deploy + e2e workflows; Astro 6 requires >=22.12.
-        uses: actions/setup-node@v4
+        # Read the Node version from `package.json` (`engines.node` =
+        # `>=22.12.0`) so this workflow can never drift from the project's
+        # declared runtime. Matches the deploy + e2e workflows.
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version-file: 'package.json'
           cache: npm
 
       - name: Install dependencies
