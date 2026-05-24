@@ -60,8 +60,74 @@ test('Insert section appends an Experience entry skeleton', async ({ page }) => 
 
   const value = await textarea.inputValue();
   // The snippet must include the canonical placeholder heading and a bullet.
+  // Note: empty-doc auto-prepend (#97) leads with the frontmatter block, so
+  // the Experience heading lands AFTER `---\n…\n---` rather than at offset 0.
   expect(value).toContain('Job Title — Company Name');
-  expect(value).toMatch(/^\s*###\s+Job Title/);
+  expect(value).toMatch(/###\s+Job Title/);
+});
+
+test('picking any snippet on an empty editor auto-prepends frontmatter (#97)', async ({ page }) => {
+  // Start from an empty document — the auto-prepend trigger is "value is empty
+  // AND no existing frontmatter". With no value at all both conditions hold.
+  const textarea = page.getByLabel(/markdown source/i);
+  await textarea.fill('');
+  await textarea.click();
+
+  // Pick a non-frontmatter snippet. Experience is reachable either via the
+  // quick-insert button (wide viewports) or the popover (narrow viewports).
+  const quickExperience = page.getByRole('button', { name: /^insert experience entry$/i });
+  if (await quickExperience.isVisible()) {
+    await quickExperience.click();
+  } else {
+    await page.getByRole('button', { name: /^insert section$/i }).click();
+    await page.getByRole('menuitem', { name: /experience entry/i }).click();
+  }
+
+  const value = await textarea.inputValue();
+  // Frontmatter must lead the document, with the canonical identity keys,
+  // and the Experience snippet must follow.
+  expect(value).toMatch(/^---\n/);
+  expect(value).toContain('name: Your Name');
+  expect(value).toContain('role: Your Role');
+  expect(value).toMatch(/---\n[\s\S]*###\s+Job Title/);
+});
+
+test('picking the frontmatter snippet itself does not double up (#97)', async ({ page }) => {
+  // Empty document → pick Frontmatter directly. It lives in the popover only.
+  const textarea = page.getByLabel(/markdown source/i);
+  await textarea.fill('');
+  await textarea.click();
+
+  await page.getByRole('button', { name: /^insert section$/i }).click();
+  await page.getByRole('menuitem', { name: /frontmatter \(identity header\)/i }).click();
+
+  const value = await textarea.inputValue();
+  // The frontmatter block opens the document exactly once.
+  expect(value).toMatch(/^---\n/);
+  const fences = value.match(/^---\s*$/gm) ?? [];
+  // Opening + closing fence — two `---` lines, not four.
+  expect(fences).toHaveLength(2);
+});
+
+test('snippets do not prepend frontmatter when content already exists (#97)', async ({ page }) => {
+  // Non-empty editor → the auto-prepend trigger must NOT fire, even when no
+  // `---` is present, because the empty-document precondition is unmet.
+  const textarea = page.getByLabel(/markdown source/i);
+  await textarea.fill('# Existing heading\n\nSome body text.\n');
+  await textarea.click();
+
+  const quickExperience = page.getByRole('button', { name: /^insert experience entry$/i });
+  if (await quickExperience.isVisible()) {
+    await quickExperience.click();
+  } else {
+    await page.getByRole('button', { name: /^insert section$/i }).click();
+    await page.getByRole('menuitem', { name: /experience entry/i }).click();
+  }
+
+  const value = await textarea.inputValue();
+  // No frontmatter was injected — the document still opens with the heading.
+  expect(value.startsWith('# Existing heading')).toBe(true);
+  expect(value).not.toContain('name: Your Name');
 });
 
 test('after loading a resume the uploader collapses to its compact bar', async ({ page }) => {

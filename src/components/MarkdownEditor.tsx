@@ -100,6 +100,23 @@ interface Snippet {
 
 const SNIPPETS: Snippet[] = [
   {
+    id: 'frontmatter',
+    label: 'Frontmatter (identity header)',
+    body: `---
+name: Your Name
+role: Your Role
+location: City, State
+email: you@example.com
+links:
+  - label: GitHub
+    url: https://github.com/your-handle
+  - label: LinkedIn
+    url: https://www.linkedin.com/in/your-handle
+---
+
+`,
+  },
+  {
     id: 'experience',
     label: 'Experience entry',
     quickLabel: 'Experience',
@@ -231,6 +248,12 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
    * Insert a snippet at the caret (replacing any selection). The snippet is
    * padded with surrounding blank lines so it never fuses onto adjacent
    * content. Caret is left after the inserted text and the textarea refocused.
+   *
+   * Auto-prepend frontmatter (#97): when the editor is empty AND the picked
+   * snippet is not the frontmatter itself, prepend the frontmatter identity
+   * header so a fresh document starts with valid identity. The detection is
+   * deliberately strict — if any `---\n` already opens the document (even a
+   * partial / hand-edited block) we leave it alone.
    */
   const insertSnippet = useCallback(
     (snippet: Snippet) => {
@@ -252,7 +275,17 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
         trail = '\n';
       }
 
-      const inserted = `${lead}${snippet.body}${trail}`;
+      // Auto-prepend frontmatter on an empty document when the user picks any
+      // other snippet (#97). With value === '' the caret is at 0, before/after
+      // are both empty, lead/trail collapse to '', so the result is simply
+      // `<frontmatter><snippet>` — exactly what we want.
+      const shouldPrependFrontmatter =
+        snippet.id !== 'frontmatter' && value.length === 0 && !/^---\s*\n/.test(value);
+      const frontmatterPrefix = shouldPrependFrontmatter
+        ? (SNIPPETS.find((s) => s.id === 'frontmatter')?.body ?? '')
+        : '';
+
+      const inserted = `${frontmatterPrefix}${lead}${snippet.body}${trail}`;
       const next = before + inserted + after;
       onChange(next);
 
