@@ -9,9 +9,22 @@
  * The module is import-safe during SSR / static build: it never touches
  * `document` or `window` at module scope, and every browser-only function
  * guards those globals before use.
+ *
+ * Print-mode contract (#82). The standalone HTML export mirrors the in-app
+ * print modes so a downloaded file behaves the same way the studio does when
+ * the recipient prints it.
+ *   - The export ALWAYS embeds the active theme's `--resume-*` variables so
+ *     the document renders themed when opened normally in a browser.
+ *   - The `<body>` carries `data-print-mode="<mode>"` and the embedded print
+ *     block branches on that attribute, exactly like `src/styles/print.css`
+ *     branches on `body[data-print-mode]` in the live app.
+ *   - The default is `'conservative'`: a downloaded file should print
+ *     black-on-white by default — the same safer default the in-app panel
+ *     ships with, and the one that respects the user's ink and ATS parsers.
+ *     Callers who want themed print explicitly pass `'theme'`.
  */
 
-import type { ResumeTheme, ResumeFrontmatter, ResumeTemplate } from '../types';
+import type { PrintMode, ResumeTheme, ResumeFrontmatter, ResumeTemplate } from '../types';
 import { DEFAULT_RESUME_TEMPLATE } from '../types';
 import { themeCssVariables } from './themes';
 
@@ -121,6 +134,15 @@ function triggerDownload(content: string, filename: string, mimeType: string): v
  *     `.resume-preview` sheet on the page;
  *   - a print block, so the downloaded HTML prints cleanly (drop the page
  *     chrome, avoid awkward page breaks, keep links readable).
+ *
+ * The print block branches on `body[data-print-mode]`, mirroring the live
+ * app's `src/styles/print.css`:
+ *   - `theme`: keep the embedded theme's colors in print, and tell the
+ *     browser to actually paint them (`print-color-adjust: exact`).
+ *   - any other value (`conservative` or missing): force black-on-white ink,
+ *     readable underlined links, and neutralize the `modern` layout's
+ *     decorative mono uppercase headings so an exported file prints the same
+ *     ATS-plain output the studio's conservative mode produces.
  */
 const STANDALONE_EXPORT_CSS = `
 /* Bare-document framing — the page the resume sheet rests on. */
@@ -148,21 +170,15 @@ body {
 @media print {
   body {
     padding: 0;
-    background: #ffffff;
   }
 
   .resume-preview {
     max-width: none;
     margin: 0;
     padding: 0;
-    background: #ffffff;
     border: 0;
     border-radius: 0;
     box-shadow: none;
-  }
-
-  .resume-preview a {
-    color: inherit;
   }
 
   .resume-preview h1,
@@ -182,6 +198,125 @@ body {
     page-break-inside: avoid;
     break-inside: avoid;
   }
+
+  /* ----------------------------------------------------------------
+   * THEME mode — print with the embedded theme's colors. The browser
+   * has to be told to actually paint background colors in print.
+   * -------------------------------------------------------------- */
+  body[data-print-mode='theme'] {
+    background: var(--resume-bg, #ffffff);
+  }
+
+  body[data-print-mode='theme'] .resume-preview {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ----------------------------------------------------------------
+   * CONSERVATIVE mode (also covers a missing attribute). Black ink on
+   * white paper, underlined links, no decorative color. Mirrors the
+   * conservative branch of src/styles/print.css.
+   * -------------------------------------------------------------- */
+  body:not([data-print-mode='theme']) {
+    background: #ffffff;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview {
+    background: #ffffff !important;
+    color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview :is(h1, h2, h3, h4),
+  body:not([data-print-mode='theme']) .resume-preview strong,
+  body:not([data-print-mode='theme']) .resume-preview li::marker,
+  body:not([data-print-mode='theme']) .resume-preview th {
+    color: #000 !important;
+    background: none !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview h2 {
+    border-bottom-color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview a {
+    color: #000 !important;
+    text-decoration: underline;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview :is(blockquote, hr) {
+    background: none !important;
+    border-color: #000 !important;
+    color: #222 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview :is(code, pre, table, th, td) {
+    background: #fff !important;
+    border-color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview__contact-name {
+    color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview__contact-role {
+    color: #222 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview
+    :is(.resume-preview__contact, .resume-preview__contact-meta) {
+    color: #222 !important;
+    border-color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview__contact-meta a {
+    color: #000 !important;
+  }
+
+  /* Conservative × modern layout: neutralize the mono uppercase overlay
+     so a downloaded modern-layout resume prints ATS-plain serif.
+     Mirrors the same #81 block in src/styles/print.css. */
+  body:not([data-print-mode='theme']) .resume-preview[data-template='modern'] :is(h1, h2, h3, h4) {
+    font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview[data-template='modern'] h2 {
+    border-bottom-color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview[data-template='modern']
+    :is(h3 + p em, h4 + p em) {
+    font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    color: #222 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview[data-template='modern']
+    .resume-preview__contact {
+    border-bottom-color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview[data-template='modern']
+    .resume-preview__contact-name {
+    letter-spacing: 0 !important;
+    color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview[data-template='modern']
+    .resume-preview__contact-role {
+    font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    color: #222 !important;
+  }
 }
 `.trim();
 
@@ -197,24 +332,34 @@ body {
  *   1. the theme's `--resume-*` custom properties (`themeCssVariables`);
  *   2. `resumeCss` — the shared `resume.css`, the SAME stylesheet that
  *      styles the in-app preview, so the export can never drift from it;
- *   3. `STANDALONE_EXPORT_CSS` — bare-document framing + print rules.
+ *   3. `STANDALONE_EXPORT_CSS` — bare-document framing + print rules that
+ *      branch on `body[data-print-mode]` (see file header for the contract).
  * There are no external CSS files, scripts, fonts, or network requests, so
  * the file renders the same offline, on any machine.
  *
  * @param resumeHtml  Already-sanitized resume HTML (output of the Markdown
  *                    pipeline). It is embedded verbatim and is NOT escaped.
- * @param theme       The active theme; its CSS variables are inlined.
+ * @param theme       The active theme; its CSS variables are inlined so the
+ *                    document still renders themed when opened in a browser,
+ *                    regardless of which print mode the recipient ends up
+ *                    using.
  * @param frontmatter Resume frontmatter; `name` seeds the document title.
  * @param template    The active layout template (#30). Applied as
  *                    `data-template="<slug>"` on the `.resume-preview`
  *                    element so the CSS variant is preserved in the export.
  *                    Defaults to `classic`.
+ * @param mode        Print mode the embedded `@media print` block resolves
+ *                    against (#82). `'conservative'` (the default — the
+ *                    safer choice for a downloaded file) prints
+ *                    black-on-white ATS-plain; `'theme'` prints with the
+ *                    embedded theme's colors.
  */
 export function buildStandaloneHtml(
   resumeHtml: string,
   theme: ResumeTheme,
   frontmatter: ResumeFrontmatter,
   template: ResumeTemplate = DEFAULT_RESUME_TEMPLATE,
+  mode: PrintMode = 'conservative',
 ): string {
   const name = frontmatter.name?.trim();
   const title = name ? `${name} — Resume` : 'Resume';
@@ -235,7 +380,7 @@ ${resumeCss}
 ${STANDALONE_EXPORT_CSS}
     </style>
   </head>
-  <body>
+  <body data-print-mode="${escapeHtml(mode)}">
     <!-- Generated by Works on My Resume. Resume content was processed locally in the browser. -->
     <article class="resume-preview" data-template="${escapeHtml(template)}">
 ${resumeHtml}
@@ -261,17 +406,19 @@ export function downloadMarkdown(markdown: string, frontmatter: ResumeFrontmatte
  * Download the rendered resume as a standalone, self-contained `.html` file.
  *
  * The file embeds the active theme, the active layout template (#30), and a
- * print-friendly stylesheet, so it can be opened, shared, or printed anywhere
- * with no dependencies. The filename is derived from `frontmatter.name`
- * (slugified), e.g. `avery-quinn-resume.html`. No-ops outside the browser.
+ * print-friendly stylesheet that branches on the chosen `mode` (#82), so it
+ * can be opened, shared, or printed anywhere with no dependencies. The
+ * filename is derived from `frontmatter.name` (slugified), e.g.
+ * `avery-quinn-resume.html`. No-ops outside the browser.
  */
 export function downloadResumeHtml(
   resumeHtml: string,
   theme: ResumeTheme,
   frontmatter: ResumeFrontmatter,
   template: ResumeTemplate = DEFAULT_RESUME_TEMPLATE,
+  mode: PrintMode = 'conservative',
 ): void {
-  const html = buildStandaloneHtml(resumeHtml, theme, frontmatter, template);
+  const html = buildStandaloneHtml(resumeHtml, theme, frontmatter, template, mode);
   const filename = `${slugify(frontmatter.name)}-resume.html`;
   triggerDownload(html, filename, 'text/html');
 }
@@ -566,10 +713,11 @@ export function downloadResumeZip(
   theme: ResumeTheme,
   frontmatter: ResumeFrontmatter,
   template: ResumeTemplate = DEFAULT_RESUME_TEMPLATE,
+  mode: PrintMode = 'conservative',
 ): void {
   if (!isBrowser()) return;
 
-  const standaloneHtml = buildStandaloneHtml(resumeHtml, theme, frontmatter, template);
+  const standaloneHtml = buildStandaloneHtml(resumeHtml, theme, frontmatter, template, mode);
   const themeCss = themeCssVariables(theme);
   const themeFilename = `theme-${slugify(theme.slug)}.css`;
 

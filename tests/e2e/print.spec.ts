@@ -289,6 +289,122 @@ test('conservative print mode — every section heading and a body item under it
  * sections.                                                            *
  * ------------------------------------------------------------------ */
 
+test('modern layout × conservative print — section headings are ATS-plain (no mono, no uppercase, no accent) (#81)', async ({
+  page,
+}) => {
+  // Reproduces the bug from issue #81: the `[data-template='modern']` overlay
+  // in resume.css restyles section headings with mono uppercase + accent color
+  // + wide letter-spacing. Conservative print mode is meant to render strict
+  // ATS-plain serif sentence-case, but the modern overlay's specificity beat
+  // the document-level font-family pin in print.css, so a printed conservative
+  // PDF of a modern-layout resume came out with mono uppercase headings.
+  await page.goto('?layout=modern');
+  await loadSampleResume(page);
+
+  const article = previewArticle(page);
+  await expect(article).toHaveAttribute('data-template', 'modern');
+
+  await setPrintMode(page, 'conservative');
+
+  // The article must still report the modern template — we only normalize the
+  // print output, we do not strip the attribute.
+  await expect(article).toHaveAttribute('data-template', 'modern');
+
+  // Grab the first H2 section heading (sample's "Summary"). Computed style
+  // must read ATS-plain: text-transform none, NOT a mono family, black ink.
+  const sectionHeading = article.getByRole('heading', { name: 'Summary', exact: true });
+  await expect(sectionHeading).toHaveCount(1);
+
+  const headingStyle = await sectionHeading.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return {
+      textTransform: cs.textTransform,
+      fontFamily: cs.fontFamily,
+      letterSpacing: cs.letterSpacing,
+      color: cs.color,
+    };
+  });
+
+  expect(headingStyle.textTransform, 'h2 text-transform').toBe('none');
+  // The modern overlay sets `font-family: var(--resume-mono)`, which resolves
+  // to a stack starting with 'JetBrains Mono'. The conservative override must
+  // wipe that out. We assert the negative (no mono token) AND the positive
+  // (some serif family is present) so a future font-stack rename still trips
+  // the right wire.
+  expect(headingStyle.fontFamily, 'h2 font-family must not include the mono stack').not.toMatch(
+    /JetBrains Mono|ui-monospace|SF Mono|Menlo|Consolas|monospace/i,
+  );
+  expect(headingStyle.fontFamily, 'h2 font-family must include a serif token').toMatch(
+    /Source Serif 4|Charter|Iowan Old Style|Georgia|serif/i,
+  );
+  // Letter-spacing 0.18em on the modern overlay is what produces the
+  // "S P A C E D - O U T" effect we are explicitly trying to kill.
+  expect(headingStyle.letterSpacing, 'h2 letter-spacing should be neutral').toBe('normal');
+  expect(headingStyle.color, 'h2 color').toBe('rgb(0, 0, 0)');
+
+  // Cross-check the other headings too — H1 (identity name) and H3 (role
+  // titles) both have their own modern overrides; conservative print must
+  // also neutralize their decorative coloring / letter-spacing.
+  const accent = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--resume-accent').trim(),
+  );
+  for (const tag of ['h1', 'h3'] as const) {
+    const headings = article.locator(tag);
+    const count = await headings.count();
+    if (count === 0) continue;
+    const colors = await headings.evaluateAll((nodes) =>
+      nodes.map((el) => getComputedStyle(el).color),
+    );
+    for (const color of colors) {
+      expect.soft(color, `${tag} color under modern × conservative`).toBe('rgb(0, 0, 0)');
+      expect.soft(color, `${tag} must not be theme accent ${accent}`).not.toBe(accent);
+    }
+  }
+
+  // The role/date stub directly under H3 in modern is the other mono-uppercase
+  // surface; lock it down too. The sample's first role is "Northwind Logistics"
+  // followed by an italic role/date stub on the next paragraph.
+  const stub = article.locator('h3 + p em').first();
+  const stubCount = await stub.count();
+  if (stubCount > 0) {
+    const stubStyle = await stub.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { textTransform: cs.textTransform, fontFamily: cs.fontFamily };
+    });
+    expect.soft(stubStyle.textTransform, 'h3+p em text-transform').toBe('none');
+    expect
+      .soft(stubStyle.fontFamily, 'h3+p em must not be mono')
+      .not.toMatch(/JetBrains Mono|ui-monospace|SF Mono|Menlo|Consolas|monospace/i);
+  }
+});
+
+test('modern layout × THEME print — modern overlay survives (regression guard for #81)', async ({
+  page,
+}) => {
+  // The flip side of the #81 fix: conservative-print neutralization MUST NOT
+  // leak into theme-print mode. Theme print keeps modern's distinctive look
+  // by design — designers picking the modern layout and theme print expect
+  // their mono uppercase section labels in the printed PDF.
+  await page.goto('?layout=modern');
+  await loadSampleResume(page);
+
+  const article = previewArticle(page);
+  await expect(article).toHaveAttribute('data-template', 'modern');
+
+  await setPrintMode(page, 'theme');
+
+  const sectionHeading = article.getByRole('heading', { name: 'Summary', exact: true });
+  const headingStyle = await sectionHeading.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { textTransform: cs.textTransform, fontFamily: cs.fontFamily };
+  });
+  // Modern's character: uppercase + mono section labels.
+  expect(headingStyle.textTransform, 'theme print preserves modern uppercase').toBe('uppercase');
+  expect(headingStyle.fontFamily, 'theme print preserves modern mono font').toMatch(
+    /JetBrains Mono|ui-monospace|SF Mono|Menlo|Consolas|monospace/i,
+  );
+});
+
 test('modern layout × conservative print — content is not missing', async ({ page }) => {
   // Switch to the modern layout via the URL so we are not waiting on the
   // LayoutSelector roles in this test. `?layout=` is the documented
@@ -362,4 +478,75 @@ test('Download HTML export contains every section heading from the sample', asyn
   // And the canonical identity (frontmatter name) is in the export — the
   // header lives outside the body HTML, so check the document at large.
   expect(html).toContain('Avery Quinn');
+});
+
+/* ------------------------------------------------------------------ *
+ * Standalone HTML export × print mode (#82)                           *
+ * The downloaded HTML must mirror the in-app print mode the user has  *
+ * chosen in the Export panel, so the recipient prints the same way    *
+ * the studio does. The export panel writes that choice onto the       *
+ * exported `<body data-print-mode="...">`; the embedded print.css     *
+ * branches off that attribute exactly like `src/styles/print.css`.    *
+ * ------------------------------------------------------------------ */
+
+/**
+ * Click "Download HTML" inside the open Export panel and return the file's
+ * body contents as a string. Centralizes the Playwright `download` event
+ * dance so the per-mode assertions read like prose.
+ */
+async function downloadHtmlBody(page: Page): Promise<{ html: string; filename: string }> {
+  const downloadButton = page.getByRole('button', { name: /download html/i });
+  await expect(downloadButton).toBeVisible();
+
+  const [download] = await Promise.all([page.waitForEvent('download'), downloadButton.click()]);
+
+  const stream = await download.createReadStream();
+  let html = '';
+  for await (const chunk of stream) {
+    html += chunk.toString();
+  }
+  return { html, filename: download.suggestedFilename() };
+}
+
+test('Download HTML export defaults to data-print-mode="conservative"', async ({ page }) => {
+  // Conservative is the in-app default (ResumeStudio mounts with
+  // `printMode = 'conservative'`); the export should reflect that without
+  // the user touching the radio group.
+  await page.getByRole('button', { name: /^export$/i }).click();
+
+  const { html, filename } = await downloadHtmlBody(page);
+
+  expect(filename).toMatch(/-resume\.html$/);
+  // The body carries the conservative attribute — that is what the embedded
+  // print.css branches off when the recipient prints.
+  expect(html).toMatch(/<body[^>]*data-print-mode="conservative"/);
+  // And the document is otherwise complete: every sample section heading is
+  // still present (the print-mode attribute changes the print CSS, not the
+  // rendered content).
+  for (const section of SAMPLE_SECTIONS) {
+    expect.soft(html, `conservative export contains "${section}"`).toContain(`>${section}<`);
+  }
+});
+
+test('Download HTML export with print mode "theme" writes data-print-mode="theme"', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: /^export$/i }).click();
+
+  // Flip the radio group to theme print mode. The radio input itself can
+  // report as outside the viewport when the export panel is positioned as
+  // an overflowing popover; dispatch a click on the input via the page
+  // context, which sidesteps Playwright's viewport precheck and exercises
+  // the same change handler a real user click would.
+  const themeRadio = page.getByRole('radio', { name: /current theme/i });
+  await themeRadio.dispatchEvent('click');
+  await expect(themeRadio).toBeChecked();
+
+  const { html } = await downloadHtmlBody(page);
+
+  expect(html).toMatch(/<body[^>]*data-print-mode="theme"/);
+  // Sanity: the exported document still contains the resume content.
+  for (const section of SAMPLE_SECTIONS) {
+    expect.soft(html, `theme export contains "${section}"`).toContain(`>${section}<`);
+  }
 });

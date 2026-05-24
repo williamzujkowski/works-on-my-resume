@@ -180,7 +180,7 @@ export default function ExportPanel({
             disabled={!hasResume}
             onClick={() => {
               if (parsed) {
-                downloadResumeHtml(parsed.html, theme, parsed.frontmatter, template);
+                downloadResumeHtml(parsed.html, theme, parsed.frontmatter, template, printMode);
               }
             }}
           >
@@ -205,7 +205,14 @@ export default function ExportPanel({
             disabled={!hasResume}
             onClick={() => {
               if (parsed) {
-                downloadResumeZip(markdown, parsed.html, theme, parsed.frontmatter, template);
+                downloadResumeZip(
+                  markdown,
+                  parsed.html,
+                  theme,
+                  parsed.frontmatter,
+                  template,
+                  printMode,
+                );
               }
             }}
           >

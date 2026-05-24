@@ -175,6 +175,118 @@
   }
 
   /* --------------------------------------------------------------
+   * CONSERVATIVE × `modern` layout (#81)
+   *
+   * The `[data-template='modern']` overlay in resume.css restyles
+   * headings, the role/date stub, and the contact identity with a
+   * designer's-CV palette: monospaced section labels in ALL-CAPS,
+   * wide letter-spacing, mono on the role line, accent color on H3.
+   * Those overlays use higher specificity than `.resume-preview`,
+   * so the `font-family` we pin above at the document level does
+   * not reach the per-element selectors — a conservative print of
+   * a modern-layout resume came out with MONO UPPERCASE section
+   * headings instead of the ATS-plain serif this mode is meant to
+   * produce.
+   *
+   * The intent of conservative print mode is ATS-plain regardless
+   * of the on-screen layout. Theme print mode (handled below) keeps
+   * modern's distinctive look — that is by design and is not touched.
+   *
+   * Properties the modern overlay sets, and what we reset them to:
+   *
+   *   h1                     font-size, letter-spacing
+   *                          → defer to the document-level reset; we
+   *                            only need to neutralize letter-spacing
+   *                            so the identity reads sentence-natural.
+   *
+   *   h2                     margin-top/bottom, padding-bottom,
+   *                          border-bottom, font-family (mono),
+   *                          font-size, font-weight, letter-spacing,
+   *                          text-transform (uppercase), color (muted)
+   *                          → font-family back to the serif stack,
+   *                            text-transform: none, letter-spacing: 0,
+   *                            color: #000, border-bottom-color: #000.
+   *                            Sizes / margins stay at whatever modern
+   *                            asked for — they do not break ATS.
+   *
+   *   h3                     font-size, margins, color (accent),
+   *                          font-weight
+   *                          → color: #000. Sizes/weight harmless.
+   *
+   *   h3 + p em, h4 + p em   font-family (mono), font-size,
+   *                          letter-spacing, text-transform (uppercase),
+   *                          color (muted)
+   *                          → font-family inherit (serif), text-transform: none,
+   *                            letter-spacing: 0, color #222 (the same
+   *                            quiet-but-readable shade other conservative
+   *                            rules use for secondary text).
+   *
+   *   .resume-preview__contact
+   *                          border-bottom-width/-color
+   *                          → border-color #000 (matches the
+   *                            existing conservative contact rule).
+   *
+   *   .resume-preview__contact-name
+   *                          font-size, letter-spacing
+   *                          → letter-spacing 0; size is harmless.
+   *
+   *   .resume-preview__contact-role
+   *                          font-family (mono), font-size,
+   *                          letter-spacing, text-transform (uppercase),
+   *                          color (muted)
+   *                          → font-family inherit (serif),
+   *                            text-transform: none, letter-spacing: 0,
+   *                            color #222.
+   *
+   * The modern overlay uses no `!important`, but its selectors have
+   * higher specificity than the document-level `.resume-preview` rule
+   * we already pin. We use `!important` here for the same reason the
+   * other conservative-mode rules above do: to defeat the layout
+   * overlay unambiguously and survive future overlay additions.
+   * ------------------------------------------------------------ */
+  body:not([data-print-mode='theme']) .resume-preview[data-template='modern'] :is(h1, h2, h3, h4) {
+    font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview[data-template='modern'] h2 {
+    border-bottom-color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview[data-template='modern']
+    :is(h3 + p em, h4 + p em) {
+    font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    color: #222 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview[data-template='modern']
+    .resume-preview__contact {
+    border-bottom-color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview[data-template='modern']
+    .resume-preview__contact-name {
+    letter-spacing: 0 !important;
+    color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview[data-template='modern']
+    .resume-preview__contact-role {
+    font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    color: #222 !important;
+  }
+
+  /* --------------------------------------------------------------
    * THEME mode — print with the active theme colors. The resume
    * already consumes --resume-* vars, so we only need to ask the
    * browser to actually print background colors.
