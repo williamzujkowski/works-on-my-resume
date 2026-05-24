@@ -759,39 +759,69 @@ export default function ResumeStudio() {
         {loadAnnouncement}
       </p>
 
-      {/* ----- Toolbar: theme + export controls. Phase 2 only (#43). ----- */}
+      {/* ----- Toolbar: theme + export controls. Phase 2 only (#43). -----
+           When the ATS preview is active (#98) we tag the toolbar with the
+           `--ats-active` modifier. The modifier scales opacity / removes
+           hover affordance on the theme-and-layout cluster so the user can
+           SEE that those controls are inert in ATS mode without us actually
+           disabling them — they can still pre-select a theme to return to
+           when they exit ATS. The persistent "Exit ATS preview" pill below
+           gives a one-click way out. */}
       {hasResume && (
-        <div className="studio__toolbar" data-print-hide>
-          <ThemePicker
-            themes={themes}
-            themesLoading={!themesReady}
-            current={theme}
-            query={themeQuery}
-            onQueryChange={setThemeQuery}
-            resumeSafeOnly={resumeSafeOnly}
-            onResumeSafeOnlyChange={setResumeSafeOnly}
-            onSelect={changeTheme}
-            searchInputId={themeSearchInputId}
-            open={themePickerOpen}
-            onOpenChange={setThemePickerOpen}
-          />
+        <div
+          className={
+            previewMode === 'ats'
+              ? 'studio__toolbar studio__toolbar--ats-active'
+              : 'studio__toolbar'
+          }
+          data-print-hide
+        >
+          <div className="studio__toolbar-themable">
+            <ThemePicker
+              themes={themes}
+              themesLoading={!themesReady}
+              current={theme}
+              query={themeQuery}
+              onQueryChange={setThemeQuery}
+              resumeSafeOnly={resumeSafeOnly}
+              onResumeSafeOnlyChange={setResumeSafeOnly}
+              onSelect={changeTheme}
+              searchInputId={themeSearchInputId}
+              open={themePickerOpen}
+              onOpenChange={setThemePickerOpen}
+            />
 
-          <LayoutSelector
-            templates={RESUME_TEMPLATES}
-            current={template}
-            onChange={changeTemplate}
-          />
+            <LayoutSelector
+              templates={RESUME_TEMPLATES}
+              current={template}
+              onChange={changeTemplate}
+            />
+          </div>
 
           <AtsModeToggle active={previewMode === 'ats'} onChange={changePreviewMode} />
 
+          {previewMode === 'ats' && (
+            <button
+              type="button"
+              className="studio__ats-exit-pill"
+              onClick={() => changePreviewMode(false)}
+              aria-label="Exit ATS preview"
+            >
+              <Icon name="close" size={12} />
+              Exit ATS preview
+            </button>
+          )}
+
           <div className="studio__toolbar-spacer" />
 
-          <ThemeControls
-            current={theme}
-            onPrevious={() => stepTheme(-1)}
-            onNext={() => stepTheme(1)}
-            onRandom={randomTheme}
-          />
+          <div className="studio__toolbar-themable">
+            <ThemeControls
+              current={theme}
+              onPrevious={() => stepTheme(-1)}
+              onNext={() => stepTheme(1)}
+              onRandom={randomTheme}
+            />
+          </div>
 
           {/* Save as PDF — primary toolbar action (#90). A direct,
               single-click path to the most common export. Lives as a peer
@@ -833,6 +863,58 @@ export default function ResumeStudio() {
             )}
           </div>
 
+          {/* Shortcut legend chip (#99). Collapsed from the multi-row
+              legend to a single discreet "shortcuts (?)" affordance. Hover
+              / keyboard focus reveals a small inline popover listing the
+              keys; clicking opens the existing KeyboardHelp dialog (which
+              is what the `?` shortcut also does). Hidden on coarse
+              pointers — the popover is purely a hover/focus reveal and
+              the dialog remains reachable from the keyboard-shortcuts
+              icon button next to it. */}
+          <span className="studio__shortcuts-chip" data-print-hide>
+            <button
+              type="button"
+              className="studio__shortcuts-chip-trigger"
+              onClick={() => setHelpOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={helpOpen}
+              aria-label="Show keyboard shortcuts"
+            >
+              shortcuts <span aria-hidden="true">(?)</span>
+            </button>
+            <span className="studio__shortcuts-chip-popover" role="presentation">
+              {shortcutsEnabled ? (
+                <>
+                  <span>
+                    <kbd>←</kbd> <kbd>→</kbd> theme
+                  </span>
+                  <span>
+                    <kbd>r</kbd> random
+                  </span>
+                  <span>
+                    <kbd>/</kbd> search themes
+                  </span>
+                  <span>
+                    <kbd>p</kbd> print
+                  </span>
+                  <span>
+                    <kbd>e</kbd> export
+                  </span>
+                  <span>
+                    <kbd>?</kbd> all shortcuts
+                  </span>
+                  <span>
+                    <kbd>Esc</kbd> close
+                  </span>
+                </>
+              ) : (
+                <span className="studio__shortcuts-off">
+                  Single-key shortcuts are off — <kbd>Esc</kbd> still closes panels.
+                </span>
+              )}
+            </span>
+          </span>
+
           <button
             type="button"
             ref={helpTriggerRef}
@@ -844,52 +926,6 @@ export default function ResumeStudio() {
             aria-label="Keyboard shortcuts"
           >
             <Icon name="help" />
-          </button>
-        </div>
-      )}
-
-      {/* ----- Keyboard shortcut legend. Phase 2 only (#43). -----
-           Intentionally NOT aria-hidden: it is genuine, useful content for
-           screen-reader users. The trailing button opens the full help
-           dialog and is the discoverable affordance for the `?` shortcut. */}
-      {hasResume && (
-        <div className="studio__shortcuts" data-print-hide>
-          <span className="studio__shortcuts-label">Shortcuts</span>
-          {shortcutsEnabled ? (
-            <>
-              <span>
-                <kbd>←</kbd> <kbd>→</kbd> theme
-              </span>
-              <span>
-                <kbd>r</kbd> random
-              </span>
-              <span>
-                <kbd>/</kbd> search themes
-              </span>
-              <span>
-                <kbd>p</kbd> print
-              </span>
-              <span>
-                <kbd>e</kbd> export
-              </span>
-              <span>
-                <kbd>Esc</kbd> close
-              </span>
-            </>
-          ) : (
-            <span className="studio__shortcuts-off">
-              Single-key shortcuts are off — <kbd>Esc</kbd> still closes panels.
-            </span>
-          )}
-          <button
-            type="button"
-            className="studio__shortcuts-help"
-            onClick={() => setHelpOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={helpOpen}
-          >
-            <Icon name="help" size={13} />
-            {shortcutsEnabled ? 'All shortcuts' : 'Shortcut settings'}
           </button>
         </div>
       )}

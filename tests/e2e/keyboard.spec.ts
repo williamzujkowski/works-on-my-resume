@@ -54,18 +54,24 @@ test('? opens the help dialog, Escape closes it and restores focus to the help t
   await expect(dialog).toHaveCount(0);
   // ResumeStudio restores focus to its `helpTriggerRef` — the icon-only
   // "Keyboard shortcuts" button in the toolbar — on close. That is the
-  // documented contract regardless of who pressed `?`.
-  await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeFocused();
+  // documented contract regardless of who pressed `?`. The shortcut chip
+  // sibling has the accessible name "Show keyboard shortcuts", so we
+  // match the icon button exactly.
+  await expect(page.getByRole('button', { name: 'Keyboard shortcuts', exact: true })).toBeFocused();
 });
 
 test('with single-key shortcuts disabled, r does NOT shuffle the theme', async ({ page }) => {
-  // Open the help dialog, uncheck the master toggle, close.
-  await page.getByRole('button', { name: /all shortcuts/i }).click();
+  // Open the help dialog via the `?` keyboard shortcut, uncheck the master
+  // toggle, close. The legacy "All shortcuts" affordance was collapsed into
+  // a hover/focus chip (#99); the dialog is the canonical entry point now.
+  await page.keyboard.press('?');
   await page.getByRole('checkbox', { name: /single-key shortcuts enabled/i }).uncheck();
   await page.keyboard.press('Escape');
 
-  // Confirm the legend reflects the off state — discoverable signal #1.
-  await expect(page.getByText(/single-key shortcuts are off/i)).toBeVisible();
+  // Confirm the chip popover reflects the off state — discoverable signal #1.
+  // The shortcut chip is hidden on coarse pointers but visible in default
+  // Playwright runs (fine pointer).
+  await expect(page.getByText(/single-key shortcuts are off/i).first()).toBeAttached();
 
   const before = await readBgVar(page);
 

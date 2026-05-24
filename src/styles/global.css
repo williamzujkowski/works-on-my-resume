@@ -527,6 +527,67 @@ a {
   min-width: var(--space-3);
 }
 
+/* ----- ATS preview — toolbar greyed-out state (#98) -----
+   When ATS mode is on, the theme/layout controls are still INTERACTIVE
+   (the user may want to pre-select the theme they'll return to when
+   they exit ATS) but visibly inert: opacity scales to ~0.55 and hover
+   affordances are removed so the cluster reads as "these are muted
+   right now". The persistent exit pill (sibling element below) gives a
+   one-click path back to normal mode. */
+.studio__toolbar-themable {
+  display: contents;
+}
+
+.studio__toolbar--ats-active .studio__toolbar-themable {
+  display: contents;
+}
+
+.studio__toolbar--ats-active .studio__toolbar-themable > * {
+  opacity: 0.55;
+  transition: opacity 140ms ease;
+}
+
+/* Cancel the hover lift on muted controls so they don't read as live. */
+.studio__toolbar--ats-active .studio__toolbar-themable > *:hover,
+.studio__toolbar--ats-active .studio__toolbar-themable > *:focus-within {
+  opacity: 0.7;
+}
+
+.studio__toolbar--ats-active .studio__toolbar-themable .btn:hover,
+.studio__toolbar--ats-active .studio__toolbar-themable .theme-picker__trigger:hover {
+  background: var(--ui-bg-elevated);
+  border-color: var(--ui-border);
+}
+
+/* The exit-ATS pill — a quiet but persistent affordance next to the ATS
+   toggle. It uses the accent color so the way out is obvious without
+   competing with the primary Save-as-PDF button. */
+.studio__ats-exit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.32rem 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--ui-accent);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-accent);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease,
+    border-color 110ms ease;
+}
+
+.studio__ats-exit-pill:hover,
+.studio__ats-exit-pill:focus-visible {
+  color: var(--ui-accent-contrast);
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+}
+
 /* The split editor / preview workbench. Panes stretch to a shared height
    so a tall preview never leaves a void beside the editor (#52). */
 .studio__split {
@@ -711,33 +772,113 @@ a {
   color: var(--ui-fg-subtle);
 }
 
-.studio__shortcuts {
+/* ------------------------------------------------------------------ */
+/* Shortcut legend chip (#99) — a single discreet pill sitting on the  */
+/* toolbar that reveals the keys on hover / focus-within and opens     */
+/* the full KeyboardHelp dialog on click. Replaces the six-cue legend  */
+/* row that used to live between the toolbar and the workbench. The    */
+/* popover is purely a hover/focus reveal — fully keyboard-accessible  */
+/* via tab into the trigger button — and is hidden on coarse pointers  */
+/* (the icon-only "Keyboard shortcuts" button next to it stays).       */
+/* ------------------------------------------------------------------ */
+
+.studio__shortcuts-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.studio__shortcuts-chip-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ui-fg-muted);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    border-color 110ms ease,
+    color 110ms ease;
+}
+
+.studio__shortcuts-chip-trigger:hover,
+.studio__shortcuts-chip-trigger:focus-visible {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+  border-color: var(--ui-accent);
+}
+
+/* The popover is positioned below the chip; its initial state hides it
+   via opacity + a small downward shift so reduced-motion users get an
+   instant reveal (the transition is neutralised globally), and animated
+   users get a 120 ms fade-in. Visibility flips to `visible` only when
+   the chip is hovered/focused, so the popover doesn't trap pointer
+   events while hidden. */
+.studio__shortcuts-chip-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2) var(--space-4);
+  gap: var(--space-2) var(--space-3);
   padding: var(--space-2) var(--space-3);
-  font-size: 0.76rem;
-  color: var(--ui-fg-muted);
-}
-
-.studio__shortcuts-label {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ui-fg-subtle);
-}
-
-.studio__shortcuts kbd {
-  font-family: var(--font-mono);
   font-size: 0.72rem;
+  color: var(--ui-fg-muted);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-panel);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-2px);
+  visibility: hidden;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease,
+    visibility 0s linear 120ms;
+}
+
+.studio__shortcuts-chip:hover .studio__shortcuts-chip-popover,
+.studio__shortcuts-chip:focus-within .studio__shortcuts-chip-popover {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease,
+    visibility 0s linear 0s;
+}
+
+.studio__shortcuts-chip-popover kbd {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
   padding: 0.1rem 0.4rem;
   background: var(--ui-panel);
   border: 1px solid var(--ui-border-strong);
   border-bottom-width: 2px;
   border-radius: var(--radius-sm);
   color: var(--ui-fg);
+}
+
+.studio__shortcuts-chip-popover .studio__shortcuts-off {
+  color: var(--ui-fg-subtle);
+}
+
+/* Coarse pointers (touch) can't hover; the popover would be unreachable.
+   Hide the chip entirely — the icon-only Keyboard shortcuts button next
+   to it remains the discoverable affordance. */
+@media (pointer: coarse) {
+  .studio__shortcuts-chip {
+    display: none;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -2024,47 +2165,6 @@ a {
 .preview-frame[data-mode='ats'] {
   background-image: none;
   background-color: var(--ui-bg-elevated);
-}
-
-/* ------------------------------------------------------------------ */
-/* Shortcut legend — help affordance + disabled state                  */
-/* ------------------------------------------------------------------ */
-
-/* The "All shortcuts" / "Shortcut settings" button that opens the help
-   dialog. A quiet inline affordance, not a heavy button. */
-.studio__shortcuts-help {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  margin-left: auto;
-  padding: 0.16rem 0.5rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--ui-fg-muted);
-  background: var(--ui-panel);
-  border: 1px solid var(--ui-border-strong);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition:
-    background-color 110ms ease,
-    border-color 110ms ease,
-    color 110ms ease;
-}
-
-.studio__shortcuts-help:hover {
-  color: var(--ui-fg);
-  background: var(--ui-panel-hover);
-  border-color: var(--ui-accent);
-}
-
-.studio__shortcuts-off {
-  color: var(--ui-fg-subtle);
-}
-
-@media (max-width: 640px) {
-  .studio__shortcuts-help {
-    margin-left: 0;
-  }
 }
 
 /* ------------------------------------------------------------------ */

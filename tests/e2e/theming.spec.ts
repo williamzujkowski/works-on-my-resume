@@ -198,6 +198,29 @@ test('multiple chips AND-filter and include a known light high-contrast slug', a
   await expect(githubLight).toHaveCount(1);
 });
 
+test('enabling ATS preview tags the toolbar with the greyed-out modifier class and shows the exit pill (#98)', async ({
+  page,
+}) => {
+  const toolbar = page.locator('.studio__toolbar');
+  // Baseline: toolbar is in normal mode — no modifier class, no exit pill.
+  await expect(toolbar).not.toHaveClass(/studio__toolbar--ats-active/);
+  await expect(page.getByRole('button', { name: /exit ats preview/i })).toHaveCount(0);
+
+  // Flip ATS mode on via the existing toggle.
+  await page.getByRole('switch', { name: /ats preview/i }).check();
+
+  // The toolbar now carries the modifier class (the visible grey-out is
+  // applied by CSS via this class), and the persistent exit pill is shown.
+  await expect(toolbar).toHaveClass(/studio__toolbar--ats-active/);
+  const exitPill = page.getByRole('button', { name: /exit ats preview/i });
+  await expect(exitPill).toBeVisible();
+
+  // Pressing the exit pill returns the toolbar to normal mode.
+  await exitPill.click();
+  await expect(toolbar).not.toHaveClass(/studio__toolbar--ats-active/);
+  await expect(page.getByRole('button', { name: /exit ats preview/i })).toHaveCount(0);
+});
+
 test('closing the picker without selecting reverts a hover preview', async ({ page }) => {
   // Snapshot the document's CSS variable BEFORE any preview occurs.
   const bgBefore = await page.evaluate(() =>

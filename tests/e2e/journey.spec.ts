@@ -3,10 +3,13 @@
  *
  * Validates the two-phase journey called out in ResumeStudio's docs:
  *   - Phase 1 (no resume loaded): uploader is the hero, the theme toolbar
- *     and shortcut legend are NOT in the DOM.
- *   - Phase 2 (resume loaded): the toolbar and legend appear, the resume
- *     is rendered.
+ *     and shortcut chip are NOT in the DOM.
+ *   - Phase 2 (resume loaded): the toolbar (including the shortcut chip)
+ *     appears, the resume is rendered.
  *   - Clear: returns to Phase 1.
+ *
+ * The shortcut affordance is the `shortcuts (?)` chip on the right edge of
+ * the toolbar (#99) — it replaces the legacy "Shortcuts" legend row.
  */
 import { test, expect } from '@playwright/test';
 import { clearAppStorage, loadSampleResume } from './helpers';
@@ -16,9 +19,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('');
 });
 
-test('phase 1: toolbar and shortcut legend are absent until a resume is loaded', async ({
-  page,
-}) => {
+test('phase 1: toolbar and shortcut chip are absent until a resume is loaded', async ({ page }) => {
   // The empty-state preview is the giveaway that we are in Phase 1.
   await expect(page.getByText(/no resume loaded yet/i)).toBeVisible();
 
@@ -26,14 +27,14 @@ test('phase 1: toolbar and shortcut legend are absent until a resume is loaded',
   await expect(page.getByRole('button', { name: /^theme /i })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^export$/i })).toHaveCount(0);
 
-  // The shortcut legend's label is the simplest stable signal.
-  await expect(page.getByText('Shortcuts', { exact: true })).toHaveCount(0);
+  // The shortcut chip (#99) is the toolbar's discoverable shortcut affordance.
+  await expect(page.locator('.studio__shortcuts-chip')).toHaveCount(0);
 
   // The uploader's hero affordance — "Load sample" and "Choose file" — IS present.
   await expect(page.getByRole('button', { name: /load sample/i })).toBeVisible();
 });
 
-test('phase 2: loading the sample reveals the toolbar, legend, and rendered resume', async ({
+test('phase 2: loading the sample reveals the toolbar, shortcut chip, and rendered resume', async ({
   page,
 }) => {
   await loadSampleResume(page);
@@ -48,8 +49,10 @@ test('phase 2: loading the sample reveals the toolbar, legend, and rendered resu
   await expect(page.getByRole('button', { name: /^theme /i })).toBeVisible();
   await expect(page.getByRole('button', { name: /^export$/i })).toBeVisible();
 
-  // Shortcut legend now mounted.
-  await expect(page.getByText('Shortcuts', { exact: true })).toBeVisible();
+  // Shortcut chip now mounted. The trigger is visible on fine-pointer devices;
+  // assert its presence in the DOM (the `pointer: coarse` media hides it on
+  // mobile but the element is still attached).
+  await expect(page.locator('.studio__shortcuts-chip')).toHaveCount(1);
 });
 
 test('clear: returns to the empty Phase 1 state', async ({ page }) => {
@@ -63,7 +66,7 @@ test('clear: returns to the empty Phase 1 state', async ({ page }) => {
   await expect(page.getByRole('article', { name: /rendered resume/i })).toHaveCount(0);
   await expect(page.getByLabel(/markdown source/i)).toHaveValue('');
 
-  // Toolbar + legend gone.
+  // Toolbar + shortcut chip gone.
   await expect(page.getByRole('button', { name: /^theme /i })).toHaveCount(0);
-  await expect(page.getByText('Shortcuts', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.studio__shortcuts-chip')).toHaveCount(0);
 });
