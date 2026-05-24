@@ -332,8 +332,10 @@ function FadedSamplePreview({
       <div className="faded-sample" data-print-hide>
         {/* The faded layer — a real preview at low opacity, inert to clicks
             and to assistive tech (it is purely decorative; the overlay
-            carries the meaningful affordance). */}
-        <div className="faded-sample__layer" aria-hidden="true">
+            carries the meaningful affordance). `inert` (React 19) also
+            removes the layer's anchors from the tab order, satisfying
+            axe's `aria-hidden-focus` rule (#111). */}
+        <div className="faded-sample__layer" aria-hidden="true" inert>
           <article
             className="resume-preview faded-sample__article"
             data-template={template}
