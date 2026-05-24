@@ -150,7 +150,98 @@ test('weak-verb finding fires for a bullet starting with "Responsible for"', asy
 });
 
 /* ------------------------------------------------------------------ */
-/* 5. First-person detection                                           */
+/* 5. Quantification scoping (#105)                                    */
+/* ------------------------------------------------------------------ */
+test('quantification ignores non-Experience bullets but counts Experience ones', async ({
+  page,
+}) => {
+  // Variant A: Experience bullets all carry numbers; the Selected Writing
+  // and Skills lists do not. The old (unscoped) rule averaged the two pools
+  // together and warned on senior; the new rule should not warn at all
+  // because every Experience bullet quantifies an outcome.
+  const goodExperience = [
+    '---',
+    'name: Test User',
+    'role: Senior Engineer',
+    'email: test@example.com',
+    'links:',
+    '  - GitHub: https://example.com',
+    '---',
+    '',
+    '## Summary',
+    '',
+    'Body text so the preview renders.',
+    '',
+    '## Experience',
+    '',
+    '### Senior Engineer — Acme',
+    '',
+    '- Cut p95 latency by 40% across the checkout path.',
+    '- Reduced infra spend by $120k in 6 months.',
+    '- Mentored 4 engineers; 2 were promoted to senior.',
+    '',
+    '## Skills',
+    '',
+    '- TypeScript, Go, Rust',
+    '- Kubernetes, Terraform, Pulumi',
+    '',
+    '## Selected Writing',
+    '',
+    '- [Caching is a contract](https://example.com/post-a)',
+    '- [On-call as product](https://example.com/post-b)',
+    '',
+  ].join('\n');
+
+  await page.getByLabel(/markdown source/i).fill(goodExperience);
+  await expect(page.getByRole('article', { name: /rendered resume/i })).toBeVisible();
+  await openHealthTab(page);
+  const panel = healthPanel(page);
+  await panel.getByRole('radio', { name: /^senior$/i }).click();
+  // No quantification warning — every Experience bullet carries a number.
+  await expect(panel.locator('.health__list [data-rule="quantification"]')).toHaveCount(0);
+
+  // Variant B: same shape, but the Experience bullets no longer carry
+  // numbers. The Skills / Writing bullets are unchanged (still numberless).
+  // The new rule scopes to Experience and SHOULD warn now.
+  const weakExperience = [
+    '---',
+    'name: Test User',
+    'role: Senior Engineer',
+    'email: test@example.com',
+    'links:',
+    '  - GitHub: https://example.com',
+    '---',
+    '',
+    '## Summary',
+    '',
+    'Body text so the preview renders.',
+    '',
+    '## Experience',
+    '',
+    '### Senior Engineer — Acme',
+    '',
+    '- Shipped the checkout redesign across the platform.',
+    '- Tuned the caching layer and the deploy pipeline.',
+    '- Mentored several engineers across the team.',
+    '',
+    '## Skills',
+    '',
+    '- TypeScript, Go, Rust',
+    '- Kubernetes, Terraform, Pulumi',
+    '',
+    '## Selected Writing',
+    '',
+    '- [Caching is a contract](https://example.com/post-a)',
+    '- [On-call as product](https://example.com/post-b)',
+    '',
+  ].join('\n');
+
+  await page.getByLabel(/markdown source/i).fill(weakExperience);
+  await expect(panel.locator('.health__list [data-rule="quantification"]')).toHaveCount(1);
+});
+
+/* ------------------------------------------------------------------ */
+/* 6. First-person detection                                           */
 /* ------------------------------------------------------------------ */
 test('first-person finding fires for a bullet starting with "I led"', async ({ page }) => {
   const md = [

@@ -298,14 +298,61 @@ function checkSections(markdown: string, stage: CareerStage): HealthFinding[] {
   return findings;
 }
 
-/** #4 quantification. */
+/**
+ * #4 quantification.
+ *
+ * Counts only bullets that live under an Experience-style H2 heading, so a
+ * clean senior resume doesn't get dinged because its Skills table, Selected
+ * Writing list, or Education capstone bullets happen not to carry numbers.
+ *
+ * Section headings that qualify as Experience (case-insensitive, exact H2
+ * title match): `Experience`, `Work`, `Work Experience`, `Employment`,
+ * `Professional Experience`. See `EXPERIENCE_LIKE` for the canonical list.
+ *
+ * Back-compat: if the resume has NO Experience-style H2 at all (early
+ * drafts, projects-only resumes, junior portfolios), the rule falls back
+ * to its original behavior of counting every bullet in the document. This
+ * keeps the heuristic useful before the Experience section is written.
+ *
+ * See issue #105 for the reasoning behind this scoping change.
+ */
 function checkQuantification(markdown: string, stage: CareerStage): HealthFinding[] {
   const lines = splitLines(markdown);
-  const bullets = findBullets(lines);
-  if (bullets.length === 0) return [];
+  const headings = findHeadings(lines);
+  const allBullets = findBullets(lines);
+  if (allBullets.length === 0) return [];
 
-  const withDigits = bullets.filter((b) => /\d/.test(b.content)).length;
-  const ratio = withDigits / bullets.length;
+  // Walk the document and tag each bullet with the title of the H2 it sits
+  // under. We don't need an H2→bullets map — a single pass that records
+  // "current H2" while scanning is enough.
+  const experienceBullets: Bullet[] = [];
+  let hasExperienceH2 = false;
+  const headingByLine = new Map<number, Heading>();
+  for (const h of headings) headingByLine.set(h.line, h);
+
+  let currentH2: Heading | null = null;
+  for (const li of lines) {
+    const h = headingByLine.get(li.line);
+    if (h && h.level === 2) {
+      currentH2 = h;
+      if (isExperienceLikeH2(h)) hasExperienceH2 = true;
+      continue;
+    }
+    if (h) continue; // ignore H1, H3+; only H2 toggles section context
+    if (!isExperienceLikeH2(currentH2)) continue;
+    const bullet = findBulletInLine(li);
+    if (bullet) experienceBullets.push(bullet);
+  }
+
+  // Pick the bullet pool the ratio is computed against. With at least one
+  // Experience H2 we only score the bullets inside those sections; without
+  // one we fall back to every bullet so the heuristic still gives feedback
+  // on partial drafts.
+  const pool = hasExperienceH2 ? experienceBullets : allBullets;
+  if (pool.length === 0) return [];
+
+  const withDigits = pool.filter((b) => /\d/.test(b.content)).length;
+  const ratio = withDigits / pool.length;
   const floor = QUANT_FLOOR[stage];
 
   if (ratio < floor) {
@@ -319,6 +366,12 @@ function checkQuantification(markdown: string, stage: CareerStage): HealthFindin
     ];
   }
   return [];
+}
+
+/** True when an H2 heading reads as Experience-like (see `EXPERIENCE_LIKE`). */
+function isExperienceLikeH2(h: Heading | null): boolean {
+  if (!h || h.level !== 2) return false;
+  return EXPERIENCE_LIKE.includes(h.title.toLowerCase());
 }
 
 /** #5 weak-verb openings. One finding per offending line. */
@@ -471,7 +524,7 @@ function checkBulletsPerRole(markdown: string): HealthFinding[] {
     // Only count bullets inside an Experience-flavored section. Without this
     // guard a Skills bulleted list, a "Selected Impact" feature list, or a
     // closing notes section would all be flagged "thin role" / "noisy role".
-    if (!isUnderExperienceSection(currentH2)) continue;
+    if (!isExperienceLikeH2(currentH2)) continue;
     if (currentH3) {
       // Already in an H3 group — append.
       if (!currentGroup || currentGroup.heading !== currentH3) {
@@ -509,12 +562,6 @@ function checkBulletsPerRole(markdown: string): HealthFinding[] {
     }
   }
   return findings;
-}
-
-/** True when the active H2 reads as an Experience / Work section. */
-function isUnderExperienceSection(h2: Heading | null): boolean {
-  if (!h2) return false;
-  return EXPERIENCE_LIKE.includes(h2.title.toLowerCase());
 }
 
 /** Return the bullet for a line, or null when the line isn't a bullet. */
