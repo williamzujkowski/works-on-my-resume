@@ -24,6 +24,7 @@ import {
   type RawThemeColors,
   type ResumeTheme,
   type ResumeThemeContrast,
+  type ResumeThemeTag,
   type ResumeThemeTokens,
 } from '../types';
 import { getStoredThemeSlug } from './storage';
@@ -618,6 +619,97 @@ function deriveSurfaces(bgStr: string, fgStr: string, isDark: boolean): SurfaceT
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Facet-tag derivation (#87)                                          */
+/* ------------------------------------------------------------------ */
+/*
+ * Every normalized theme carries a small, closed-vocabulary `tags` array
+ * (`ResumeThemeTag`). The picker exposes these as composable chips above
+ * its search row: `dark`, `light`, `high-contrast`, `vibrant`, `muted`.
+ *
+ * Each tag is derived purely from data already on the `RawTheme` so we
+ * never duplicate hand-curated metadata for 545 themes:
+ *
+ *  - `dark` / `light` mirror `RawTheme.isDark`.
+ *  - `high-contrast` fires when body text clears 10:1 on the background —
+ *    a clear WCAG AAA-and-then-some bar that selects the legible end of the
+ *    spectrum without overlapping `resume-safe` (which is the 7:1 toggle).
+ *  - `vibrant` / `muted` look at the *average* chroma of the eight ANSI
+ *    slots, the values that actually drive accent selection. Thresholds
+ *    were tuned against the live dataset (see comment below) so the buckets
+ *    are useful filters rather than near-universal or near-empty labels.
+ *
+ * Computed once during `normalizeTheme` and frozen onto the resulting
+ * `ResumeTheme`; the picker just runs `theme.tags.includes(tag)`.
+ */
+
+/** The eight chromatic ANSI slots that drive accent selection. */
+const ANSI_HUE_SLOTS: readonly (keyof RawThemeColors)[] = [
+  'black',
+  'red',
+  'green',
+  'yellow',
+  'blue',
+  'purple',
+  'cyan',
+  'white',
+];
+
+/**
+ * WCAG ratio at which body text is considered comfortably legible — well
+ * beyond `RESUME_SAFE_MIN_CONTRAST` (7:1). Chosen so the chip is meaningful
+ * even after the resume-safe toggle is on: most resume-safe themes are not
+ * also high-contrast, so the chip narrows the list further.
+ */
+const HIGH_CONTRAST_MIN = 10;
+
+/**
+ * Average-ANSI-chroma cutoffs for the palette-character chips. Tuned
+ * against the vendored dataset (#87 spec) so the buckets are useful filters
+ * rather than near-universal or near-empty labels:
+ *
+ *  - `vibrant >= 0.12`  →  ≈34% of themes qualify (target band 25–35%).
+ *    Catches `dracula`, `github-light-default`, `github-dark-default` and
+ *    leaves merely-saturated palettes (`tokyonight` @ 0.106, `catppuccin-
+ *    mocha` @ 0.081) out, which matches how they read on screen.
+ *  - `muted   <  0.04`  →  ≈3% of themes qualify, deliberately a niche bucket
+ *    for near-monochrome palettes (`black-metal-bathory`, the various
+ *    grayscale "paper" themes). Disjoint from `vibrant` by construction.
+ */
+const VIBRANT_AVG_CHROMA_MIN = 0.12;
+const MUTED_AVG_CHROMA_MAX = 0.04;
+
+/**
+ * Mean OKLCH chroma across the eight ANSI hue slots. Slots that fail to
+ * parse contribute zero (and lower the mean) — a deliberate, conservative
+ * choice: an unparseable slot is closer to "no color" than to "very vivid".
+ */
+function averageAnsiChroma(colors: RawThemeColors): number {
+  let sum = 0;
+  for (const slot of ANSI_HUE_SLOTS) {
+    const parsed = parseOklch(colors[slot]);
+    if (parsed) sum += parsed.C;
+  }
+  return sum / ANSI_HUE_SLOTS.length;
+}
+
+/**
+ * Derive the picker's facet-tag array from a raw theme.
+ *
+ * Cheap (one parse per ANSI slot) and pure — fine to call once per theme at
+ * normalization time. Returned as a `readonly` so callers cannot mutate the
+ * canonical theme record.
+ */
+function deriveTags(raw: RawTheme): readonly ResumeThemeTag[] {
+  const tags: ResumeThemeTag[] = [];
+  tags.push(raw.isDark ? 'dark' : 'light');
+  if (raw.contrast.fgOnBg >= HIGH_CONTRAST_MIN) tags.push('high-contrast');
+  const avgChroma = averageAnsiChroma(raw.colors);
+  if (avgChroma >= VIBRANT_AVG_CHROMA_MIN) tags.push('vibrant');
+  else if (avgChroma < MUTED_AVG_CHROMA_MAX) tags.push('muted');
+  return Object.freeze(tags);
+}
+
 /**
  * Normalize one raw terminal theme into resume semantic tokens.
  *
@@ -676,6 +768,8 @@ function normalizeTheme(raw: RawTheme): ResumeTheme {
     // accents are guaranteed ≥ ACCENT_MIN_CONTRAST by construction — so the
     // rule is exactly "is the body text comfortably readable?".
     resumeSafe: contrast.fgOnBg >= RESUME_SAFE_MIN_CONTRAST,
+    // Facet tags for the picker's chip filter (#87) — see `deriveTags`.
+    tags: deriveTags(raw),
   };
 }
 
@@ -770,6 +864,12 @@ const HARDCODED_FALLBACK: ResumeTheme = {
   contrast: { fgOnBg: 12, accentOnBg: 6.4, accent2OnBg: 5.8 },
   accentSynthesized: false,
   resumeSafe: true,
+  // Mirrors the runtime derivation: a light theme with ~12:1 body contrast
+  // and a near-neutral palette qualifies as `high-contrast` but not as
+  // `vibrant` or `muted` (its only chromatic slots are the two accents,
+  // which `deriveTags` doesn't consider — and neither would, given a
+  // `RawTheme` shape for this fallback).
+  tags: Object.freeze(['light', 'high-contrast'] as const),
 };
 
 /* ------------------------------------------------------------------ */
@@ -988,20 +1088,43 @@ export function themeCssVariables(theme: ResumeTheme): string {
 }
 
 /**
- * Filter a list of themes by a free-text query.
+ * Filter a list of themes by a free-text query, the resume-safe toggle, and
+ * an optional set of facet tags (#87).
  *
- * Case-insensitive substring match against both `name` and `slug`. An empty
- * (or whitespace-only) query matches everything. When `resumeSafeOnly` is
- * true, non-resume-safe themes are dropped regardless of the query.
+ * Composition rules (all ANDed together so the user can stack constraints
+ * without the picker quietly losing one of them):
+ *  - `query`          : case-insensitive substring match against `name` and
+ *                       `slug`. Empty / whitespace-only matches everything.
+ *  - `resumeSafeOnly` : when true, drops themes whose body text does not
+ *                       clear `RESUME_SAFE_MIN_CONTRAST`.
+ *  - `tags`           : when provided AND non-empty, every listed tag must be
+ *                       present on the theme's `tags` array. Passing
+ *                       `undefined` (or an empty array) means "no tag
+ *                       filter" — today's behavior for the existing toggle
+ *                       and search-only callers.
+ *
+ * Pure and stable: the returned array preserves the input order, so the
+ * picker's existing keyboard-navigation and index-based UI keep working.
  */
 export function filterThemes(
   themes: ResumeTheme[],
   query: string,
   resumeSafeOnly = false,
+  tags?: readonly string[],
 ): ResumeTheme[] {
   const needle = query.trim().toLowerCase();
+  // Normalize: an undefined or empty list disables the tag filter entirely,
+  // matching the spec's "today's behavior" carve-out. We don't bother
+  // dropping duplicates — `every` on a duplicated tag is still correct.
+  const requiredTags = tags && tags.length > 0 ? tags : null;
   return themes.filter((theme) => {
     if (resumeSafeOnly && !theme.resumeSafe) return false;
+    if (requiredTags) {
+      const themeTags: readonly string[] = theme.tags;
+      for (const tag of requiredTags) {
+        if (!themeTags.includes(tag)) return false;
+      }
+    }
     if (needle.length === 0) return true;
     return theme.name.toLowerCase().includes(needle) || theme.slug.toLowerCase().includes(needle);
   });

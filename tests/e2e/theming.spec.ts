@@ -130,6 +130,74 @@ test('selecting a theme writes ?theme=slug and updates the trigger label', async
     .not.toBe('');
 });
 
+test('a tag chip narrows the list and the live count', async ({ page }) => {
+  // The chip filter is composable with the search query and the resume-safe
+  // toggle (#87). This case checks the simplest path: pressing `light` should
+  // both shrink the visible list and update the live "X of Y themes" readout.
+  await openThemePickerReady(page);
+
+  const dialog = page.getByRole('dialog', { name: /choose a theme/i });
+  const list = dialog.getByRole('listbox', { name: /themes/i });
+  const countLine = dialog.locator('.theme-picker__count');
+
+  // Capture the unfiltered baseline. The denominator in the readout is the
+  // full dataset; the numerator equals the rendered option count.
+  await expect(countLine).toContainText(/themes$/);
+  const baselineMatch = (await countLine.textContent())?.match(/(\d+)\s+of\s+(\d+)/);
+  expect(baselineMatch, 'count line should match "X of Y themes"').not.toBeNull();
+  const baselineX = Number(baselineMatch![1]);
+  const baselineY = Number(baselineMatch![2]);
+  expect(baselineX).toBe(await list.getByRole('option').count());
+  // With no filters, the rendered list is the full set.
+  expect(baselineX).toBe(baselineY);
+
+  // Activate the `light` chip — every remaining option must be a light theme,
+  // so none should carry the dark badge.
+  await dialog.locator('.theme-picker__tag[data-tag="light"]').click();
+
+  // Live count drops AND the readout still references the same total.
+  await expect
+    .poll(async () => {
+      const txt = (await countLine.textContent()) ?? '';
+      const m = txt.match(/(\d+)\s+of\s+(\d+)/);
+      return m ? { x: Number(m[1]), y: Number(m[2]) } : { x: -1, y: -1 };
+    })
+    .toMatchObject({ y: baselineY });
+  const filteredX = Number((await countLine.textContent())!.match(/(\d+)\s+of\s+(\d+)/)![1]);
+  expect(filteredX).toBeLessThan(baselineX);
+  expect(filteredX).toBe(await list.getByRole('option').count());
+
+  // No visible option should carry the `dark` badge after the `light` filter.
+  await expect(list.locator('.badge--dark')).toHaveCount(0);
+});
+
+test('multiple chips AND-filter and include a known light high-contrast slug', async ({ page }) => {
+  // Composing two chips should narrow the list further than either alone,
+  // and the resulting set must contain a slug we know qualifies for both:
+  // `github-light-default` (light + ~15.8:1 fgOnBg → high-contrast).
+  await openThemePickerReady(page);
+
+  const dialog = page.getByRole('dialog', { name: /choose a theme/i });
+  const list = dialog.getByRole('listbox', { name: /themes/i });
+  const countLine = dialog.locator('.theme-picker__count');
+
+  await dialog.locator('.theme-picker__tag[data-tag="light"]').click();
+  const afterLight = Number((await countLine.textContent())!.match(/(\d+)\s+of\s+(\d+)/)![1]);
+
+  await dialog.locator('.theme-picker__tag[data-tag="high-contrast"]').click();
+  // The combined filter must shrink the list strictly (high-contrast is not
+  // universal among light themes — `light + low-contrast` exists).
+  const afterBoth = Number((await countLine.textContent())!.match(/(\d+)\s+of\s+(\d+)/)![1]);
+  expect(afterBoth).toBeLessThan(afterLight);
+  expect(afterBoth).toBe(await list.getByRole('option').count());
+
+  // `github-light-default` should be reachable under (light AND high-contrast).
+  // We match by visible name rather than slug — the option label IS the name —
+  // since the picker exposes slugs only as DOM ids, not text.
+  const githubLight = list.getByRole('option').filter({ hasText: /github light default/i });
+  await expect(githubLight).toHaveCount(1);
+});
+
 test('closing the picker without selecting reverts a hover preview', async ({ page }) => {
   // Snapshot the document's CSS variable BEFORE any preview occurs.
   const bgBefore = await page.evaluate(() =>

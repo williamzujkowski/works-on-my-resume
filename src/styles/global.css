@@ -590,6 +590,111 @@ a {
   border-radius: var(--radius-sm);
 }
 
+/* ----- Preview pane tablist (#85) -----
+   A pair of <button role="tab"> elements sit where the static
+   "preview · {theme.name}" used to be. Each button uses the same base
+   class as the editor pane's file-tab so the typographic rhythm matches;
+   inside a `studio__pane-tabs` container they read as a connected pair.
+   The trailing meta cluster (theme name + WCAG badge) flows after the
+   tablist when the Preview tab is active. */
+.studio__pane-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  padding: 2px;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--ui-inset-highlight);
+}
+
+.studio__pane-tabs .studio__pane-tab {
+  font: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ui-fg-muted);
+  cursor: pointer;
+  padding: 0.22rem 0.55rem;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease,
+    border-color 110ms ease;
+}
+
+.studio__pane-tabs .studio__pane-tab:hover {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+}
+
+.studio__pane-tabs .studio__pane-tab--active,
+.studio__pane-tabs .studio__pane-tab[aria-selected='true'] {
+  color: var(--ui-fg);
+  background: var(--ui-bg);
+  border-color: var(--ui-border);
+  box-shadow:
+    inset 0 0 0 1px var(--ui-accent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* The pane-header meta cluster: theme name + WCAG badge. */
+.studio__pane-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--ui-fg-muted);
+}
+
+.studio__pane-theme-name {
+  color: var(--ui-fg);
+}
+
+/* ----- WCAG conformance badge (#88) -----
+   Glyph + literal carry the meaning; the colour reinforces but never
+   carries the signal alone. Three flavours map to AAA / AA / fails. */
+.studio__pane-wcag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.05rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.studio__pane-wcag-glyph {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.studio__pane-wcag-text {
+  letter-spacing: 0.03em;
+}
+
+.studio__pane-wcag--aaa {
+  color: var(--ui-success);
+  border-color: var(--ui-success);
+}
+
+.studio__pane-wcag--aa {
+  color: var(--ui-warning);
+  border-color: var(--ui-warning);
+}
+
+.studio__pane-wcag--fail {
+  color: var(--ui-danger);
+  border-color: var(--ui-danger);
+}
+
 /* Let the editor pane body grow so its textarea can fill the shared
    height — no dead space beside a tall preview (#52). */
 .studio__pane-body {
@@ -1499,6 +1604,73 @@ a {
   cursor: pointer;
 }
 
+/* ----- Facet-tag chip row (#87) -----
+   Sits between the search input and the resume-safe toggle. Each chip is a
+   real <button> with aria-pressed; the row uses flex-wrap so a narrow
+   popover folds chips onto a second line cleanly. The `Reset` chip uses a
+   muted modifier so it reads as a control, not a filter. */
+.theme-picker__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.theme-picker__tag {
+  /* Reset the platform <button> look so chips read as small pills. */
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--ui-fg-muted);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    border-color 110ms ease,
+    color 110ms ease;
+}
+
+.theme-picker__tag:hover {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+  border-color: var(--ui-accent);
+}
+
+/* Pressed state — the chip reads as "on" via accent fill, not just color
+   shift, so the toggle is unmistakable next to its unpressed siblings. */
+.theme-picker__tag[aria-pressed='true'] {
+  color: var(--ui-accent-contrast);
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+}
+
+.theme-picker__tag[aria-pressed='true']:hover {
+  background: var(--ui-accent-hover);
+  border-color: var(--ui-accent-hover);
+}
+
+/* `Reset` is not a filter — it clears them. Stays a ghost button so it
+   doesn't compete visually with the actual filter chips. */
+.theme-picker__tag--reset {
+  color: var(--ui-fg-subtle);
+  border-style: dashed;
+}
+
+/* ----- Live match count (#87) -----
+   Sits between the chip row / safe toggle and the listbox. Tabular figures
+   keep the number from twitching as digits change; aria-live="polite" in
+   the JSX handles the announcement. */
+.theme-picker__count {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--ui-fg-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ------------------------------------------------------------------ */
 /* Theme controls                                                      */
 /* ------------------------------------------------------------------ */
@@ -2128,4 +2300,316 @@ a {
     left: var(--space-3);
     max-width: none;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Resume Health panel (#85)                                           */
+/* ------------------------------------------------------------------ */
+
+.health {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--ui-inset-highlight);
+}
+
+.health__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.health__score {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.health__score-num {
+  font-family: var(--font-mono);
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ui-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.health__score-stage {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ui-fg-subtle);
+}
+
+/* Stage picker — segmented control matching `.layout-selector__options`. */
+.health__stage-picker {
+  display: inline-flex;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--ui-inset-highlight);
+  padding: 2px;
+}
+
+.health__stage-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.28rem 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--ui-fg-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease;
+}
+
+.health__stage-btn:hover {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+}
+
+.health__stage-btn--active {
+  background: var(--ui-bg);
+  color: var(--ui-fg);
+  box-shadow:
+    inset 0 0 0 1px var(--ui-accent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Empty-state copy ("Load a resume to see Health feedback."). */
+.health__empty {
+  margin: 0;
+  padding: var(--space-3) 0;
+  font-size: 0.82rem;
+  color: var(--ui-fg-muted);
+}
+
+.health__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.health__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--ui-fg);
+}
+
+.health__item-dot {
+  flex-shrink: 0;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-top: 0.32rem;
+  border-radius: 50%;
+  background: var(--ui-fg-subtle);
+  border: 1px solid transparent;
+}
+
+/* Severity-coded dots — paired with the dot's accessible label
+   ("Good" / "Warning" / "Needs attention") so colour is reinforcement,
+   not the only signal. */
+.health__item--good .health__item-dot {
+  background: var(--ui-success);
+}
+
+.health__item--warn .health__item-dot {
+  background: var(--ui-warning);
+}
+
+.health__item--bad .health__item-dot {
+  background: var(--ui-danger);
+}
+
+/* Borrow a subtle tint along the leading edge for `bad` items so they
+   read as more urgent than the warns. Glyph + text still carry meaning. */
+.health__item--bad {
+  border-left: 3px solid var(--ui-danger);
+}
+
+.health__item-message {
+  flex: 1;
+  min-width: 0;
+}
+
+/* "Jump to line N" — small text button that pops the finding's line
+   into focus in the editor. */
+.health__item-jump {
+  flex-shrink: 0;
+  padding: 0.15rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ui-accent);
+  background: transparent;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 110ms ease,
+    background-color 110ms ease,
+    border-color 110ms ease;
+}
+
+.health__item-jump:hover {
+  color: var(--ui-accent-hover);
+  background: var(--ui-panel);
+  border-color: var(--ui-accent);
+}
+
+/* Health tab body: drop the default flex/padding so the .health card
+   owns its own padding (and renders as a single rounded block rather
+   than nesting one inside another). */
+.studio__pane-body--health {
+  padding: var(--space-3);
+}
+
+/* ------------------------------------------------------------------ */
+/* Start-from-template modal (#86)                                     */
+/* ------------------------------------------------------------------ */
+
+.template-picker__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(4, 6, 10, 0.66);
+  animation: kbd-help-fade 140ms ease-out;
+}
+
+.template-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(54rem, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--space-5);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+}
+
+.template-picker__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.template-picker__title {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ui-fg);
+}
+
+.template-picker__close {
+  /* Keep the close button visible on the dialog's elevated surface — the
+     base .btn--ghost is fully transparent until hover. */
+  color: var(--ui-fg-muted);
+}
+
+.template-picker__close:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.template-picker__intro {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--ui-fg-muted);
+  line-height: 1.5;
+}
+
+.template-picker__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 1080px) {
+  .template-picker__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .template-picker__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.template-picker__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.template-picker__card:hover {
+  border-color: var(--ui-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.55);
+}
+
+.template-picker__card-title {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ui-fg);
+}
+
+.template-picker__card-desc {
+  margin: 0;
+  flex: 1;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--ui-fg-muted);
+}
+
+.template-picker__card-action {
+  /* Emphasis on the action — primary tinting + a tight margin-top to
+     separate it from the description. */
+  align-self: stretch;
+  margin-top: var(--space-2);
 }

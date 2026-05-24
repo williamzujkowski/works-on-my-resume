@@ -24,7 +24,8 @@
  * that was active when it opened is restored.
  */
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { ResumeTheme } from '../types';
+import type { ResumeTheme, ResumeThemeTag } from '../types';
+import { RESUME_THEME_TAGS } from '../types';
 import { applyThemeToDocument, filterThemes, loadAllThemesAsync } from '../utils/themes';
 import Icon from './Icon';
 
@@ -138,6 +139,18 @@ export default function ThemePicker({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
+  /* ----- Facet-tag chip filter (#87) -----
+     Local to the picker because the chips are part of the picker's own UI
+     contract. Mirrors how `resumeSafeOnly` is owned by ResumeStudio: a
+     small UI preference whose value is irrelevant outside the popover.
+     Not persisted — matches `resumeSafeOnly`, which also resets each
+     session so the picker opens with a clean slate. */
+  const [activeTags, setActiveTags] = useState<readonly ResumeThemeTag[]>([]);
+  const toggleTag = useCallback((tag: ResumeThemeTag) => {
+    setActiveTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+  }, []);
+  const resetTags = useCallback(() => setActiveTags([]), []);
+
   /* ----- Preview-on-hover bookkeeping (#60) -----
      `baseThemeRef`    — the committed theme when the popover opened; the theme
                          to restore if it closes without a selection.
@@ -159,12 +172,19 @@ export default function ThemePicker({
   const optionId = (slug: string) => `${idBase}-opt-${slug}`;
 
   const allMatches = useMemo(
-    () => filterThemes(themes, query, resumeSafeOnly),
-    [themes, query, resumeSafeOnly],
+    () => filterThemes(themes, query, resumeSafeOnly, activeTags),
+    [themes, query, resumeSafeOnly, activeTags],
   );
   // Render every match. `rendered` stays as the bound name used throughout
   // this component (active-index, onOpen snapshot, keyboard nav).
   const rendered = allMatches;
+
+  /* The denominator in the "X of Y themes" count (#87). `themes.length`
+     reads as the *full set* of themes the picker has on hand — neither the
+     search query, the resume-safe toggle, nor the tag chips are subtracted
+     from it — so the count tells a coherent story as filters are applied
+     ("you are seeing X of all Y"). Cheap to compute; no memo needed. */
+  const totalThemes = themes.length;
 
   /* Keep the active index inside bounds as the filtered list changes. */
   useEffect(() => {
@@ -395,6 +415,43 @@ export default function ThemePicker({
             </p>
           )}
 
+          {/* Facet-tag chip row (#87). Each chip is a real <button> with
+              `aria-pressed` so toggling is announced by AT and the row is
+              navigable via Tab — it explicitly does NOT participate in the
+              arrow-key model of the option listbox, which keeps the
+              search-input → listbox keyboard pair intact (the `/` shortcut
+              still focuses the search input). The `Reset` chip materializes
+              only when at least one tag is active so the row stays quiet
+              for users who never touch it. */}
+          <div className="theme-picker__tags" role="group" aria-label="Filter themes by tag">
+            {RESUME_THEME_TAGS.map((tag) => {
+              const pressed = activeTags.includes(tag);
+              const classNames = ['theme-picker__tag'];
+              if (pressed) classNames.push('theme-picker__tag--active');
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  className={classNames.join(' ')}
+                  data-tag={tag}
+                  aria-pressed={pressed}
+                  onClick={() => toggleTag(tag)}
+                >
+                  {tag}
+                </button>
+              );
+            })}
+            {activeTags.length > 0 && (
+              <button
+                type="button"
+                className="theme-picker__tag theme-picker__tag--reset"
+                onClick={resetTags}
+              >
+                Reset
+              </button>
+            )}
+          </div>
+
           <label className="theme-picker__checkbox">
             <input
               type="checkbox"
@@ -403,6 +460,16 @@ export default function ThemePicker({
             />
             Resume-safe themes only
           </label>
+
+          {/* Live match count (#87). Sits between the chip row / toggle and
+              the listbox so the user can see — and AT users can hear — the
+              effect of every filter change in one place. Polite + atomic so
+              screen readers re-announce the whole short sentence rather
+              than diffing a single number. Tabular-nums in CSS keeps the
+              count from jittering as digits change. */}
+          <p className="theme-picker__count" aria-live="polite" aria-atomic="true">
+            {rendered.length} of {totalThemes} themes
+          </p>
 
           {/* Polite live region — announces the keyboard-highlighted theme. */}
           <p id={liveId} className="visually-hidden" aria-live="polite">

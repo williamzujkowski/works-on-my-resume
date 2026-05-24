@@ -124,6 +124,26 @@ export interface ResumeThemeContrast {
   accent2OnBg: number;
 }
 
+/**
+ * The fixed vocabulary of facet tags the theme engine derives from each
+ * normalized theme. Drives the picker's tag-chip filter (#87): each chip
+ * corresponds to one of these strings, and a theme appears under a chip iff
+ * its `tags` array contains that string.
+ *
+ * Closed set on purpose — the picker UI is keyed to these specific buckets
+ * (mode, legibility, palette character), and a free-form taxonomy would
+ * neither help the user filter nor stay disjoint from the resume-safe toggle
+ * and the search query that compose with it.
+ */
+export type ResumeThemeTag = 'dark' | 'light' | 'high-contrast' | 'vibrant' | 'muted';
+export const RESUME_THEME_TAGS: readonly ResumeThemeTag[] = [
+  'dark',
+  'light',
+  'high-contrast',
+  'vibrant',
+  'muted',
+] as const;
+
 /** A terminal theme normalized into resume-ready semantic tokens. */
 export interface ResumeTheme {
   slug: string;
@@ -156,6 +176,13 @@ export interface ResumeTheme {
    * synthesizing when needed) — so it is intentionally not re-tested here.
    */
   resumeSafe: boolean;
+  /**
+   * Facet tags derived once during normalization (#87). Composable picker
+   * filter: each chip ANDs with the search query and the resume-safe toggle.
+   * Always present (may be empty) so callers can rely on `theme.tags.includes`
+   * without a guard. The string values are drawn from `ResumeThemeTag`.
+   */
+  tags: readonly ResumeThemeTag[];
 }
 
 /**
