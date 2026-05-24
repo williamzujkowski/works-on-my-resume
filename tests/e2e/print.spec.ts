@@ -26,6 +26,7 @@ import {
   previewArticle,
   resetPrintMode,
   setPrintMode,
+  waitForThemesReady,
 } from './helpers';
 
 /**
@@ -37,7 +38,6 @@ const CHROME_SELECTORS = [
   '.app-header',
   '.privacy-notice',
   '.studio__toolbar',
-  '.studio__shortcuts',
   '.studio__pane--editor',
   '.studio__pane-header',
 ] as const;
@@ -60,6 +60,15 @@ test.beforeEach(async ({ page }) => {
   await clearAppStorage(page);
   await page.goto('');
   await loadSampleResume(page);
+  // After #80 the ~545-theme dataset loads lazily on idle. No test in this
+  // file currently snapshots per-theme tokens, but several already read
+  // `--resume-accent` from `document.documentElement` (conservative-mode and
+  // modern-overlay tests below), and future per-theme print assertions will
+  // race the idle import without this gate. Wait for the dataset to settle
+  // BEFORE flipping into print emulation so the computed-style snapshots we
+  // take downstream are taken against the final theme tokens, not the boot
+  // fallback that swaps underneath us mid-test. See #84 and helpers.ts.
+  await waitForThemesReady(page);
 });
 
 test.afterEach(async ({ page }) => {
@@ -300,6 +309,10 @@ test('modern layout × conservative print — section headings are ATS-plain (no
   // PDF of a modern-layout resume came out with mono uppercase headings.
   await page.goto('?layout=modern');
   await loadSampleResume(page);
+  // Re-gate the lazy theme dataset (#80): this test re-navigates after the
+  // beforeEach wait, so we have to wait again before reading --resume-accent
+  // below. See #84.
+  await waitForThemesReady(page);
 
   const article = previewArticle(page);
   await expect(article).toHaveAttribute('data-template', 'modern');
@@ -387,6 +400,9 @@ test('modern layout × THEME print — modern overlay survives (regression guard
   // their mono uppercase section labels in the printed PDF.
   await page.goto('?layout=modern');
   await loadSampleResume(page);
+  // Re-gate the lazy theme dataset (#80) after the re-navigation, so theme
+  // print mode below resolves against the final tokens. See #84.
+  await waitForThemesReady(page);
 
   const article = previewArticle(page);
   await expect(article).toHaveAttribute('data-template', 'modern');
@@ -411,6 +427,9 @@ test('modern layout × conservative print — content is not missing', async ({ 
   // permalink shape (ResumeStudio mounts read it on startup).
   await page.goto('?layout=modern');
   await loadSampleResume(page);
+  // Re-gate the lazy theme dataset (#80) after the re-navigation, matching
+  // the beforeEach wait so per-theme tokens don't swap mid-test. See #84.
+  await waitForThemesReady(page);
 
   // Sanity check: the article carries the right template attribute.
   const article = previewArticle(page);
