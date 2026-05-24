@@ -569,6 +569,11 @@ export default function MarkdownUploader({
  *
  * Single-file gists short-circuit the picker entirely so the card looks
  * exactly like the pre-#76 preview.
+ *
+ * Live region scope (#79): the wrapping section is NOT `aria-live` —
+ * announcing the whole card on every picker change re-read the entire
+ * filename + body preview, which is noisy. A visually-hidden `aria-live`
+ * status line at the top of the card narrates only what changed.
  */
 interface GistPreviewCardProps {
   preview: { files: GistFile[]; selectedIndex: number };
@@ -598,8 +603,19 @@ function GistPreviewCard({
 
   const showPicker = files.length > 1;
 
+  // Status line text — narrow announcement scoped to what the picker changed.
+  // For multi-file gists we also include the position so the user can orient
+  // ("3 of 7 files"); single-file gists skip the count entirely.
+  const statusMessage =
+    files.length > 1
+      ? `Now previewing ${active.filename} — ${selectedIndex + 1} of ${files.length} files.`
+      : `Now previewing ${active.filename}.`;
+
   return (
-    <section className="uploader__gist-preview" aria-labelledby={titleId} aria-live="polite">
+    <section className="uploader__gist-preview" aria-labelledby={titleId}>
+      <p className="visually-hidden" aria-live="polite">
+        {statusMessage}
+      </p>
       <header className="uploader__gist-preview-header">
         <h3 id={titleId} className="uploader__gist-preview-title">
           Preview before importing
