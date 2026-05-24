@@ -133,6 +133,57 @@ test('clearing the JD removes overlay marks and resets the empty state', async (
   await expect(tailor.locator('.tailor__empty')).toContainText(/paste a job description above/i);
 });
 
+test('preview/health tab: marks unmount with the article and re-appear on return (#108)', async ({
+  page,
+}) => {
+  await loadSampleResume(page);
+  await expandMobileEditor(page);
+
+  const tailor = page.locator('details.tailor');
+  await tailor.locator('summary').click();
+  await tailor.getByLabel(/paste a job description/i).fill(SYNTHETIC_JD);
+
+  // Wait until the initial paint pass completes — marks must be present
+  // before we can meaningfully assert on tab-switch behaviour.
+  const article = previewArticle(page);
+  const marks = article.locator('mark.tailor-match');
+  await expect(marks.first()).toBeVisible({ timeout: 5_000 });
+  const initialMarkCount = await marks.count();
+  expect(initialMarkCount).toBeGreaterThan(0);
+
+  // Capture the disclosure's hit-rate chip text so we can assert it
+  // doesn't churn while the Health tab is active (the compute must be
+  // gated, not just the paint).
+  const chip = tailor.locator('.tailor__summary-chip');
+  const chipBefore = await chip.textContent();
+
+  // Switch the preview pane to the Health tab. After #85 the Health tab
+  // is a real <button role="tab"> sibling of the Preview tab.
+  await page.getByRole('tab', { name: /^health$/i }).click();
+  // The preview article unmounts when the Health tab is active.
+  await expect(article).toHaveCount(0);
+  // Resume-tab-scoped marks must therefore also be gone.
+  await expect(page.locator('mark.tailor-match')).toHaveCount(0);
+
+  // The Matches/Gaps results stay on screen — the disclosure lives in
+  // the editor pane, which is unaffected by the preview pane's tab.
+  await expect(tailor.locator('.tailor__list--matches')).toContainText(/Kubernetes/i);
+  await expect(tailor.locator('.tailor__list--gaps')).toContainText(/Salesforce/i);
+  // And the cached hit-rate chip is unchanged — no recompute ran while
+  // the article was absent.
+  await expect(chip).toHaveText(chipBefore ?? '');
+
+  // Flip back to Preview. The article re-mounts and the paint effect
+  // must re-apply marks WITHOUT requiring a JD or resume change.
+  await page.getByRole('tab', { name: /^preview$/i }).click();
+  await expect(article).toHaveCount(1);
+  await expect(marks.first()).toBeVisible({ timeout: 5_000 });
+  const restoredMarkCount = await marks.count();
+  expect(restoredMarkCount).toBeGreaterThan(0);
+  // Same JD + same resume → mark count should match the initial paint.
+  expect(restoredMarkCount).toBe(initialMarkCount);
+});
+
 test('privacy: JD content is never written to local- or sessionStorage', async ({ page }) => {
   await loadSampleResume(page);
   await expandMobileEditor(page);

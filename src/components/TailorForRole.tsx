@@ -72,6 +72,15 @@ interface TailorForRoleProps {
    * identity, not its fields.
    */
   resumeVersion: unknown;
+  /**
+   * Which tab is currently rendered in the preview pane (#108). When the
+   * user is on the Health tab the `.resume-preview` article is unmounted,
+   * so we (a) skip the JD compute — there is nothing to paint against, and
+   * the cached results are still valid — and (b) re-run the paint pass
+   * when the tab transitions back to `'preview'` so the marks reappear
+   * without waiting for the next JD/resume change.
+   */
+  previewTab: 'preview' | 'health';
 }
 
 /* ------------------------------------------------------------------ */
@@ -254,7 +263,11 @@ function readResumeText(previewEl: HTMLElement | null): string {
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 
-export default function TailorForRole({ previewRef, resumeVersion }: TailorForRoleProps) {
+export default function TailorForRole({
+  previewRef,
+  resumeVersion,
+  previewTab,
+}: TailorForRoleProps) {
   const [open, setOpen] = useState<boolean>(false);
   const [jd, setJd] = useState<string>('');
   /* The currently-computed matches and the originating term set. State,
@@ -278,6 +291,13 @@ export default function TailorForRole({ previewRef, resumeVersion }: TailorForRo
   /* ----- Debounced recompute ----- */
   useEffect(() => {
     if (!open) return;
+    /* #108 — when the preview pane is on the Health tab the
+       `.resume-preview` article is unmounted, so the recompute would
+       read an empty body and produce a stale-looking zero-match result.
+       Skip entirely; the previously-computed Matches/Gaps stay on
+       screen, and the paint effect below re-applies the marks the
+       moment the user returns to the Preview tab. */
+    if (previewTab !== 'preview') return;
     // Empty JD → drop matches and any overlay. No timer needed.
     if (jd.trim().length === 0) {
       setMatches(null);
@@ -290,11 +310,19 @@ export default function TailorForRole({ previewRef, resumeVersion }: TailorForRo
       setMatches(next);
     }, COMPUTE_DEBOUNCE_MS);
     return () => window.clearTimeout(handle);
-    // Re-runs on JD change, disclosure open, and resume re-render.
-  }, [jd, open, previewRef, resumeVersion]);
+    // Re-runs on JD change, disclosure open, tab return-to-Preview, and
+    // resume re-render.
+  }, [jd, open, previewRef, resumeVersion, previewTab]);
 
   /* ----- Paint / clear overlay marks on the preview ----- */
   useEffect(() => {
+    /* #108 — when the user is on the Health tab the article is
+       unmounted; nothing to paint, nothing to clear. Bail early so we
+       don't churn. The dependency on `previewTab` ensures this effect
+       re-runs the moment the user flips back to Preview, at which point
+       the freshly-mounted article picks up the marks again. */
+    if (previewTab !== 'preview') return;
+
     const article = previewRef.current?.querySelector<HTMLElement>('.resume-preview') ?? null;
     if (!article) return;
 
@@ -319,8 +347,9 @@ export default function TailorForRole({ previewRef, resumeVersion }: TailorForRo
     };
     // We deliberately re-run when `resumeVersion` changes too — a fresh
     // parsed.html replaces the body subtree, dropping our marks; this
-    // effect then re-paints them.
-  }, [matches, open, previewRef, resumeVersion]);
+    // effect then re-paints them. Same for `previewTab`: returning to
+    // Preview mounts a new article DOM that needs the marks re-applied.
+  }, [matches, open, previewRef, resumeVersion, previewTab]);
 
   /* ----- Auto-grow the textarea (CSP-friendly: CSSOM via ref) ----- */
   useLayoutEffect(() => {

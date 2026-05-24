@@ -1161,7 +1161,13 @@ export default function ResumeStudio() {
                 matching against an empty body would be noise. The
                 disclosure defaults closed; opening it never persists
                 anything. */}
-            {hasResume && <TailorForRole previewRef={previewRef} resumeVersion={parsed} />}
+            {hasResume && (
+              <TailorForRole
+                previewRef={previewRef}
+                resumeVersion={parsed}
+                previewTab={previewTab}
+              />
+            )}
           </div>
         </details>
 
