@@ -27,6 +27,11 @@ import {
 } from 'react';
 import type { Ref } from 'react';
 import Icon from './Icon';
+import {
+  getRewriteCandidates,
+  isUnderExperienceHeading,
+  type RewriteCandidate,
+} from '../utils/bulletPatterns';
 
 /**
  * Imperative handle exposed via the `editorRef` prop. ResumeStudio uses this
@@ -188,6 +193,18 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
   const [softWrap, setSoftWrap] = useState(true);
   const [snippetOpen, setSnippetOpen] = useState(false);
 
+  /* Caret position used to derive bullet-rewrite eligibility (#93). We
+     store the selectionStart; selectionEnd is implied by the caret being
+     on the line containing this offset. Updated on every selection-change
+     event the textarea fires (keyboard, click, drag). `null` means the
+     textarea has never been interacted with this session — the affordance
+     stays hidden until the user actually places the caret. */
+  const [caret, setCaret] = useState<number | null>(null);
+  const [rewriteTrayOpen, setRewriteTrayOpen] = useState(false);
+  const rewriteWrapRef = useRef<HTMLDivElement>(null);
+  const rewriteTriggerRef = useRef<HTMLButtonElement>(null);
+  const rewriteTrayId = useId();
+
   useEffect(() => {
     setSoftWrap(getStoredSoftWrap());
   }, []);
@@ -201,6 +218,103 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
     const rows = Math.max(lineCount, 1);
     return Array.from({ length: rows }, (_, i) => i + 1);
   }, [lineCount]);
+
+  /* ----- Bullet-rewrite eligibility (#93) -----
+     When the caret sits on a Markdown bullet inside an Experience-style
+     H2, we surface a small "Rewrite this bullet" affordance that opens
+     a tray of 2-3 pattern-based candidates. Eligibility is recomputed
+     on every caret move, and the affordance is hidden whenever the
+     caret leaves the bullet (including when the user types past the
+     end of the line and converts it into prose). */
+  const rewriteContext = useMemo(() => {
+    if (caret === null) return null;
+    // Slice the document into lines and find which one contains the caret.
+    // We track each line's [start, end) offsets so that an "insert above"
+    // can target the line start without re-walking the document.
+    const lines = value.split('\n');
+    let offset = 0;
+    let lineIndex = -1;
+    let lineStart = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const lineEnd = offset + lines[i].length;
+      if (caret >= offset && caret <= lineEnd) {
+        lineIndex = i;
+        lineStart = offset;
+        break;
+      }
+      offset = lineEnd + 1; // +1 for the consumed '\n'
+    }
+    if (lineIndex < 0) return null;
+    const line = lines[lineIndex];
+    if (!isUnderExperienceHeading(lines, lineIndex)) return null;
+    const candidates = getRewriteCandidates(line);
+    if (candidates.length === 0) return null;
+    return { lineIndex, lineStart, candidates };
+  }, [value, caret]);
+
+  /* Hide the tray and reset trigger focus whenever the caret moves off an
+     eligible bullet. Keeps the affordance affordance from lingering in a
+     stale state after the user types into the bullet text. */
+  useEffect(() => {
+    if (rewriteContext === null && rewriteTrayOpen) {
+      setRewriteTrayOpen(false);
+    }
+  }, [rewriteContext, rewriteTrayOpen]);
+
+  /* Close the rewrite tray on an outside pointer-down. Mirrors the
+     section-snippet popover's pattern. */
+  useEffect(() => {
+    if (!rewriteTrayOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!rewriteWrapRef.current?.contains(event.target as Node)) {
+        setRewriteTrayOpen(false);
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [rewriteTrayOpen]);
+
+  /**
+   * Apply a rewrite candidate: insert its `rewrittenLine` as a new bullet
+   * line directly ABOVE the original. Never destructive — the original
+   * bullet stays untouched so the writer can pick the one they prefer
+   * and delete the rest.
+   *
+   * The same `value` / `onChange` pipe the snippet inserter uses is
+   * reused here so the debounced parser upstairs sees a single, ordinary
+   * value update. After insertion we restore the caret to the original
+   * bullet (now offset by the inserted line's length + newline) so the
+   * writer can keep editing without losing their place.
+   */
+  const applyRewrite = useCallback(
+    (candidate: RewriteCandidate) => {
+      if (rewriteContext === null) return;
+      const { lineStart } = rewriteContext;
+      const inserted = `${candidate.rewrittenLine}\n`;
+      const next = value.slice(0, lineStart) + inserted + value.slice(lineStart);
+      onChange(next);
+      setRewriteTrayOpen(false);
+
+      // Restore focus and put the caret back where it was on the original
+      // bullet (now shifted down by the inserted line's character count).
+      const newCaret = (caret ?? lineStart) + inserted.length;
+      window.setTimeout(() => {
+        const ta = textareaRef.current;
+        if (ta) {
+          ta.focus();
+          ta.setSelectionRange(newCaret, newCaret);
+          setCaret(newCaret);
+        }
+      }, 0);
+    },
+    [rewriteContext, value, onChange, caret],
+  );
+
+  /** Close the rewrite tray and restore focus to its trigger button. */
+  const closeRewriteTray = useCallback(() => {
+    setRewriteTrayOpen(false);
+    rewriteTriggerRef.current?.focus();
+  }, []);
 
   /** Toggle soft-wrap and persist it for the session. */
   const toggleSoftWrap = useCallback(() => {
@@ -474,10 +588,83 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
             'Paste your resume Markdown here,\nor upload a file / load the sample above.'
           }
           aria-describedby={`${textareaId}-meta`}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => {
+            onChange(event.target.value);
+            setCaret(event.currentTarget.selectionStart);
+          }}
+          onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
+          onClick={(event) => setCaret(event.currentTarget.selectionStart)}
+          onKeyUp={(event) => setCaret(event.currentTarget.selectionStart)}
+          onBlur={() => {
+            // When the textarea loses focus the affordance no longer makes
+            // sense — but we must NOT close the tray if focus is moving
+            // INTO it, so defer the clear and let the tray's own focus
+            // win the race.
+            window.setTimeout(() => {
+              const active = document.activeElement;
+              if (rewriteWrapRef.current?.contains(active)) return;
+              setCaret(null);
+            }, 0);
+          }}
           onScroll={syncScroll}
         />
       </div>
+
+      {/* ----- Bullet-rewrite affordance (#93) -----
+          Appears only when the caret is on an Experience bullet that has
+          at least one applicable rewrite. Renders below the textarea —
+          a single trigger button that opens a tray of 2-3 candidate
+          rewrites. ESC closes the tray and returns focus to the trigger.
+          A click on a candidate inserts a new sibling bullet above the
+          original through the same value/onChange path as the snippet
+          inserter, so there's no separate state-mutation pathway. */}
+      {rewriteContext && (
+        <div className="editor__rewrite" ref={rewriteWrapRef}>
+          <button
+            type="button"
+            ref={rewriteTriggerRef}
+            className="btn btn--ghost editor__rewrite-trigger"
+            aria-haspopup="menu"
+            aria-expanded={rewriteTrayOpen}
+            aria-controls={rewriteTrayOpen ? rewriteTrayId : undefined}
+            onClick={() => setRewriteTrayOpen((open) => !open)}
+          >
+            <Icon name="chevron-right" size={13} />
+            Rewrite this bullet
+            <span className="editor__rewrite-trigger-count">
+              ({rewriteContext.candidates.length})
+            </span>
+          </button>
+          {rewriteTrayOpen && (
+            <ul
+              id={rewriteTrayId}
+              className="editor__rewrite-tray"
+              role="menu"
+              aria-label="Bullet rewrite suggestions"
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.stopPropagation();
+                  closeRewriteTray();
+                }
+              }}
+            >
+              {rewriteContext.candidates.map((candidate) => (
+                <li key={candidate.id} role="none" className="editor__rewrite-li">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="editor__rewrite-item"
+                    onClick={() => applyRewrite(candidate)}
+                  >
+                    <span className="editor__rewrite-item-label">{candidate.label}</span>
+                    <span className="editor__rewrite-item-preview">{candidate.rewrittenLine}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div id={`${textareaId}-meta`} className="editor__meta">
         <span>{lineCount} lines</span>

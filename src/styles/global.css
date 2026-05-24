@@ -1487,6 +1487,98 @@ a {
   color: var(--ui-fg-subtle);
 }
 
+/* ----- Bullet-rewrite affordance (#93) -----
+   When the caret sits on an Experience-style bullet, the editor surfaces
+   a single trigger button below the textarea that opens a tray of 2-3
+   pattern-based rewrite candidates. The wrapper is `position: relative`
+   so the tray anchors to it; the tray itself uses absolute positioning
+   to float above the meta row without inflating the editor's footprint
+   on the page (handy when the editor sits in a height-constrained pane).
+
+   The button keeps the standard ghost-button look so it reads as part of
+   the editor's compact toolbar vocabulary, with an accent left-border
+   indicator (NOT color-only — the chevron icon + literal label carry the
+   signal too). */
+.editor__rewrite {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.editor__rewrite-trigger {
+  padding: 0.32rem 0.6rem;
+  font-size: 0.74rem;
+  border-left: 2px solid var(--ui-accent);
+}
+
+.editor__rewrite-trigger-count {
+  color: var(--ui-fg-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.editor__rewrite-tray {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + var(--space-1));
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: min(28rem, 92vw);
+  max-width: 36rem;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+}
+
+.editor__rewrite-li {
+  display: block;
+}
+
+.editor__rewrite-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  width: 100%;
+  padding: 0.5rem var(--space-2);
+  font-family: var(--font-mono);
+  text-align: left;
+  color: var(--ui-fg);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.editor__rewrite-item:hover,
+.editor__rewrite-item:focus-visible {
+  background: var(--ui-panel-hover);
+  border-color: var(--ui-border-strong);
+}
+
+.editor__rewrite-item-label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ui-fg);
+}
+
+/* The preview line of the rewritten bullet. Monospace by inheritance,
+   muted, and clipped to a single line so a very long bullet doesn't
+   blow out the tray's width. */
+.editor__rewrite-item-preview {
+  font-size: 0.74rem;
+  color: var(--ui-fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ------------------------------------------------------------------ */
 /* Resume preview (app-chrome framing only — see resume.css)           */
 /* ------------------------------------------------------------------ */
@@ -2958,4 +3050,251 @@ a {
   /* The CTA button uses .btn .btn--primary for the base look; this rule
      only ensures it sits beneath the description with a consistent gap. */
   margin-top: var(--space-1);
+}
+
+/* ------------------------------------------------------------------ */
+/* Resume version snapshots (#94)                                      */
+/*                                                                     */
+/* Toolbar control sitting between the Export popover and the help     */
+/* chip. The trigger is a `.btn`; opening it reveals a popover with a  */
+/* Save-snapshot row and a list of saved snapshots. The disabled       */
+/* variant uses the native `disabled` attribute (`:disabled` already   */
+/* dims via the global `.btn:disabled` rule), so this section only     */
+/* lays out the popover and its rows.                                  */
+/* ------------------------------------------------------------------ */
+
+.snapshots-menu {
+  position: relative;
+}
+
+.snapshots-menu__trigger {
+  /* Match the Export trigger's gap so the two reads as a peer cluster. */
+  gap: 0.4rem;
+}
+
+.snapshots-menu__popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(24rem, 92vw);
+  padding: var(--space-3);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+}
+
+.snapshots-menu__save {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.snapshots-menu__save-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ui-fg-subtle);
+}
+
+.snapshots-menu__save-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.snapshots-menu__name-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.snapshots-menu__save-btn {
+  flex-shrink: 0;
+}
+
+.snapshots-menu__hint {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--ui-fg-subtle);
+}
+
+.snapshots-menu__empty {
+  margin: 0;
+  padding: var(--space-2) 0;
+  font-size: 0.78rem;
+  color: var(--ui-fg-muted);
+  text-align: center;
+}
+
+.snapshots-menu__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.snapshots-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+}
+
+.snapshots-menu__item-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+}
+
+.snapshots-menu__item-name {
+  color: var(--ui-fg);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  /* Cap the visible width so a long name doesn't push the actions off
+     the edge — the title attribute still surfaces the full string. */
+  max-width: 14rem;
+}
+
+.snapshots-menu__item-sep {
+  color: var(--ui-fg-subtle);
+}
+
+.snapshots-menu__item-time {
+  color: var(--ui-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.snapshots-menu__item-actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.snapshots-menu__item-load {
+  padding: 0.28rem 0.6rem;
+  font-size: 0.74rem;
+}
+
+.snapshots-menu__item-delete {
+  padding: 0.32rem;
+  min-width: auto;
+  color: var(--ui-fg-muted);
+}
+
+.snapshots-menu__item-delete:hover {
+  color: var(--ui-danger);
+  border-color: var(--ui-danger);
+}
+
+/* ------------------------------------------------------------------ */
+/* Mobile editor accordion (#100)                                      */
+/*                                                                     */
+/* The editor pane is rendered as a real <details>. Phase 1 (no resume)*/
+/* always sets `open` so the uploader IS the experience. Phase 2 on    */
+/* mobile (<640px) lets the user toggle the accordion via the native   */
+/* <summary>, with the preview being the first thing they see.         */
+/*                                                                     */
+/* On viewports ≥ 640px we force the editor pane back into "always     */
+/* visible" mode: the `open` attribute is overridden by CSS that keeps */
+/* the body laid out as a block regardless of state, and the summary   */
+/* loses its disclosure cursor / marker so it reads as a static pane   */
+/* header again. No JS state needed — purely declarative.              */
+/* ------------------------------------------------------------------ */
+
+/* Base: the <details> element should fill the pane the same way the
+   former <section> did. `details` is a block by default; flex layout
+   inside <details> only applies to children once the element is open,
+   so we keep the pane's own surface (border, background) on the
+   details element and let the body div own its inner flex layout. */
+details.studio__pane--editor {
+  /* The pane keeps the same chrome as the preview pane — the rules in
+     `.studio__pane` already provide that. No overrides needed here. */
+  min-width: 0;
+}
+
+/* Summary acts as the pane header. Remove the default disclosure
+   triangle so it reads as the existing pane chrome rather than a
+   native widget, and surface a focus ring for keyboard users. */
+.studio__pane-header--summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.studio__pane-header--summary::-webkit-details-marker {
+  display: none;
+}
+
+.studio__pane-header--summary::marker {
+  content: '';
+}
+
+.studio__pane-header--summary:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: -2px;
+}
+
+/* The "N lines · edit" mobile-only meta lives at the right edge of the
+   summary. It's hidden by default and only revealed below 640px when a
+   resume is loaded — the parent only renders it when `hasResume`. */
+.studio__pane-summary-meta {
+  display: none;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--ui-fg-muted);
+}
+
+@media (max-width: 640px) {
+  .studio__pane-summary-meta {
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* Above 640px the accordion is a no-op: the body is visible regardless
+   of the `open` attribute, and the summary stops behaving as an
+   interactive disclosure. Modern Chromium uses a `::details-content`
+   pseudo-element to control disclosure; older engines simply set
+   `display: none` on non-summary children. We override both. */
+@media (min-width: 641px) {
+  details.studio__pane--editor:not([open]) > .studio__pane-body {
+    /* Force the body back into the flow when the element is "closed".
+       This is the desktop pane behavior — `open` is a state we ignore
+       at this width, since the editor lives beside the preview. */
+    display: flex !important;
+  }
+  /* Chromium 131+ implements <details> disclosure via the
+     `::details-content` pseudo-element. The default style hides the
+     content when the host is not `[open]`; we counter that here so the
+     editor body stays visible on desktop regardless of state. */
+  details.studio__pane--editor:not([open])::details-content {
+    content-visibility: visible;
+    display: block;
+  }
+  .studio__pane-header--summary {
+    cursor: default;
+  }
 }

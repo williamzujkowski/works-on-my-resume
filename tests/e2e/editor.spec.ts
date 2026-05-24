@@ -8,7 +8,7 @@
  *  - After a resume is loaded, the uploader collapses to its one-line bar.
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, loadSampleResume } from './helpers';
+import { clearAppStorage, expandMobileEditor, loadSampleResume } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await clearAppStorage(page);
@@ -114,6 +114,9 @@ test('snippets do not prepend frontmatter when content already exists (#97)', as
   // `---` is present, because the empty-document precondition is unmet.
   const textarea = page.getByLabel(/markdown source/i);
   await textarea.fill('# Existing heading\n\nSome body text.\n');
+  // On mobile the editor accordion (#100) collapses once content is present;
+  // expand it so the textarea + quick-insert affordances stay reachable.
+  await expandMobileEditor(page);
   await textarea.click();
 
   const quickExperience = page.getByRole('button', { name: /^insert experience entry$/i });
@@ -130,11 +133,111 @@ test('snippets do not prepend frontmatter when content already exists (#97)', as
   expect(value).not.toContain('name: Your Name');
 });
 
+/**
+ * Helper for the bullet-rewrite tests below — see `expandMobileEditor`
+ * in helpers.ts for the canonical implementation. Aliased here so the
+ * existing call sites keep their familiar local name.
+ */
+const expandEditorIfCollapsed = expandMobileEditor;
+
+test('bullet-rewrite tray surfaces and inserts a sibling bullet above the original (#93)', async ({
+  page,
+}) => {
+  // Build a minimal Experience section with a single bullet that opens with
+  // a weak verb — that gives us two candidates (Add metric + Verb upgrade)
+  // plus the always-available Lead-with-outcome fallback, so the tray is
+  // guaranteed to mount with multiple choices. Note: no trailing newline,
+  // so Ctrl+End lands inside the bullet line rather than on an empty line
+  // below it (the rewrite affordance keys off the line the caret is on).
+  const textarea = page.getByLabel(/markdown source/i);
+  const initial = '## Experience\n\n### Engineer — Acme\n\n- Helped ship a new pipeline';
+  await textarea.fill(initial);
+  // On mobile the editor accordion collapses once content is present; expand
+  // it so the textarea + new affordance are actually visible to interact with.
+  await expandEditorIfCollapsed(page);
+
+  // Place the caret at the end of the document — which, given no trailing
+  // newline, is the end of the bullet line itself. Ctrl+End fires a
+  // synthetic selection-change so our onSelect handler picks it up.
+  await textarea.click();
+  await page.keyboard.press('Control+End');
+
+  // The affordance must appear once the caret is on an eligible bullet.
+  const trigger = page.getByRole('button', { name: /rewrite this bullet/i });
+  await expect(trigger).toBeVisible();
+
+  // Open the tray. We expect at least the Verb-upgrade and Add-metric
+  // candidates given the weak "Helped" opener.
+  await trigger.click();
+  const tray = page.getByRole('menu', { name: /bullet rewrite suggestions/i });
+  await expect(tray).toBeVisible();
+  const verbUpgrade = tray.getByRole('menuitem', { name: /verb upgrade.*helped.*led/i });
+  await expect(verbUpgrade).toBeVisible();
+
+  // Click the verb-upgrade candidate — the resulting document must carry
+  // BOTH bullets (non-destructive), with the rewritten one above the original.
+  await verbUpgrade.click();
+  const after = await textarea.inputValue();
+  // The new bullet sits directly above the original "Helped ship..." line.
+  expect(after).toMatch(/- Led ship a new pipeline\n- Helped ship a new pipeline/);
+  // Original bullet is preserved verbatim.
+  expect(after).toContain('- Helped ship a new pipeline');
+});
+
+test('bullet-rewrite affordance does not appear under non-Experience headings (#93)', async ({
+  page,
+}) => {
+  // A Skills bullet is structurally the same shape as an Experience one,
+  // but the pattern library treats Skills as out of scope for rewrites.
+  // No trailing newline so the caret lands ON the bullet line after Ctrl+End.
+  const textarea = page.getByLabel(/markdown source/i);
+  await textarea.fill('## Skills\n\n- Helped maintain the build system');
+  await expandEditorIfCollapsed(page);
+  await textarea.click();
+  await page.keyboard.press('Control+End');
+
+  // The affordance trigger must NOT mount — the bullet is in a Skills
+  // section, not an Experience-style one.
+  await expect(page.getByRole('button', { name: /rewrite this bullet/i })).toHaveCount(0);
+});
+
+test('bullet-rewrite tray closes when the caret leaves the bullet (#93)', async ({ page }) => {
+  // Set up an eligible bullet, then a prose paragraph below. The trailing
+  // newline is intentional here — we need a non-bullet line below the
+  // bullet so the caret can move off without the document ending.
+  const textarea = page.getByLabel(/markdown source/i);
+  await textarea.fill('## Experience\n\n- Helped ship a new pipeline\n\nSome prose afterward.');
+  await expandEditorIfCollapsed(page);
+  await textarea.click();
+  // Caret onto the bullet line — line 3 (0-indexed line 2). The textarea
+  // begins with the caret somewhere arbitrary, so we walk from the top.
+  await page.keyboard.press('Control+Home');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('End');
+
+  const trigger = page.getByRole('button', { name: /rewrite this bullet/i });
+  await expect(trigger).toBeVisible();
+
+  // Move the caret two lines down — onto the prose paragraph.
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('End');
+
+  // The affordance must hide itself; the caret is no longer on a bullet.
+  await expect(trigger).toHaveCount(0);
+});
+
 test('after loading a resume the uploader collapses to its compact bar', async ({ page }) => {
   // Phase 1: dropzone is the hero. The "Drop a Markdown file here" copy is its giveaway.
   await expect(page.getByText(/drop a markdown file here/i)).toBeVisible();
 
   await loadSampleResume(page);
+
+  // On mobile (#100) the editor pane collapses to a <details> accordion
+  // when a resume is loaded — expand it so the uploader's compact bar is
+  // reachable for the assertions below.
+  await expandMobileEditor(page);
 
   // Phase 2: that dropzone copy is gone. The compact bar shows the file name + line count.
   await expect(page.getByText(/drop a markdown file here/i)).toHaveCount(0);
