@@ -25,7 +25,13 @@ module.exports = [
   {
     name: 'themes',
     path: 'dist/_astro/themes.*.js',
-    limit: '500 KB',
+    // Raised from 500 KB to 600 KB (#122). The chunk is lazy-loaded — it only
+    // arrives when the writer opens the theme picker — so initial-paint cost
+    // is unchanged. 545 themes (OKLCH triples + names) measured at 477.49 KB
+    // against the prior cap, leaving ~5% headroom; bumping the cap buys
+    // breathing room for the next dataset refresh without splitting the file
+    // or re-encoding (options 2 & 3 in the issue) prematurely.
+    limit: '600 KB',
     gzip: false,
     brotli: false,
   },
