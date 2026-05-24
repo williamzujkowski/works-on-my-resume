@@ -316,6 +316,57 @@ test('#116 tech-only JD shows the Tech bucket and omits empty buckets', async ({
   await expect(tailor.locator('.tailor__group--soft')).toHaveCount(0);
 });
 
+/* ----------------------------------------------------------------- *
+ * #121 — lowercase sweep for bundled soft-skill / tech phrases        *
+ * ----------------------------------------------------------------- */
+
+test('#121 lowercase soft-skill phrases in JD prose surface under the Soft category', async ({
+  page,
+}) => {
+  await loadSampleResume(page);
+  await expandMobileEditor(page);
+
+  const tailor = page.locator('details.tailor');
+  await tailor.locator('summary').click();
+  const textarea = tailor.getByLabel(/paste a job description/i);
+
+  /* A JD that mentions bundled soft-skill phrases ONLY in lowercase
+     prose, the way recruiters actually write them. None of these would
+     survive the capitalization / bigram-frequency heuristic alone:
+       - "stakeholder management" is a single lowercase bigram.
+       - "incident response" is a single lowercase bigram.
+       - "technical writing" is a single lowercase bigram.
+       - "on-call" is lowercase and only appears once.
+     The #121 sweep must surface each of them. */
+  await textarea.fill(
+    [
+      'We want someone with strong stakeholder management and incident response',
+      'experience. The role includes technical writing and on-call rotations.',
+    ].join('\n'),
+  );
+
+  // Wait for compute.
+  await expect(tailor.locator('.tailor__summary-chip')).toBeVisible({ timeout: 5_000 });
+
+  // The Soft group must exist with at least the swept phrases. Display
+  // casing comes from the bundled list (Title Case), so the label text
+  // we look for is `Stakeholder Management`, `Incident Response`,
+  // `Technical Writing`, `On-Call`.
+  const softGroup = tailor.locator('.tailor__group--soft');
+  await expect(softGroup).toBeVisible();
+  await expect(softGroup.locator('.tailor__group-label')).toHaveText('Soft');
+
+  // Every swept phrase must appear in EITHER the soft group's matches
+  // list OR its gaps list — we don't care which, just that the
+  // extractor surfaced it. Match against the group's items only so a
+  // stray Tech-bucket hit doesn't false-positive.
+  const softItems = softGroup.locator('.tailor__list-item');
+  await expect(softItems.filter({ hasText: /Stakeholder Management/i }).first()).toBeVisible();
+  await expect(softItems.filter({ hasText: /Incident Response/i }).first()).toBeVisible();
+  await expect(softItems.filter({ hasText: /Technical Writing/i }).first()).toBeVisible();
+  await expect(softItems.filter({ hasText: /On-Call/i }).first()).toBeVisible();
+});
+
 test('privacy: JD content is never written to local- or sessionStorage', async ({ page }) => {
   await loadSampleResume(page);
   await expandMobileEditor(page);

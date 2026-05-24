@@ -417,6 +417,141 @@ interface TermAccumulator {
   kind: TailorTermKind;
 }
 
+/* ------------------------------------------------------------------ */
+/* Bundled-phrase lowercase sweep (#121)                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Escape regex special characters in a string so it can be embedded in a
+ * `new RegExp(...)` literal. We use the resulting fragment outside a
+ * character class with the Unicode (`u`) flag, where `-` is NOT a
+ * metacharacter and escaping it produces an `Invalid escape` SyntaxError
+ * — hence the deliberate omission. The hyphen in `on-call` /
+ * `cross-functional` is matched literally without escaping.
+ */
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+}
+
+/**
+ * Pure-acronym detector: ALL-uppercase short strings that the existing
+ * extractor's all-caps unigram rule already catches (`AWS`, `SQL`, `GPU`).
+ * The sweep skips these to avoid double-counting; the canonical bundled
+ * casing for tech entries is lowercase, so we look at the heuristic shape
+ * instead of the JSON casing.
+ *
+ * Single-token entries with ≤ 4 chars and no non-alpha characters are
+ * treated as candidate acronyms — these are the ones a human reader would
+ * write in CAPS in a JD (`AWS`, `GCP`, `SQL`, `JWT`, `K8S`). Multi-token
+ * entries and entries with digits / punctuation (`s3`, `ec2`, `tcp/ip`,
+ * `node.js`) are NOT considered acronyms and DO benefit from the sweep
+ * because a JD might write `node.js` in lowercase prose.
+ */
+function isLikelyAcronymTechEntry(entry: string): boolean {
+  if (entry.length > 4) return false;
+  if (entry.includes(' ')) return false;
+  // Pure alphabetic, no punctuation / digits. `c++`, `c#`, `s3`, `ec2` fail.
+  return /^[a-z]+$/.test(entry);
+}
+
+/**
+ * Canonical display casing for a soft-skill entry: Title Case each word.
+ * The JSON file stores lowercase entries; we Title-Case at module load so
+ * the UI renders `Stakeholder Management` rather than `stakeholder
+ * management`.
+ *
+ * Hyphenated tokens have each segment capitalized (`on-call` →
+ * `On-Call`, `cross-functional` → `Cross-Functional`).
+ */
+function titleCaseSoftEntry(entry: string): string {
+  return entry
+    .split(/(\s+)/)
+    .map((part) => {
+      if (/^\s+$/.test(part)) return part;
+      return part
+        .split('-')
+        .map((seg) => (seg.length === 0 ? seg : seg[0].toUpperCase() + seg.slice(1)))
+        .join('-');
+    })
+    .join('');
+}
+
+/**
+ * A single bundled entry pre-compiled for the lowercase sweep.
+ *
+ * `regex` is built ONCE at module load (not per `extractTerms` call) — the
+ * combined bundled lists are ~440 entries and rebuilding the regex set per
+ * call would be measurable on the hot path. The trade-off is that the
+ * regexes live for the life of the module; at ~440 small regex objects
+ * this is negligible.
+ *
+ * Word boundaries use `(?<![\\p{L}\\p{N}])` / `(?![\\p{L}\\p{N}])` rather
+ * than `\\b` so tokens with embedded punctuation (`node.js`, `tcp/ip`,
+ * `c++`) match correctly — `\\b` would split on the `.` / `+` / `/`.
+ */
+interface BundledEntry {
+  /** Lowercase form — used as the `term` field on the produced TailorTerm. */
+  norm: string;
+  /** Canonical casing used as the `displayTerm`. */
+  display: string;
+  /** Whether the entry is a single token or a multi-token phrase. */
+  kind: TailorTermKind;
+  /** Pre-compiled global regex that matches the lowercase form. */
+  regex: RegExp;
+}
+
+/**
+ * Build the swept entry list ONCE per module load. The sweep runs after
+ * normal extraction in `extractTerms`, and the inputs (bundled JSON
+ * lists) are static — there is no per-call state that would change the
+ * regex set.
+ *
+ * For tech entries we drop pure ASCII-alpha short tokens (acronym shape)
+ * because the existing all-caps unigram path already surfaces them and
+ * adding a lowercase pass would double-count. Multi-token tech entries
+ * (`apache kafka`, `aws lambda`) and entries with digits / punctuation
+ * (`s3`, `ec2`, `node.js`, `tcp/ip`) DO sweep — the existing extractor's
+ * bigram rule needs capitalization OR a frequency of 2, which a single
+ * lowercase mention in JD prose lacks.
+ */
+function buildBundledEntries(): BundledEntry[] {
+  const out: BundledEntry[] = [];
+  const seen = new Set<string>();
+  for (const entry of softSkillsData as readonly string[]) {
+    if (seen.has(entry)) continue;
+    seen.add(entry);
+    const kind: TailorTermKind = entry.includes(' ') ? 'bigram' : 'unigram';
+    out.push({
+      norm: entry,
+      display: titleCaseSoftEntry(entry),
+      kind,
+      regex: new RegExp(
+        `(?<![\\p{L}\\p{N}])${escapeRegex(entry)}(?![\\p{L}\\p{N}])`,
+        'giu',
+      ),
+    });
+  }
+  for (const entry of techTermsData as readonly string[]) {
+    if (seen.has(entry)) continue;
+    if (isLikelyAcronymTechEntry(entry)) continue;
+    seen.add(entry);
+    const kind: TailorTermKind = entry.includes(' ') ? 'bigram' : 'unigram';
+    out.push({
+      norm: entry,
+      // Bundled tech list is lowercase — preserve as-is.
+      display: entry,
+      kind,
+      regex: new RegExp(
+        `(?<![\\p{L}\\p{N}])${escapeRegex(entry)}(?![\\p{L}\\p{N}])`,
+        'giu',
+      ),
+    });
+  }
+  return out;
+}
+
+const BUNDLED_ENTRIES: readonly BundledEntry[] = buildBundledEntries();
+
 /** Stable comparator: frequency desc, then display alphabetic. */
 function compareTerms(a: TailorTerm, b: TailorTerm): number {
   if (b.frequency !== a.frequency) return b.frequency - a.frequency;
@@ -531,6 +666,46 @@ export function extractTerms(jdText: string): TailorTerm[] {
       count,
       kind: 'bigram',
     });
+  }
+
+  /* Pass 4 (#121): lowercase sweep against bundled vocabularies.
+
+     Soft-skill phrases like `stakeholder management` and `incident
+     response` routinely appear in lowercase JD prose ("we look for
+     someone with strong stakeholder management skills"). The
+     capitalization heuristic above misses them — neither token is
+     capitalized AND a single occurrence falls below the bigram-frequency
+     threshold of 2.
+
+     We sweep the JD lowercased against pre-compiled regexes built once
+     at module load. Pure-acronym tech tokens are skipped (the existing
+     all-caps unigram path already catches `AWS`, `SQL`, etc.). Any term
+     already collected by the normal passes is left alone — we never
+     overwrite a count or display we already chose.
+
+     The display casing comes from the bundled list: Title Case for soft
+     phrases (the JSON is lowercase but the UI wants "Stakeholder
+     Management"), as-is for tech entries (the JSON is the canonical
+     casing we want — `node.js`, `cloud run`, `aws lambda`). */
+  if (BUNDLED_ENTRIES.length > 0) {
+    for (const entry of BUNDLED_ENTRIES) {
+      if (acc.has(entry.norm)) continue;
+      // Count via `matchAll` — the regex has `/g` so iteration is
+      // incremental, and `String.matchAll` returns a fresh iterator
+      // each call, which is what we want for parallel sweeps.
+      let count = 0;
+      for (const _m of jdText.matchAll(entry.regex)) {
+        void _m;
+        count += 1;
+      }
+      if (count === 0) continue;
+      acc.set(entry.norm, {
+        norm: entry.norm,
+        display: entry.display,
+        count,
+        kind: entry.kind,
+      });
+    }
   }
 
   /* Materialize and sort. */
