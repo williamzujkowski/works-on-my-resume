@@ -81,19 +81,20 @@ test('pasting a JD surfaces Matches and Gaps and overlays marks on the preview',
   await expect(chip).toBeVisible({ timeout: 5_000 });
   await expect(chip).toHaveText(/\d+ \/ \d+ \(\d+%\)/);
 
-  // Matches: at least Kubernetes and Terraform land here. Case-insensitive
-  // text matches on the rendered list.
-  const matchesList = tailor.locator('.tailor__list--matches');
-  await expect(matchesList).toBeVisible();
-  await expect(matchesList).toContainText(/Kubernetes/i);
-  await expect(matchesList).toContainText(/Terraform/i);
+  // Matches: at least Kubernetes and Terraform land in *some* category
+  // group's matches list. After #116 there can be multiple matches lists
+  // (one per category) so we check across the union of them.
+  const allMatchItems = tailor.locator('.tailor__list--matches .tailor__list-item');
+  await expect(allMatchItems.first()).toBeVisible();
+  await expect(allMatchItems.filter({ hasText: /Kubernetes/i })).toHaveCount(1);
+  await expect(allMatchItems.filter({ hasText: /Terraform/i })).toHaveCount(1);
 
   // Gaps: Salesforce and Java appear in the JD multiple times and don't
-  // appear in the sample resume — they must be in the gaps list.
-  const gapsList = tailor.locator('.tailor__list--gaps');
-  await expect(gapsList).toBeVisible();
-  await expect(gapsList).toContainText(/Salesforce/i);
-  await expect(gapsList).toContainText(/Java/i);
+  // appear in the sample resume — they must show up in some gaps list.
+  const allGapItems = tailor.locator('.tailor__list--gaps .tailor__list-item');
+  await expect(allGapItems.first()).toBeVisible();
+  await expect(allGapItems.filter({ hasText: /Salesforce/i }).first()).toBeVisible();
+  await expect(allGapItems.filter({ hasText: /Java/i }).first()).toBeVisible();
 
   // Overlay marks: at least one <mark class="tailor-match"> wraps text in
   // the rendered resume article.
@@ -167,8 +168,15 @@ test('preview/health tab: marks unmount with the article and re-appear on return
 
   // The Matches/Gaps results stay on screen — the disclosure lives in
   // the editor pane, which is unaffected by the preview pane's tab.
-  await expect(tailor.locator('.tailor__list--matches')).toContainText(/Kubernetes/i);
-  await expect(tailor.locator('.tailor__list--gaps')).toContainText(/Salesforce/i);
+  await expect(
+    tailor.locator('.tailor__list--matches .tailor__list-item').filter({ hasText: /Kubernetes/i }),
+  ).toHaveCount(1);
+  await expect(
+    tailor
+      .locator('.tailor__list--gaps .tailor__list-item')
+      .filter({ hasText: /Salesforce/i })
+      .first(),
+  ).toBeVisible();
   // And the cached hit-rate chip is unchanged — no recompute ran while
   // the article was absent.
   await expect(chip).toHaveText(chipBefore ?? '');
@@ -182,6 +190,130 @@ test('preview/health tab: marks unmount with the article and re-appear on return
   expect(restoredMarkCount).toBeGreaterThan(0);
   // Same JD + same resume → mark count should match the initial paint.
   expect(restoredMarkCount).toBe(initialMarkCount);
+});
+
+/* ----------------------------------------------------------------- *
+ * #116 — category clustering (Tech / Soft / Domain)                  *
+ * ----------------------------------------------------------------- */
+
+test('#116 surfaces per-category groups (Tech / Soft / Domain) with consistent counts', async ({
+  page,
+}) => {
+  await loadSampleResume(page);
+  await expandMobileEditor(page);
+
+  const tailor = page.locator('details.tailor');
+  await tailor.locator('summary').click();
+  const textarea = tailor.getByLabel(/paste a job description/i);
+  /* A richer JD than SYNTHETIC_JD so all three buckets land at least
+     one term. The extractor keeps tokens that are EITHER capitalized
+     OR appear lowercase as a bigram >= 2 times, so for soft phrases to
+     survive extraction we capitalize them and repeat the key one.
+     Tech: Kubernetes / Terraform / AWS / Postgres. Soft: Mentorship /
+     Stakeholder / Incident Response (capitalized, repeated). Domain:
+     Logistics / Warehouse / Supply Chain. */
+  await textarea.fill(
+    [
+      'Senior Platform Engineer for our Logistics platform.',
+      'Required: deep Kubernetes experience, hands-on Terraform on AWS,',
+      'Postgres at scale, OpenTelemetry observability, Datadog dashboards.',
+      'Mentorship of junior platform engineers is part of the role.',
+      'Stakeholder Management across product and infra teams.',
+      'Incident Response is core to this role.',
+      'Incident Response and on-call rotation ownership.',
+      'Domain experience: Logistics, Warehouse Management, and Supply Chain Operations.',
+    ].join('\n'),
+  );
+
+  // Wait for the chip to settle.
+  const summaryChip = tailor.locator('.tailor__summary-chip');
+  await expect(summaryChip).toBeVisible({ timeout: 5_000 });
+
+  // The per-category sub-chip carries `Tech 5/12 · Soft 3/8 · Domain 2/4`
+  // style text — at least Tech must be present given the JD content.
+  const categoryChip = tailor.locator('.tailor__category-chip');
+  await expect(categoryChip).toBeVisible();
+  await expect(categoryChip).toContainText(/Tech \d+\/\d+/);
+
+  // Per-category groups present for non-empty buckets. Tech is the
+  // strongest signal in the JD above so it must exist; we don't assert
+  // every group exists because soft/domain could in theory collapse.
+  const techGroup = tailor.locator('.tailor__group--tech');
+  await expect(techGroup).toBeVisible();
+  await expect(techGroup).toHaveAttribute('open', '');
+  // Group label and a fraction count.
+  await expect(techGroup.locator('.tailor__group-label')).toHaveText('Tech');
+  await expect(techGroup.locator('.tailor__group-count')).toHaveText(/^\d+\/\d+$/);
+
+  // Soft and Domain groups: both should appear given the JD; assert on
+  // labels but allow either to be absent if extraction misclassifies an
+  // edge case. (We still hard-require Tech to be present.)
+  const softGroup = tailor.locator('.tailor__group--soft');
+  const domainGroup = tailor.locator('.tailor__group--domain');
+  await expect(softGroup).toBeVisible();
+  await expect(softGroup.locator('.tailor__group-label')).toHaveText('Soft');
+  await expect(domainGroup).toBeVisible();
+  await expect(domainGroup.locator('.tailor__group-label')).toHaveText('Domain');
+
+  // Per-category counts must sum to the overall hit-rate chip.
+  // Parse the `X / Y (Z%)` chip and each `m/t` group-count fraction.
+  const chipText = (await summaryChip.textContent()) ?? '';
+  const overallMatch = chipText.match(/(\d+)\s*\/\s*(\d+)/);
+  expect(overallMatch, `summary chip ${chipText} should match X / Y`).toBeTruthy();
+  const overallMatched = Number(overallMatch![1]);
+  const overallTotal = Number(overallMatch![2]);
+
+  const groupFractions = await tailor.locator('.tailor__group-count').allTextContents();
+  let sumMatched = 0;
+  let sumTotal = 0;
+  for (const frac of groupFractions) {
+    const m = frac.match(/^(\d+)\/(\d+)$/);
+    expect(m, `group count ${frac} should be m/t`).toBeTruthy();
+    sumMatched += Number(m![1]);
+    sumTotal += Number(m![2]);
+  }
+  expect(sumMatched).toBe(overallMatched);
+  expect(sumTotal).toBe(overallTotal);
+});
+
+test('#116 tech-only JD shows the Tech bucket and omits empty buckets', async ({ page }) => {
+  await loadSampleResume(page);
+  await expandMobileEditor(page);
+
+  const tailor = page.locator('details.tailor');
+  await tailor.locator('summary').click();
+  const textarea = tailor.getByLabel(/paste a job description/i);
+  /* A JD made entirely of tech tokens — capitalized acronyms and known
+     tech names. We avoid soft-skill phrases (no `mentorship`, `incident
+     response`, etc.) and avoid sentence-starting nouns that would be
+     classified as Domain. */
+  await textarea.fill(
+    [
+      'Required tools: Kubernetes, Docker, Terraform, AWS, GCP, Azure.',
+      'Languages: Python, JavaScript, TypeScript, Go, Rust.',
+      'Databases: Postgres, MongoDB, Redis, Cassandra.',
+      'Frameworks: React, Django, FastAPI, Spring.',
+    ].join('\n'),
+  );
+
+  // Wait for compute.
+  await expect(tailor.locator('.tailor__summary-chip')).toBeVisible({ timeout: 5_000 });
+
+  const techGroup = tailor.locator('.tailor__group--tech');
+  await expect(techGroup).toBeVisible();
+
+  // The Tech fraction should be non-zero on the total side at least.
+  const techCount = await techGroup.locator('.tailor__group-count').textContent();
+  const techMatch = techCount?.match(/^(\d+)\/(\d+)$/);
+  expect(techMatch).toBeTruthy();
+  expect(Number(techMatch![2])).toBeGreaterThan(0);
+
+  // Soft / Domain buckets contain no terms → groups should NOT be
+  // rendered. (They are omitted when total = 0, not hidden.)
+  // Strict: at most a tiny number of edge-case Domain terms can sneak
+  // through; we accept Domain existing if it does but require Soft to
+  // be empty since there's no soft-skill vocabulary in the JD at all.
+  await expect(tailor.locator('.tailor__group--soft')).toHaveCount(0);
 });
 
 test('privacy: JD content is never written to local- or sessionStorage', async ({ page }) => {

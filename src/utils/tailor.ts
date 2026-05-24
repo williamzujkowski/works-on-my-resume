@@ -38,12 +38,24 @@
  * inside `.textContent` (never `innerHTML`).
  */
 
+import techTermsData from '../data/tech-terms.json';
+import softSkillsData from '../data/soft-skills.json';
+
 /* ------------------------------------------------------------------ */
 /* Public types                                                        */
 /* ------------------------------------------------------------------ */
 
 /** Whether a term is a single token or a two-token phrase. */
 export type TailorTermKind = 'unigram' | 'bigram';
+
+/**
+ * Term categories for the grouped Matches / Gaps UI (#116).
+ *
+ * - `tech`   programming languages, frameworks, tools, platforms
+ * - `soft`   collaboration / people / process vocabulary
+ * - `domain` everything else; default bucket for capitalized nouns
+ */
+export type TailorCategory = 'tech' | 'soft' | 'domain';
 
 /** A term extracted from a JD. */
 export interface TailorTerm {
@@ -624,4 +636,167 @@ export function summarizeOverlap(matches: TailorMatch[], maxGaps = 8): TailorOve
 export function formatHitRate(matched: number, total: number): string {
   const pct = total === 0 ? 0 : Math.floor((matched / total) * 100);
   return `${matched} / ${total} (${pct}%)`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Classification (#116)                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Bundled lowercase tech / soft vocabularies. The JSON modules are imported
+ * statically at module top — these lists are small enough (~2 KB gzipped
+ * combined) that splitting them into a dynamic chunk would cost more in
+ * round-trip latency than it saves in initial-bundle bytes. Wrapped in
+ * `Set` for O(1) membership checks.
+ */
+const TECH_TERMS: ReadonlySet<string> = new Set(techTermsData as readonly string[]);
+const SOFT_SKILLS: ReadonlySet<string> = new Set(softSkillsData as readonly string[]);
+
+/**
+ * Acronym / suffix heuristic for tech tokens not in the bundled list.
+ *
+ * Catches things like `AWS`, `SLA`, `K8S`, `GPU`, `node.js`, `next.js`,
+ * `mongodb`, `nosql`, `graphql`, `tcp/ip`, `c++`, `c#`, `f#`. We keep the
+ * suffix family narrow on purpose — `ts`, `qa`, `ci` were considered and
+ * dropped because too many everyday English words end that way (`acts`,
+ * `tests`, `parts`).
+ */
+function looksLikeTechToken(displayToken: string, normToken: string): boolean {
+  // All-caps acronym: ≥ 2 chars, only A-Z / 0-9, at least one letter.
+  // Acronyms are by far the strongest tech signal in a JD.
+  if (
+    displayToken.length >= 2 &&
+    /^[A-Z0-9]+$/.test(displayToken) &&
+    /[A-Z]/.test(displayToken)
+  ) {
+    return true;
+  }
+  // Tech-shape suffixes on tokens that either have tech-like punctuation /
+  // digits or are long enough that the suffix is unlikely to be English
+  // morphology. `mongodb`, `cosmosdb`, `graphql`, `nosql`, `nextjs`,
+  // `node.js`, `vue.js`, `pgsql` all pass; `pubs`, `tabs`, `mods`, `webs`
+  // don't.
+  const hasTechShape =
+    normToken.includes('.') || normToken.includes('-') || /\d/.test(normToken);
+  if (hasTechShape || normToken.length >= 5) {
+    if (/(?:\.js|js|sql|db|ql|api)$/.test(normToken)) return true;
+  }
+  // Embedded special characters that practically only appear in tech tokens:
+  // `+` (`c++`), `#` (`c#`, `f#`), `/` (`tcp/ip`, `ci/cd`).
+  if (/[+#/]/.test(displayToken)) return true;
+  // Dotted names mid-token (`node.js`, `next.js`, `vue.js`).
+  if (normToken.includes('.') && /[a-z]\.[a-z]/.test(normToken)) return true;
+  return false;
+}
+
+/**
+ * Categorize a single term into `tech` / `soft` / `domain`.
+ *
+ * Order of precedence:
+ *   1. Exact lowercase membership in the bundled soft-skill list.
+ *   2. Exact lowercase membership in the bundled tech list.
+ *   3. Heuristic acronym / suffix pattern → tech. For bigrams, classify as
+ *      tech if EITHER component is a known tech term or looks tech.
+ *   4. Default → domain.
+ *
+ * Soft is checked first because a soft phrase might also collide with
+ * neighboring industry vocabulary in some future tech-list expansion; the
+ * bundled vocabularies are curated so this is mostly a tie-breaker, not a
+ * substantive override.
+ *
+ * @example
+ *   classifyTerm({ term: 'kubernetes', ... })           === 'tech'
+ *   classifyTerm({ term: 'incident response', ... })    === 'soft'
+ *   classifyTerm({ term: 'aws lambda', ... })           === 'tech'
+ *   classifyTerm({ term: 'clinical trials', ... })      === 'domain'
+ */
+export function classifyTerm(term: TailorTerm): TailorCategory {
+  const norm = term.term;
+  if (SOFT_SKILLS.has(norm)) return 'soft';
+  if (TECH_TERMS.has(norm)) return 'tech';
+
+  // Bigram: check each half separately. Tech wins on either half because
+  // tech tokens are far rarer in everyday vocabulary than soft phrases,
+  // so a tech hit on either side is the more informative signal.
+  if (term.kind === 'bigram') {
+    const parts = norm.split(' ');
+    const displayParts = term.displayTerm.split(/\s+/);
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      const dp = displayParts[i] ?? p;
+      if (TECH_TERMS.has(p)) return 'tech';
+      if (looksLikeTechToken(dp, p)) return 'tech';
+    }
+    // Soft phrases live in the bundled list as full bigrams (`team lead`,
+    // `incident response`) — covered by the exact-match step above. No
+    // half-token soft check; would be too noisy.
+    return 'domain';
+  }
+
+  if (looksLikeTechToken(term.displayTerm, norm)) return 'tech';
+  return 'domain';
+}
+
+/** Per-category roll-up: matched / total + the gap and match lists. */
+export interface TailorCategoryStats {
+  /** Number of terms in this category. */
+  total: number;
+  /** Number of those terms that were found in the resume. */
+  matched: number;
+  /** Terms NOT in the resume, in JD-frequency order. */
+  gaps: TailorTerm[];
+  /** Terms that DID match, in JD-frequency order. */
+  matches: TailorMatch[];
+}
+
+/** Summary of matches grouped by category. Stable order: tech → soft → domain. */
+export interface TailorCategorySummary {
+  tech: TailorCategoryStats;
+  soft: TailorCategoryStats;
+  domain: TailorCategoryStats;
+}
+
+const EMPTY_STATS = (): TailorCategoryStats => ({
+  total: 0,
+  matched: 0,
+  gaps: [],
+  matches: [],
+});
+
+/**
+ * Group a list of matches by category, producing per-bucket hit rates and
+ * gap / match lists. Order within each bucket preserves the input order
+ * (which is frequency-desc, alpha tiebreak from `extractTerms`).
+ *
+ * Sum invariants:
+ *   tech.total + soft.total + domain.total === matches.length
+ *   tech.matched + soft.matched + domain.matched
+ *     === matches.filter(m => m.matched).length
+ *
+ * @example
+ *   const terms = extractTerms(jd);
+ *   const matches = matchResume(terms, resumeText);
+ *   const byCat = summarizeOverlapByCategory(matches);
+ *   // byCat.tech.matched / byCat.tech.total → the Tech sub-chip
+ *   // byCat.tech.matches[0].term.displayTerm → first tech match
+ *   // byCat.tech.gaps[0]?.displayTerm → first tech gap
+ */
+export function summarizeOverlapByCategory(matches: TailorMatch[]): TailorCategorySummary {
+  const summary: TailorCategorySummary = {
+    tech: EMPTY_STATS(),
+    soft: EMPTY_STATS(),
+    domain: EMPTY_STATS(),
+  };
+  for (const m of matches) {
+    const cat = classifyTerm(m.term);
+    const bucket = summary[cat];
+    bucket.total += 1;
+    if (m.matched) {
+      bucket.matched += 1;
+      bucket.matches.push(m);
+    } else {
+      bucket.gaps.push(m.term);
+    }
+  }
+  return summary;
 }

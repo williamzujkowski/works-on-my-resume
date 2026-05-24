@@ -1,14 +1,18 @@
 /**
- * TailorForRole — paste-a-JD keyword overlap (#91).
+ * TailorForRole — paste-a-JD keyword overlap (#91, #116).
  *
  * A collapsed `<details>` disclosure that lives in the editor pane. Open
  * it, paste a job description, and the component computes a local,
  * AI-free overlap between the JD's terms and the rendered resume:
  *
- *   - A flat **Matches** list (terms found in the resume + occurrence count).
- *   - A **Gaps** list of the top-N JD terms NOT in the resume — the
- *     actionable signal for tailoring.
- *   - A "hit rate" chip (`12 / 35 (34%)`).
+ *   - **Per-category sections** (#116). Each of Tech / Soft / Domain is its
+ *     own collapsible group containing the Matches found and the Gaps
+ *     identified for that bucket. Default-open when the bucket has any
+ *     terms; otherwise omitted. The summary chip becomes
+ *     `Tech 5/12 · Soft 3/8 · Domain 2/4` so the user can see WHICH KIND
+ *     of gap they have at a glance — the flat 40-item list from #91 was
+ *     swamping useful structure on realistic JDs.
+ *   - A "hit rate" chip (`12 / 35 (34%)`) for the overall overlap.
  *   - Visual overlay marks on the rendered preview pane: every match
  *     substring is wrapped in `<mark class="tailor-match">` via a
  *     `TreeWalker` + `Range` pass over `.resume-preview` text nodes.
@@ -32,7 +36,9 @@ import {
   extractTerms,
   formatHitRate,
   matchResume,
-  summarizeOverlap,
+  summarizeOverlapByCategory,
+  type TailorCategory,
+  type TailorCategoryStats,
   type TailorMatch,
 } from '../utils/tailor';
 import Icon from './Icon';
@@ -44,14 +50,24 @@ import Icon from './Icon';
 /** Debounce window between textarea edits and recompute. */
 const COMPUTE_DEBOUNCE_MS = 400;
 
-/** Top-N gaps surfaced in the actionable side panel. */
-const MAX_GAPS = 8;
-
 /** Class applied to the `<mark>` wrapper inserted into resume text nodes. */
 const MARK_CLASS = 'tailor-match';
 
 /** Sentinel attribute used to find/remove our marks without disturbing others. */
 const MARK_DATA_ATTR = 'data-tailor-mark';
+
+/**
+ * Display labels and stable ordering for the per-category sections.
+ * Order is fixed (tech → soft → domain) regardless of which buckets have
+ * content; missing-bucket sections are omitted, not hidden, so the visual
+ * flow doesn't shift between renders.
+ */
+const CATEGORY_LABELS: Readonly<Record<TailorCategory, string>> = {
+  tech: 'Tech',
+  soft: 'Soft',
+  domain: 'Domain',
+};
+const CATEGORY_ORDER: readonly TailorCategory[] = ['tech', 'soft', 'domain'];
 
 /* ------------------------------------------------------------------ */
 /* Props                                                               */
@@ -385,12 +401,32 @@ export default function TailorForRole({
     () => (matches ? matches.filter((m) => m.matched) : []),
     [matches],
   );
-  const summary = useMemo(() => (matches ? summarizeOverlap(matches, MAX_GAPS) : null), [matches]);
+  /* Per-category roll-up (#116). Cheap; only re-runs when matches change.
+     Carries the matches and gaps for each bucket in JD-frequency order,
+     so the lists render in stable, predictable sequence. */
+  const byCategory = useMemo(
+    () => (matches ? summarizeOverlapByCategory(matches) : null),
+    [matches],
+  );
 
   const hitRateLabel =
     matches && matches.length > 0
       ? formatHitRate(matchedTerms.length, matches.length)
       : null;
+
+  /* Compact `Tech 5/12 · Soft 3/8 · Domain 2/4` sub-chip. We only render
+     categories with at least one term to keep the chip from looking
+     padded — a Tech-only JD shouldn't show `Soft 0/0 · Domain 0/0`. */
+  const categoryChipText = useMemo(() => {
+    if (!byCategory) return null;
+    const parts: string[] = [];
+    for (const cat of CATEGORY_ORDER) {
+      const stats = byCategory[cat];
+      if (stats.total === 0) continue;
+      parts.push(`${CATEGORY_LABELS[cat]} ${stats.matched}/${stats.total}`);
+    }
+    return parts.length > 0 ? parts.join(' · ') : null;
+  }, [byCategory]);
 
   /* ----- Render ----- */
   return (
@@ -446,10 +482,13 @@ export default function TailorForRole({
           )}
         </div>
 
-        {/* Polite live region — announces hit rate when it resolves so
-            screen-reader users hear the count update without polling. */}
+        {/* Polite live region — announces hit rate + category breakdown
+            when they resolve so screen-reader users hear the update
+            without polling. */}
         <p className="visually-hidden" aria-live="polite" aria-atomic="true">
-          {hitRateLabel ? `Keyword overlap: ${hitRateLabel}` : ''}
+          {hitRateLabel
+            ? `Keyword overlap: ${hitRateLabel}${categoryChipText ? `. ${categoryChipText}` : ''}`
+            : ''}
         </p>
 
         {matches === null || jd.trim().length === 0 ? (
@@ -469,60 +508,131 @@ export default function TailorForRole({
               Keyword overlap results
             </h3>
 
-            <section className="tailor__section">
-              <header className="tailor__section-header">
-                <h4 className="tailor__section-title">Matches</h4>
-                <span className="tailor__section-count" aria-hidden="true">
-                  {matchedTerms.length}
-                </span>
-              </header>
-              {matchedTerms.length === 0 ? (
-                <p className="tailor__section-empty">
-                  No JD keywords appear in your resume yet.
-                </p>
-              ) : (
-                <ul className="tailor__list tailor__list--matches">
-                  {matchedTerms.map((m) => (
-                    <li key={m.term.term} className="tailor__list-item">
-                      <span className="tailor__list-term">{m.term.displayTerm}</span>
-                      <span className="tailor__list-count" aria-label={`${m.occurrences} times`}>
-                        ×{m.occurrences}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            {categoryChipText && (
+              <p className="tailor__category-chip" aria-label={`By category: ${categoryChipText}`}>
+                {categoryChipText}
+              </p>
+            )}
 
-            <section className="tailor__section">
-              <header className="tailor__section-header">
-                <h4 className="tailor__section-title">Gaps</h4>
-                <span className="tailor__section-count" aria-hidden="true">
-                  {summary?.topGaps.length ?? 0}
-                </span>
-              </header>
-              {summary && summary.topGaps.length > 0 ? (
-                <ul className="tailor__list tailor__list--gaps">
-                  {summary.topGaps.map((term) => (
-                    <li key={term.term} className="tailor__list-item">
-                      <span className="tailor__list-term">{term.displayTerm}</span>
-                      <span
-                        className="tailor__list-count tailor__list-count--gap"
-                        aria-label={`${term.frequency} times in JD`}
-                      >
-                        ×{term.frequency}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="tailor__section-empty">
-                  Nothing notable missing — every JD keyword we recognized is in your resume.
-                </p>
-              )}
-            </section>
+            {/* Per-category sections (#116). One <details> per non-empty
+                bucket, default-open. We render Tech → Soft → Domain in a
+                fixed order regardless of which buckets are present, so
+                the visual flow doesn't jitter when terms move between
+                categories on a JD edit. */}
+            {byCategory &&
+              CATEGORY_ORDER.map((cat) => {
+                const stats = byCategory[cat];
+                if (stats.total === 0) return null;
+                return (
+                  <CategoryGroup
+                    key={cat}
+                    category={cat}
+                    label={CATEGORY_LABELS[cat]}
+                    stats={stats}
+                  />
+                );
+              })}
           </div>
         )}
+      </div>
+    </details>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* CategoryGroup — one collapsible bucket (Tech / Soft / Domain)       */
+/* ------------------------------------------------------------------ */
+
+interface CategoryGroupProps {
+  category: TailorCategory;
+  label: string;
+  stats: TailorCategoryStats;
+}
+
+/**
+ * One per-category section. Renders as a `<details>` that is open by
+ * default (the ticket's spec: "all groups open if there are any items in
+ * them, otherwise collapsed"). The header carries the bucket label and
+ * its hit-rate fraction; the body splits into Matches and Gaps lists.
+ *
+ * We keep the `tailor__list--matches` / `tailor__list--gaps` CSS classes
+ * unchanged so the existing chip styling (green / amber tints, print
+ * suppression) continues to work — only the layout (now nested under a
+ * category disclosure) changes.
+ */
+function CategoryGroup({ category, label, stats }: CategoryGroupProps): React.JSX.Element {
+  const summaryId = useId();
+  // "Open by default" is encoded by `defaultOpen`. We don't use
+  // controlled state here — the user toggles each bucket independently
+  // and the choice should survive recompute as long as the bucket itself
+  // survives. Per-bucket open state lives in browser DOM, which is
+  // exactly the affordance native `<details>` provides.
+  const fractionLabel = `${stats.matched}/${stats.total}`;
+  return (
+    <details
+      className={`tailor__group tailor__group--${category}`}
+      data-category={category}
+      open
+    >
+      <summary className="tailor__group-summary" aria-describedby={summaryId}>
+        <Icon name="chevron-down" size={12} className="tailor__group-caret" />
+        <span className="tailor__group-label">{label}</span>
+        <span id={summaryId} className="tailor__group-count">
+          {fractionLabel}
+        </span>
+      </summary>
+
+      <div className="tailor__group-body">
+        <section className="tailor__section">
+          <header className="tailor__section-header">
+            <h4 className="tailor__section-title">Matches</h4>
+            <span className="tailor__section-count" aria-hidden="true">
+              {stats.matches.length}
+            </span>
+          </header>
+          {stats.matches.length === 0 ? (
+            <p className="tailor__section-empty">No JD keywords in this bucket appear in your resume yet.</p>
+          ) : (
+            <ul className="tailor__list tailor__list--matches">
+              {stats.matches.map((m) => (
+                <li key={m.term.term} className="tailor__list-item">
+                  <span className="tailor__list-term">{m.term.displayTerm}</span>
+                  <span className="tailor__list-count" aria-label={`${m.occurrences} times`}>
+                    ×{m.occurrences}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="tailor__section">
+          <header className="tailor__section-header">
+            <h4 className="tailor__section-title">Gaps</h4>
+            <span className="tailor__section-count" aria-hidden="true">
+              {stats.gaps.length}
+            </span>
+          </header>
+          {stats.gaps.length === 0 ? (
+            <p className="tailor__section-empty">
+              Nothing notable missing in this bucket — every JD keyword we recognized here is in your resume.
+            </p>
+          ) : (
+            <ul className="tailor__list tailor__list--gaps">
+              {stats.gaps.map((term) => (
+                <li key={term.term} className="tailor__list-item">
+                  <span className="tailor__list-term">{term.displayTerm}</span>
+                  <span
+                    className="tailor__list-count tailor__list-count--gap"
+                    aria-label={`${term.frequency} times in JD`}
+                  >
+                    ×{term.frequency}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </details>
   );
