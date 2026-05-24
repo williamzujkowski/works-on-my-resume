@@ -32,6 +32,26 @@ export type CareerStage = 'junior' | 'mid' | 'senior';
 /** Severity of a single finding, from "you're good" to "fix this". */
 export type HealthSeverity = 'good' | 'warn' | 'bad';
 
+/**
+ * Hint to the UI about what action to surface alongside a finding (#115).
+ *
+ * Two shapes:
+ *  - `rewrite` — the finding has a templated fix. The `bulletText` is the
+ *    full bullet source line the editor should rewrite through
+ *    `getRewriteCandidates`. The Health panel surfaces a "Suggest a fix"
+ *    affordance that opens an inline tray of 2-3 candidate rewrites;
+ *    clicking a candidate inserts a sibling bullet through the same
+ *    value/onChange path the in-editor rewrite tray (#93) uses. Nothing
+ *    is mutated until the user picks.
+ *  - `example` — the finding has no templated fix, but a hand-picked
+ *    section name from the bundled sample resume teaches the pattern.
+ *    The Health panel surfaces an "Open an example" affordance that
+ *    selects/scrolls the example section into view in the editor textarea.
+ */
+export type HealthSuggestion =
+  | { kind: 'rewrite'; bulletText: string }
+  | { kind: 'example'; section: string };
+
 /** A single piece of feedback from the analyzer. */
 export interface HealthFinding {
   /** Stable id of the rule that produced this finding (e.g. `weak-verb`). */
@@ -40,6 +60,19 @@ export interface HealthFinding {
   message: string;
   /** 1-based line in the source Markdown, when the finding has a location. */
   line?: number;
+  /**
+   * Exact substring of the source line the UI should highlight (selection +
+   * scroll). Optional: when omitted the UI falls back to selecting the
+   * entire line at `line`.
+   */
+  offender?: string;
+  /**
+   * UI-facing hint for "Suggest a fix" / "Open an example" affordances
+   * (#115). Optional: omitted on findings the UI cannot act on directly
+   * (e.g. frontmatter missing-key warnings — the user fixes those in the
+   * frontmatter block, which the UI already jumps to).
+   */
+  suggest?: HealthSuggestion;
 }
 
 /** The full output of `analyzeResume`. */
@@ -388,11 +421,20 @@ function checkWeakVerbs(markdown: string): HealthFinding[] {
       // Case-insensitive prefix match on a word boundary.
       const re = new RegExp(`^${escapeRegExp(phrase)}\\b`, 'i');
       if (re.test(content)) {
+        // The offender is the matched prefix from the ORIGINAL source line
+        // (case preserved), so the editor selection lands on the exact span
+        // the user typed — not on a normalized lowercase echo of it.
+        const offender = findOffenderInLine(bullet.text, phrase);
         findings.push({
           id: 'weak-verb',
           severity: 'warn',
           message: `Line ${bullet.line} starts with '${phrase}' — replace with an outcome verb like Shipped, Reduced, Built.`,
           line: bullet.line,
+          offender,
+          // The full bullet source line is what bulletPatterns rewrites
+          // (it parses the `- ` / `* ` prefix itself), so the editor can
+          // re-derive the bullet shape without us re-encoding it here.
+          suggest: { kind: 'rewrite', bulletText: bullet.text },
         });
         // Don't double-fire for a single bullet that matches more than one phrase.
         break;
@@ -401,6 +443,19 @@ function checkWeakVerbs(markdown: string): HealthFinding[] {
   }
 
   return findings;
+}
+
+/**
+ * Find a case-insensitive occurrence of `needle` inside `line` and return the
+ * exact-cased slice from `line`. Used so the editor selection highlights the
+ * substring the writer actually typed, not a normalized echo of the rule's
+ * pattern. Returns `undefined` when the needle does not appear (defensive —
+ * the caller has already proven a regex match).
+ */
+function findOffenderInLine(line: string, needle: string): string | undefined {
+  const idx = line.toLowerCase().indexOf(needle.toLowerCase());
+  if (idx === -1) return undefined;
+  return line.slice(idx, idx + needle.length);
 }
 
 /** #6 first person. One finding per offending bullet line. */
@@ -419,6 +474,11 @@ function checkFirstPerson(markdown: string): HealthFinding[] {
         severity: 'warn',
         message: `Line ${bullet.line} uses first person ('${hit}'). Resumes are written in implied first person.`,
         line: bullet.line,
+        offender: hit,
+        // First-person doesn't have a one-shot mechanical rewrite — but the
+        // sample resume's Selected Impact section is an opinionated example
+        // of outcome-led, impersonal phrasing.
+        suggest: { kind: 'example', section: 'Selected Impact' },
       });
     }
   }
@@ -463,15 +523,54 @@ function checkBuzzwords(markdown: string): HealthFinding[] {
     if (re.test(body)) hits.push(word);
   }
   if (hits.length >= 2) {
+    // Walk the body lines to attach the first hit's source line + literal
+    // offender so the finding's "Jump to line" lands somewhere useful (#115).
+    const fmEnd = frontmatterEndLine(markdown);
+    const lines = splitLines(markdown);
+    let firstHitLine: number | undefined;
+    let firstHitOffender: string | undefined;
+    outer: for (const li of lines) {
+      if (li.line <= fmEnd) continue;
+      for (const word of hits) {
+        const re = new RegExp(`\\b${escapeRegExp(word)}\\b`, 'i');
+        const m = re.exec(li.text);
+        if (m) {
+          firstHitLine = li.line;
+          firstHitOffender = m[0];
+          break outer;
+        }
+      }
+    }
     return [
       {
         id: 'buzzwords',
         severity: 'warn',
         message: `Buzzwords detected (${hits.join(', ')}). Replace with concrete evidence.`,
+        line: firstHitLine,
+        offender: firstHitOffender,
+        // Buzzwords don't carry a one-shot mechanical rewrite — point the
+        // user at the sample's Summary, which deliberately avoids them.
+        suggest: { kind: 'example', section: 'Summary' },
       },
     ];
   }
   return [];
+}
+
+/**
+ * 1-based line number where the YAML frontmatter block ends, or `0` when the
+ * document has no frontmatter. Used by checks that want to ignore the
+ * frontmatter block without re-running the strip regex.
+ */
+function frontmatterEndLine(markdown: string): number {
+  const re = /^\uFEFF?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
+  const m = re.exec(markdown);
+  if (!m) return 0;
+  // Count newlines in the matched span; the trailing `---` line is the last
+  // frontmatter line and we want its 1-based line number.
+  const normalized = m[0].replace(/\r/g, '');
+  const lineCount = normalized.split('\n').length;
+  return normalized.endsWith('\n') ? lineCount - 1 : lineCount;
 }
 
 /** #8 bullets per role. Groups bullets between H3 (or H2 if no H3). */
@@ -551,6 +650,10 @@ function checkBulletsPerRole(markdown: string): HealthFinding[] {
         severity: 'warn',
         message: `${g.heading.title} has ${count} bullets. Aim for 3–5.`,
         line: g.heading.line,
+        offender: g.heading.title,
+        // Point the user at the sample's Experience section — the canonical
+        // shape for 3-5 outcome-led bullets per role.
+        suggest: { kind: 'example', section: 'Experience' },
       });
     } else if (count < BULLETS_PER_ROLE.min) {
       findings.push({
@@ -558,6 +661,8 @@ function checkBulletsPerRole(markdown: string): HealthFinding[] {
         severity: 'warn',
         message: `${g.heading.title} has ${count} bullets. Aim for 3–5.`,
         line: g.heading.line,
+        offender: g.heading.title,
+        suggest: { kind: 'example', section: 'Experience' },
       });
     }
   }

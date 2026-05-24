@@ -45,6 +45,26 @@ import {
 export interface MarkdownEditorHandle {
   /** Scroll to a 1-based line and select that line (visual highlight). */
   jumpToLine(line: number): void;
+  /**
+   * Scroll to a 1-based line and select the FIRST occurrence of `offender`
+   * on that line. Falls back to selecting the whole line when the offender
+   * is not present (defensive — covers the case where the user has edited
+   * the line since the finding was computed).
+   */
+  jumpToOffender(line: number, offender: string): void;
+  /**
+   * Insert a new bullet line above `targetLine` (1-based). Used by Health's
+   * "Suggest a fix" tray to apply a candidate rewrite without disturbing
+   * the original bullet — same pattern as the in-editor rewrite tray (#93).
+   */
+  insertRewriteAboveLine(targetLine: number, rewrittenLine: string): void;
+  /**
+   * Scroll to the first H2 heading whose title (case-insensitively) matches
+   * `sectionTitle` and select the heading line. Used by Health's "Open an
+   * example" affordance when no templated fix exists. No-op when the
+   * section isn't present in the source.
+   */
+  jumpToSection(sectionTitle: string): void;
 }
 
 interface MarkdownEditorProps {
@@ -418,29 +438,43 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
     [value, onChange],
   );
 
-  /* ----- Imperative jump-to-line (#85 integration) -----
-     Resume Health surfaces "Jump to line N" buttons; clicking one tells
-     ResumeStudio to drive the editor here. We focus the textarea, select
-     the entire target line so the user sees a clear highlight, and scroll
-     the viewport to the line proportionally to its position in the file.
+  /* ----- Imperative jump-to-line (#85, #115 integration) -----
+     Resume Health surfaces "Jump to line N" / "Suggest a fix" buttons;
+     clicking one tells ResumeStudio to drive the editor here. The handle
+     exposes four narrow operations:
+
+       - jumpToLine(line): focus + select the entire 1-based target line +
+         scroll to it. Used by the original jump button.
+       - jumpToOffender(line, offender): like jumpToLine, but selects the
+         offender substring on that line (so the highlight reads as "this
+         is the bit to change", not "this whole line is wrong").
+       - insertRewriteAboveLine(targetLine, rewrittenLine): insert a new
+         bullet line directly above the original, going through the same
+         value/onChange path the in-editor rewrite tray (#93) uses.
+       - jumpToSection(sectionTitle): scroll to and select the H2 heading
+         whose title matches. Powers Health's "Open an example" affordance.
 
      Lines are 1-based to match what the analyzer emits. We clamp into range
      so a finding referring to a now-deleted line still does something
-     sensible (snap to the nearest valid line). */
+     sensible (snap to the nearest valid line).
+
+     `value` and `onChange` live in the dependency array of the handle so a
+     ref consumer always sees the live document — without this the insert
+     callback would close over a stale `value` and clobber later edits. */
   useImperativeHandle(
     editorRef,
-    () => ({
-      jumpToLine(line: number) {
+    () => {
+      /** Resolve a 1-based line index into [start, end) char offsets. */
+      function lineRange(line: number): {
+        start: number;
+        end: number;
+        text: string;
+        totalLines: number;
+      } | null {
         const ta = textareaRef.current;
-        if (!ta) return;
+        if (!ta) return null;
         const text = ta.value;
-        if (text.length === 0) {
-          ta.focus();
-          return;
-        }
-        // Find the start/end character offsets for the requested 1-based line.
-        // `split('\n')` keeps newlines out of each entry, so the running offset
-        // is the cumulative length plus one newline per preceding line.
+        if (text.length === 0) return null;
         const parts = text.split('\n');
         const totalLines = parts.length;
         const clamped = Math.max(1, Math.min(line, totalLines));
@@ -449,21 +483,134 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
           start += parts[i].length + 1; // +1 for the consumed '\n'
         }
         const end = start + parts[clamped - 1].length;
+        return { start, end, text: parts[clamped - 1], totalLines };
+      }
 
-        ta.focus();
-        ta.setSelectionRange(start, end);
-
-        // Approximate scroll: position the target line near the top third of
-        // the viewport. Browsers don't expose per-line offsets cheaply, so we
-        // pro-rate by line index over the textarea's total scrollHeight.
-        const ratio = totalLines > 1 ? (clamped - 1) / Math.max(1, totalLines - 1) : 0;
+      /** Approximate scroll: place the requested line near the top third. */
+      function scrollToLine(line: number, totalLines: number) {
+        const ta = textareaRef.current;
+        if (!ta) return;
+        const ratio = totalLines > 1 ? (line - 1) / Math.max(1, totalLines - 1) : 0;
         const maxScroll = Math.max(0, ta.scrollHeight - ta.clientHeight);
         ta.scrollTop = Math.round(maxScroll * ratio);
-        // Keep the gutter aligned.
         if (gutterRef.current) gutterRef.current.scrollTop = ta.scrollTop;
-      },
-    }),
-    [],
+      }
+
+      return {
+        jumpToLine(line: number) {
+          const ta = textareaRef.current;
+          if (!ta) return;
+          if (ta.value.length === 0) {
+            ta.focus();
+            return;
+          }
+          const range = lineRange(line);
+          if (!range) return;
+          ta.focus();
+          ta.setSelectionRange(range.start, range.end);
+          const clamped = Math.max(1, Math.min(line, range.totalLines));
+          scrollToLine(clamped, range.totalLines);
+        },
+
+        jumpToOffender(line: number, offender: string) {
+          const ta = textareaRef.current;
+          if (!ta) return;
+          if (ta.value.length === 0) {
+            ta.focus();
+            return;
+          }
+          const range = lineRange(line);
+          if (!range) return;
+          ta.focus();
+          // Case-insensitive find inside the target line. The selection lands
+          // on the original casing the writer used (preserved from
+          // `range.text`), not on the analyzer's normalized echo.
+          const lower = range.text.toLowerCase();
+          const idx = lower.indexOf(offender.toLowerCase());
+          if (idx === -1) {
+            // Fall back to selecting the whole line — the finding still
+            // makes sense even if the user has since edited the offender.
+            ta.setSelectionRange(range.start, range.end);
+          } else {
+            ta.setSelectionRange(range.start + idx, range.start + idx + offender.length);
+          }
+          const clamped = Math.max(1, Math.min(line, range.totalLines));
+          scrollToLine(clamped, range.totalLines);
+        },
+
+        insertRewriteAboveLine(targetLine: number, rewrittenLine: string) {
+          const ta = textareaRef.current;
+          if (!ta) return;
+          // Compute the line-start offset against the live document — we
+          // cannot trust the textarea's `value` here because the controlled
+          // component sources its text from React state.
+          const parts = value.split('\n');
+          const totalLines = parts.length;
+          const clamped = Math.max(1, Math.min(targetLine, totalLines));
+          let lineStart = 0;
+          for (let i = 0; i < clamped - 1; i++) {
+            lineStart += parts[i].length + 1; // +1 for the consumed '\n'
+          }
+          const inserted = `${rewrittenLine}\n`;
+          const next = value.slice(0, lineStart) + inserted + value.slice(lineStart);
+          onChange(next);
+
+          // Defer focus + selection to after the controlled value has flushed
+          // to the DOM, otherwise our setSelectionRange targets the stale text.
+          window.setTimeout(() => {
+            const t = textareaRef.current;
+            if (!t) return;
+            t.focus();
+            // Select the inserted bullet so the writer can immediately see
+            // what was added (and `Tab`-out / edit it inline).
+            const selStart = lineStart;
+            const selEnd = lineStart + rewrittenLine.length;
+            t.setSelectionRange(selStart, selEnd);
+            setCaret(selStart);
+            // Re-derive the scroll target against the now-updated document.
+            const newTotal = totalLines + 1;
+            const ratio = newTotal > 1 ? (clamped - 1) / Math.max(1, newTotal - 1) : 0;
+            const maxScroll = Math.max(0, t.scrollHeight - t.clientHeight);
+            t.scrollTop = Math.round(maxScroll * ratio);
+            if (gutterRef.current) gutterRef.current.scrollTop = t.scrollTop;
+          }, 0);
+        },
+
+        jumpToSection(sectionTitle: string) {
+          const ta = textareaRef.current;
+          if (!ta) return;
+          const text = ta.value;
+          if (text.length === 0) {
+            ta.focus();
+            return;
+          }
+          // Match an H2 heading (`## Title`) case-insensitively against the
+          // requested section title. No-op when the section isn't present
+          // in the source — the editor stays where it is.
+          const parts = text.split('\n');
+          const want = sectionTitle.toLowerCase().trim();
+          let target = -1;
+          for (let i = 0; i < parts.length; i++) {
+            const m = /^##\s+(?!#)(.+?)\s*$/.exec(parts[i]);
+            if (m && m[1].toLowerCase().trim() === want) {
+              target = i;
+              break;
+            }
+          }
+          if (target === -1) return;
+          let start = 0;
+          for (let i = 0; i < target; i++) start += parts[i].length + 1;
+          const end = start + parts[target].length;
+          ta.focus();
+          ta.setSelectionRange(start, end);
+          const ratio = parts.length > 1 ? target / Math.max(1, parts.length - 1) : 0;
+          const maxScroll = Math.max(0, ta.scrollHeight - ta.clientHeight);
+          ta.scrollTop = Math.round(maxScroll * ratio);
+          if (gutterRef.current) gutterRef.current.scrollTop = ta.scrollTop;
+        },
+      };
+    },
+    [value, onChange],
   );
 
   return (

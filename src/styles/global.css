@@ -2724,6 +2724,127 @@ a {
   border-color: var(--ui-accent);
 }
 
+/* Actionable findings (#115). The original row was a flex container with
+   message + jump-button as direct siblings; for #115 we wrap message and
+   action buttons (and the optional Suggest-a-fix tray) in a column so the
+   tray hangs below the buttons without disturbing the dot's alignment. */
+.health__item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.health__item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+/* "Suggest a fix" and "Open an example" share the jump button's shape so
+   the three affordances read as a coherent row. The fix button uses the
+   accent tint as a subtle distinction — it is the primary action on
+   findings that have a templated rewrite. */
+.health__item-fix,
+.health__item-example {
+  flex-shrink: 0;
+  padding: 0.15rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  background: transparent;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 110ms ease,
+    background-color 110ms ease,
+    border-color 110ms ease;
+}
+
+.health__item-fix {
+  color: var(--ui-accent);
+}
+
+.health__item-fix:hover {
+  color: var(--ui-accent-hover);
+  background: var(--ui-panel);
+  border-color: var(--ui-accent);
+}
+
+.health__item-example {
+  color: var(--ui-fg-muted);
+}
+
+.health__item-example:hover {
+  color: var(--ui-fg);
+  background: var(--ui-panel);
+  border-color: var(--ui-border-strong);
+}
+
+/* Inline tray of candidate rewrites. Sits beneath the row, flush with the
+   action buttons. Each candidate is a button that fills the tray width;
+   label on top, preview underneath in mono. */
+.health__item-tray {
+  margin-top: var(--space-1);
+}
+
+.health__item-tray-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--ui-inset-highlight);
+}
+
+.health__item-tray-li {
+  margin: 0;
+}
+
+.health__item-tray-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 110ms ease,
+    border-color 110ms ease;
+}
+
+.health__item-tray-item:hover {
+  background: var(--ui-bg);
+  border-color: var(--ui-border);
+}
+
+.health__item-tray-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ui-fg);
+}
+
+.health__item-tray-preview {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ui-fg-muted);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* Health tab body: drop the default flex/padding so the .health card
    owns its own padding (and renders as a single rounded block rather
    than nesting one inside another). */
