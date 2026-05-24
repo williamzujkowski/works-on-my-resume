@@ -87,6 +87,109 @@ function escapeHtml(value: string): string {
 }
 
 /**
+ * Build the contact-header HTML block from frontmatter, mirroring the JSX
+ * `ResumePreview.tsx` renders for the in-app preview (#124).
+ *
+ * Was missing from the standalone export: only the markdown body was
+ * embedded, so downloaded HTML jumped straight into `<h2>Summary</h2>`
+ * with no name / role / contact card. This restores parity with the
+ * preview a user sees in the app.
+ *
+ * Safety:
+ *   - Every interpolated frontmatter value is run through `escapeHtml`.
+ *   - Link hrefs are validated by `safeContactHref` — only `mailto:`,
+ *     `tel:`, `http:`, and `https:` survive; anything else (including
+ *     `javascript:` and `data:`) is dropped so a malicious frontmatter
+ *     value can't smuggle a payload through the exported file.
+ */
+function safeContactHref(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  // Lower-case the scheme for the comparison only; preserve the original
+  // casing of the rest of the URL.
+  const schemeMatch = /^([a-z][a-z0-9+.-]*):/i.exec(trimmed);
+  if (!schemeMatch) {
+    // Protocol-relative ("//host/…") and bare paths are not safe to expose
+    // in a downloaded standalone file (the recipient's origin is unknown).
+    return null;
+  }
+  const scheme = schemeMatch[1].toLowerCase();
+  if (scheme !== 'http' && scheme !== 'https' && scheme !== 'mailto' && scheme !== 'tel') {
+    return null;
+  }
+  return trimmed;
+}
+
+function buildContactHeaderHtml(frontmatter: ResumeFrontmatter): string {
+  const name = frontmatter.name?.trim() ?? '';
+  const role = frontmatter.role?.trim() ?? '';
+  const location = frontmatter.location?.trim() ?? '';
+  const email = frontmatter.email?.trim() ?? '';
+  const phone = frontmatter.phone?.trim() ?? '';
+  const links = Array.isArray(frontmatter.links) ? frontmatter.links : [];
+
+  type MetaItem = { key: string; html: string };
+  const items: MetaItem[] = [];
+
+  if (location) {
+    items.push({ key: 'loc', html: escapeHtml(location) });
+  }
+  if (email) {
+    const href = safeContactHref(`mailto:${email}`);
+    if (href) {
+      items.push({
+        key: 'email',
+        html: `<a href="${escapeHtml(href)}">${escapeHtml(email)}</a>`,
+      });
+    }
+  }
+  if (phone) {
+    // Phones are surfaced as plain text — `tel:` links are visually noisy
+    // in print and the in-app preview renders them as text too.
+    items.push({ key: 'phone', html: escapeHtml(phone) });
+  }
+  for (const link of links) {
+    if (!link || typeof link !== 'object') continue;
+    const label = typeof link.label === 'string' ? link.label.trim() : '';
+    const rawUrl = typeof link.url === 'string' ? link.url.trim() : '';
+    if (!label || !rawUrl) continue;
+    const href = safeContactHref(rawUrl);
+    if (!href) continue;
+    items.push({
+      key: `link-${label}`,
+      html: `<a href="${escapeHtml(href)}">${escapeHtml(label)}</a>`,
+    });
+  }
+
+  const hasAny = Boolean(name || role || items.length);
+  if (!hasAny) return '';
+
+  const parts: string[] = ['<header class="resume-preview__contact">'];
+  if (name) {
+    parts.push(`  <p class="resume-preview__contact-name">${escapeHtml(name)}</p>`);
+  }
+  if (role) {
+    parts.push(`  <p class="resume-preview__contact-role">${escapeHtml(role)}</p>`);
+  }
+  if (items.length) {
+    const metaInner = items
+      .map((item, index) => {
+        // Match the React component: the `·` separator only precedes items
+        // at index ≥ 1, never the first item.
+        const sep =
+          index > 0
+            ? '<span class="resume-preview__contact-sep" aria-hidden="true">·</span>'
+            : '';
+        return `<span class="resume-preview__contact-meta-item">${sep}${item.html}</span>`;
+      })
+      .join('');
+    parts.push(`  <p class="resume-preview__contact-meta">${metaInner}</p>`);
+  }
+  parts.push('</header>');
+  return parts.join('\n');
+}
+
+/**
  * Trigger a client-side download of `content` as `filename`.
  *
  * Wraps the content in a Blob, mints a temporary object URL, clicks a
@@ -244,6 +347,11 @@ html:has(body[data-print-mode='theme']) {
   }
 
   body[data-print-mode='theme'] .resume-preview {
+    /* Repaint the card to match the body bg so the printed page is uniform
+       (#123). On screen --resume-card lifts the resume off the app shell;
+       in print, the page IS the document and that lift becomes a visible
+       color gap. */
+    background: var(--resume-bg, #ffffff) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -405,6 +513,7 @@ export function buildStandaloneHtml(
   const name = frontmatter.name?.trim();
   const title = name ? `${name} — Resume` : 'Resume';
   const themeVars = themeCssVariables(theme);
+  const contactHeader = buildContactHeaderHtml(frontmatter);
 
   return `<!doctype html>
 <html lang="en">
@@ -424,6 +533,7 @@ ${STANDALONE_EXPORT_CSS}
   <body data-print-mode="${escapeHtml(mode)}">
     <!-- Generated by Works on My Resume. Resume content was processed locally in the browser. -->
     <article class="resume-preview" data-template="${escapeHtml(template)}">
+${contactHeader}
 ${resumeHtml}
     </article>
   </body>

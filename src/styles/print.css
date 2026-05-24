@@ -374,6 +374,14 @@
   }
 
   body[data-print-mode='theme'] .resume-preview {
+    /* Match the body's --resume-bg so the printed page is uniform (#123).
+       On screen the resume sits on a slightly different --resume-card shade
+       to lift the document off the app shell; in print the page IS the
+       document, so the card accent becomes a visible page-to-card gradient
+       (most obvious on light themes where --resume-card is darker than
+       --resume-bg). Repaint to the body's bg here. Conservative mode is
+       unaffected — it explicitly forces white on both. */
+    background: var(--resume-bg) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
