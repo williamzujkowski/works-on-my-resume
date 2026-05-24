@@ -44,6 +44,7 @@ import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor';
 import ResumePreview from './ResumePreview';
 import ResumeHealth from './ResumeHealth';
 import ThemePicker from './ThemePicker';
+import ThemePresets from './ThemePresets';
 import ThemeControls from './ThemeControls';
 import LayoutSelector from './LayoutSelector';
 import AtsModeToggle from './AtsModeToggle';
@@ -777,6 +778,16 @@ export default function ResumeStudio() {
           data-print-hide
         >
           <div className="studio__toolbar-themable">
+            {/* Curated audience presets (#95). One-click theme + layout
+                combos that sit ahead of the picker so a fresh visitor can
+                land a tasteful look without scrolling 545 themes. */}
+            <ThemePresets
+              currentTheme={theme}
+              currentTemplate={template}
+              onThemeChange={changeTheme}
+              onTemplateChange={changeTemplate}
+            />
+
             <ThemePicker
               themes={themes}
               themesLoading={!themesReady}
@@ -1054,7 +1065,12 @@ export default function ResumeStudio() {
               role="tabpanel"
               aria-labelledby={previewTabId}
             >
-              <ResumePreview parsed={parsed} template={template} mode={previewMode} />
+              <ResumePreview
+                parsed={parsed}
+                template={template}
+                mode={previewMode}
+                onLoadSample={handleResumeLoaded}
+              />
             </div>
           ) : (
             <div

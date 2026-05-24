@@ -221,6 +221,48 @@ test('enabling ATS preview tags the toolbar with the greyed-out modifier class a
   await expect(page.getByRole('button', { name: /exit ats preview/i })).toHaveCount(0);
 });
 
+test('curated theme presets (#95): clicking Modern applies the Dracula theme + modern layout and marks the pill aria-pressed', async ({
+  page,
+}) => {
+  // Baseline: no preset should be the active one at boot — the default
+  // light theme + classic layout don't match any of the three curated
+  // presets (the Conservative preset is `github-light-default`, not the
+  // hardcoded WOMR Default fallback).
+  const modernPill = page.getByRole('button', { name: /^modern preset/i });
+  await expect(modernPill).toBeVisible();
+  await expect(modernPill).toHaveAttribute('aria-pressed', 'false');
+
+  // Click the Modern preset. It should:
+  //   1. mark the pill aria-pressed=true,
+  //   2. apply the modern layout (the preview article carries
+  //      data-template="modern"), and
+  //   3. apply the Dracula theme (the picker trigger label reflects it).
+  await modernPill.click();
+
+  await expect(modernPill).toHaveAttribute('aria-pressed', 'true', { timeout: 10_000 });
+
+  const article = page.getByRole('article', { name: /rendered resume/i });
+  await expect(article).toHaveAttribute('data-template', 'modern');
+
+  // The picker trigger label shows the friendly theme name — `Dracula` for
+  // the `dracula` slug. Matching loosely (case-insensitive) absorbs minor
+  // capitalization differences in the dataset.
+  await expect(page.locator('.theme-picker__trigger-name').first()).toHaveText(/dracula/i, {
+    timeout: 10_000,
+  });
+
+  // The other two pills should now read aria-pressed=false (active state
+  // is exclusive — only the matching preset lights up).
+  await expect(page.getByRole('button', { name: /^conservative preset/i })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await expect(page.getByRole('button', { name: /^creative preset/i })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+});
+
 test('closing the picker without selecting reverts a hover preview', async ({ page }) => {
   // Snapshot the document's CSS variable BEFORE any preview occurs.
   const bgBefore = await page.evaluate(() =>

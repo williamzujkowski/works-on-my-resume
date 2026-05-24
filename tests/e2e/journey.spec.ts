@@ -55,14 +55,58 @@ test('phase 2: loading the sample reveals the toolbar, shortcut chip, and render
   await expect(page.locator('.studio__shortcuts-chip')).toHaveCount(1);
 });
 
+test('faded sample preview (#96): empty pane renders the bundled sample dimmed with a "Try the sample" CTA', async ({
+  page,
+}) => {
+  // Phase 1: no resume loaded. The faded preview lives inside the preview
+  // pane; the fetch runs on mount, so the faded article appears once the
+  // sample-resume.md asset is in.
+  const fadedArticle = page.locator('.faded-sample .resume-preview');
+  await expect(fadedArticle).toBeVisible({ timeout: 10_000 });
+  // The faded layer's content is the bundled sample — Avery Quinn is the
+  // canonical identity in public/sample-resume.md.
+  await expect(fadedArticle.getByText('Avery Quinn')).toBeVisible();
+
+  // The CTA overlay carries the headline + "Try the sample" button.
+  await expect(page.getByText(/live preview will appear here/i)).toBeVisible();
+  const cta = page.getByRole('button', { name: /try the sample/i });
+  await expect(cta).toBeVisible();
+
+  // The faded layer is decorative — aria-hidden — so AT users don't hear
+  // the dimmed sample as if it were a real loaded resume.
+  await expect(page.locator('.faded-sample__layer')).toHaveAttribute('aria-hidden', 'true');
+
+  // The overlay layer must NOT eat the button click — it's set to
+  // pointer-events: none so the inner button remains the only interactive
+  // target. Clicking the CTA routes through onLoad and transitions to
+  // Phase 2.
+  await cta.click();
+  const realArticle = page.getByRole('article', { name: /rendered resume/i });
+  await expect(realArticle).toBeVisible();
+  await expect(realArticle.getByText('Avery Quinn')).toBeVisible();
+  // And the faded variant is gone — the empty state has been replaced by
+  // the real loaded preview.
+  await expect(page.locator('.faded-sample')).toHaveCount(0);
+});
+
 test('clear: returns to the empty Phase 1 state', async ({ page }) => {
   await loadSampleResume(page);
 
   await page.getByRole('button', { name: /^clear$/i }).click();
 
-  // Empty-state preview restored.
-  await expect(page.getByText(/no resume loaded yet/i)).toBeVisible();
-  // The preview article no longer exists, and the editor textarea is cleared.
+  // Empty-state restored. After #96 the empty preview is the faded sample
+  // (with its "Try the sample" CTA) when the bundled sample fetch
+  // succeeded, or the legacy "No resume loaded yet" message otherwise.
+  // Accept either so the test stays green on a cold network too.
+  await expect(
+    page
+      .getByRole('button', { name: /try the sample/i })
+      .or(page.getByText(/no resume loaded yet/i)),
+  ).toBeVisible();
+  // The REAL preview article (`role="article"` with the rendered-resume
+  // label) no longer exists, and the editor textarea is cleared. The
+  // faded variant uses a separate root, so it does not satisfy this
+  // locator even when present.
   await expect(page.getByRole('article', { name: /rendered resume/i })).toHaveCount(0);
   await expect(page.getByLabel(/markdown source/i)).toHaveValue('');
 

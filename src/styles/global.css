@@ -510,16 +510,60 @@ a {
   flex: 1;
 }
 
+/* Sticky toolbar (#101).
+   The toolbar is only rendered while a resume is loaded — see ResumeStudio's
+   `hasResume` gate — so making it `position: sticky` cannot strand the user
+   on the empty Phase 1 screen. `top: 0` pins it to the viewport edge as the
+   editor / preview scroll; `z-index` keeps the picker popover and the export
+   panel above scrolling content.
+
+   The translucent backdrop uses `backdrop-filter: blur(10px)` paired with a
+   `color-mix()` background that is 92% opaque on the existing `--ui-bg` token,
+   so the panel reads as a clear surface on every theme without depending on a
+   hard-coded color. The `@media (prefers-reduced-transparency: reduce)`
+   override drops the blur and reverts to a fully opaque surface for users
+   who have asked for that (Windows 11+, macOS 14+ in particular).
+
+   The print stylesheet hides the toolbar via `[data-print-hide]`, so the
+   sticky positioning is automatically dropped when printing — sticky has no
+   special print behavior, but `display: none` short-circuits it. */
 .studio__toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3);
-  background: var(--ui-bg-elevated);
+  background: color-mix(in oklch, var(--ui-bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--ui-border);
   border-radius: var(--radius-md);
   box-shadow: var(--ui-inset-highlight), var(--shadow-panel);
+}
+
+/* Reduced-transparency: fall back to a solid panel surface. Browsers that
+   honor this media query (Safari, recent Chromium) automatically respect
+   the system-level setting; browsers that don't simply use the translucent
+   default, which is no worse than today. */
+@media (prefers-reduced-transparency: reduce) {
+  .studio__toolbar {
+    background: var(--ui-bg-elevated);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* On narrow viewports the toolbar grows tall enough (multiple wrapped rows
+   of pills, picker, layout, AtsToggle, exports) that pinning it would eat
+   most of the editing area. Drop back to normal flow on mobile — the
+   single-column layout already keeps the toolbar one tap-scroll away. */
+@media (max-width: 720px) {
+  .studio__toolbar {
+    position: static;
+  }
 }
 
 .studio__toolbar-spacer {
@@ -2712,4 +2756,206 @@ a {
      separate it from the description. */
   align-self: stretch;
   margin-top: var(--space-2);
+}
+
+/* ------------------------------------------------------------------ */
+/* Curated theme presets (#95)                                         */
+/*                                                                     */
+/* Three pills above the picker that apply a curated theme + layout    */
+/* combo in one click. The row sits to the LEFT of the existing        */
+/* ThemePicker inside `.studio__toolbar-themable`, which is `display:   */
+/* contents` — so the pills participate directly in the toolbar's flex */
+/* layout and the existing wrap / spacing rules continue to apply.     */
+/*                                                                     */
+/* On narrow viewports the row wraps under itself rather than alongside */
+/* the picker, so the pills never get squeezed off the screen.          */
+/* ------------------------------------------------------------------ */
+
+.theme-presets {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  margin: 0;
+}
+
+.theme-presets__kicker {
+  /* Match the layout-selector kicker tone so the toolbar reads as a row of
+     small, peer controls. */
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-fg-subtle);
+}
+
+.theme-presets__row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.theme-presets__pill {
+  /* A pill shape that echoes the existing exit-ATS pill, but quieter — the
+     preset row is a normal toolbar control, not an urgent affordance. */
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--ui-fg-muted);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease,
+    border-color 110ms ease,
+    box-shadow 110ms ease;
+}
+
+.theme-presets__pill:hover,
+.theme-presets__pill:focus-visible {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+  border-color: var(--ui-accent);
+}
+
+.theme-presets__pill--active {
+  /* Active treatment mirrors the layout-selector active state: an accent
+     ring and a foreground colour bump so the live preset reads as a
+     visible "on" state. `aria-pressed="true"` is also on the element, so
+     AT users hear the state too. */
+  color: var(--ui-fg);
+  background: var(--ui-bg);
+  border-color: var(--ui-accent);
+  box-shadow:
+    inset 0 0 0 1px var(--ui-accent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+@media (max-width: 720px) {
+  /* On narrow viewports allow the pill row to break to its own line so the
+     pills never get squeezed off-screen by the picker trigger. */
+  .theme-presets__row {
+    flex-wrap: wrap;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Faded sample preview (#96)                                          */
+/*                                                                     */
+/* A dimmed, real render of the bundled sample sitting behind a CTA    */
+/* overlay. The faded layer is purely decorative (aria-hidden) and the */
+/* overlay layer uses pointer-events: none so the inner button is the   */
+/* only thing that intercepts clicks.                                   */
+/* ------------------------------------------------------------------ */
+
+.faded-sample {
+  position: relative;
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-height: 22rem;
+  align-items: stretch;
+  justify-content: center;
+  /* The frame's own min-height is enough on its own, but a positive flex
+     keeps the faded preview filling the pane on tall viewports. */
+}
+
+.faded-sample__layer {
+  /* The faded preview lives in normal flow so the parent pane can size to
+     its content; the overlay sits on top via absolute positioning. */
+  flex: 1;
+  opacity: 0.55;
+  pointer-events: none;
+  /* Subtle saturation drop reads as "preview, not live" without going so
+     far that the theme stops being recognizable. */
+  filter: saturate(0.85);
+  display: flex;
+  justify-content: center;
+}
+
+.faded-sample__article {
+  /* Reuse the canonical resume-preview width so the faded sample matches a
+     real load exactly. The article's own padding comes from resume.css. */
+  width: 100%;
+  max-width: 56rem;
+}
+
+.faded-sample__overlay {
+  /* Centered above the faded layer. `pointer-events: none` lets clicks
+     pass through to whatever is behind (there is nothing interactive
+     behind anyway, but the rule documents intent and keeps the layer from
+     swallowing accidental drag attempts on touch). */
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  padding: var(--space-4);
+}
+
+.faded-sample__cta {
+  /* Re-enable pointer events on the actual interactive island so the
+     button inside is clickable. The card itself absorbs the focus ring
+     for the button and provides the prominent surface the visitor reads. */
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 32ch;
+  padding: var(--space-5) var(--space-5);
+  text-align: center;
+  color: var(--ui-fg-muted);
+  background: color-mix(in oklch, var(--ui-bg-elevated) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-panel);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .faded-sample__cta {
+    background: var(--ui-bg-elevated);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+.faded-sample__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  color: var(--ui-fg-subtle);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+}
+
+.faded-sample__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ui-fg);
+}
+
+.faded-sample__desc {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.faded-sample__action {
+  /* The CTA button uses .btn .btn--primary for the base look; this rule
+     only ensures it sits beneath the description with a consistent gap. */
+  margin-top: var(--space-1);
 }
