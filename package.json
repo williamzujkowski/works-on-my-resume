@@ -52,5 +52,8 @@
     "@size-limit/file": "^12.1.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.4"
+  },
+  "overrides": {
+    "yaml": "^2.9.0"
   }
 }
