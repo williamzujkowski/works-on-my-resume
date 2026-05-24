@@ -32,6 +32,43 @@ test('page-fit pill appears in Phase 2 and reports a page estimate', async ({ pa
   await expect(pill).toHaveText(/Fits 1 page|Fit: \d\.\d pages/);
 });
 
+test('page-fit estimate for the bundled sample is in the right ballpark (#107)', async ({
+  page,
+}, testInfo) => {
+  // Regression test for #107: before the print-width scaling fix the bundled
+  // sample reported ~5.2 pages because the preview pane is narrower than the
+  // actual printed content width. After the fix, the sample should read as
+  // either "Fits 1 page" or a low-decimal multi-page estimate well under the
+  // original 5.2-page miscount.
+  //
+  // We assert on the shape AND on the numeric value when a decimal is
+  // present. The "right ballpark" tolerance is deliberately generous — the
+  // exact number drifts with viewport, fonts, theme; the bug was a 2-3×
+  // over-estimate, not a 10% one. Mobile gets a looser ceiling because at
+  // ~360px the print-width scale factor clamps at 0.5, so it can't drop the
+  // estimate as far as a wider desktop preview can.
+  await loadSampleResume(page);
+
+  const pill = page.locator('.page-fit__pill');
+  await expect(pill).toBeVisible();
+
+  const text = (await pill.textContent())?.trim() ?? '';
+
+  // Accept "Fits 1 page" outright — that's the happiest outcome.
+  if (text === 'Fits 1 page') return;
+
+  // Otherwise it must be "Fit: N.N pages" with N.N ≤ ceiling for the project.
+  const isMobile = testInfo.project.name.includes('mobile');
+  const ceiling = isMobile ? 3.0 : 2.5;
+  const match = text.match(/^Fit:\s+(\d+\.\d)\s+pages$/);
+  expect(match, `unexpected page-fit pill text: ${text}`).not.toBeNull();
+  const pages = Number(match![1]);
+  expect(
+    pages,
+    `bundled sample is reporting ${pages} pages; #107 expected ≤ ${ceiling} after print-width scaling`,
+  ).toBeLessThanOrEqual(ceiling);
+});
+
 test('clicking the pill opens a popover with section heights and the approximate-render hint', async ({
   page,
 }) => {

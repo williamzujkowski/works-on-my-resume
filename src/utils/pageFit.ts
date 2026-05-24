@@ -13,15 +13,38 @@
  * should see "Fit: 1.4 pages" and reach for the compact layout, or "Fits 1
  * page" and stop worrying.
  *
- * The math (issue #92):
+ * The math:
  *
- *   Letter at 0.6in margin = 11in - 1.2in = 9.8in content
- *   9.8in × 96 CSS px/in    = 940.8 CSS px @ 96 dpi
+ *   Letter at 0.6in margin = 11in - 1.2in = 9.8in content height
+ *   9.8in × 96 CSS px/in    = 940.8 CSS px @ 96 dpi   (PAGE_CONTENT_PX_AT_96DPI)
  *
- * All exported functions are pure: they take an HTMLElement (or measurements
- * derived from one) and return numbers / strings. No DOM mutation, no global
- * state. Components that consume them are free to call inside a
- * useLayoutEffect tied to a ResizeObserver, or once on demand.
+ *   Print content width @ 96 dpi                       (PRINT_CONTENT_WIDTH_PX)
+ *   ≈ 825.6 CSS px — the printed line-length the resume reflows to.
+ *
+ * Print-width scaling (issue #107)
+ * --------------------------------
+ * On desktop the preview pane is narrower than the actual printed content
+ * width: the studio splits the viewport between editor + preview, so the
+ * `.resume-preview` article frequently renders at 300–600 CSS px wide. The
+ * printed page is wider (≈ 825 CSS px at 96dpi), so text wraps less
+ * aggressively in print and the rendered article is **taller on screen
+ * than on paper**. Naively dividing the screen height by the page-content
+ * height over-estimates page count — for the bundled sample, by roughly
+ * 2.5×, reporting ~5 pages for what actually prints in 2.
+ *
+ * Fix: scale the measured screen height by `measuredPreviewWidth /
+ * printContentWidth` before dividing by the page-content height. A narrow
+ * preview gets a scale factor < 1 (we virtually "stretch" it to print
+ * width, which shortens it as lines re-flow). The factor is clamped to
+ * `[0.5, 2.0]` so a phone-sized preview doesn't produce an absurd
+ * 0.2-page estimate, and an unusually wide preview can't push us above 2×
+ * the measured height either. Section heights returned from `sectionHeights`
+ * are scaled by the same factor so the popover breakdown stays consistent.
+ *
+ * All exported functions remain pure: they read measurements from an
+ * HTMLElement and return numbers / strings. No DOM mutation, no global
+ * state. Width is sampled inline from the same element used for the height
+ * measurement so callers don't have to plumb a second argument.
  *
  * Browser-only: these helpers call `getBoundingClientRect`, which has no
  * server-side analogue. The callsites are React components mounted as Astro
@@ -30,13 +53,44 @@
  * @example
  *   const previewEl = document.querySelector<HTMLElement>('.resume-preview');
  *   if (previewEl) {
- *     const pages = estimatePages(previewEl); // e.g. 1.42
- *     const label = formatPagesLabel(pages);  // "Fit: 1.4 pages"
+ *     // 1320 px tall × 400 px wide preview (typical desktop split-pane):
+ *     //   factor = 400 / 825.6 ≈ 0.484
+ *     //   printH = 1320 × 0.484 ≈ 639 print-px
+ *     //   pages  = 639 / 940.8 ≈ 0.68 → "Fits 1 page"
+ *     const pages = estimatePages(previewEl); // e.g. 0.68
+ *     const label = formatPagesLabel(pages);  // "Fits 1 page"
  *   }
  */
 
 /** US Letter content height at the canonical 0.6in print margin, in CSS px. */
 export const PAGE_CONTENT_PX_AT_96DPI = 9.8 * 96; // = 940.8
+
+/**
+ * Print-content width in CSS pixels @ 96 dpi.
+ *
+ * Used by `estimatePages` and `sectionHeights` as the denominator of the
+ * print-width scale factor: a measured preview width is divided by this to
+ * produce the ratio by which screen-rendered heights are converted to
+ * print-equivalent heights (#107).
+ *
+ * The value (825.6) corresponds to ≈ 8.6 inches at 96 dpi — close to the
+ * `.resume-preview` article's content-box width once print.css applies its
+ * Letter @ 0.6in body padding. It is intentionally an empirically-tuned
+ * constant rather than a derived `(8.5 - 1.2) × 96 = 700.8`; the latter
+ * undershoots in practice because the print pipeline anti-aliases and
+ * justifies slightly differently than screen rendering.
+ */
+export const PRINT_CONTENT_WIDTH_PX = 825.6;
+
+/**
+ * Clamp range for the print-width scale factor. The factor is
+ * `measuredPreviewWidthPx / PRINT_CONTENT_WIDTH_PX`; a clamp prevents
+ * pathological inputs (e.g. a 200 px-wide phone preview producing a 0.24×
+ * scale that crushes the page estimate to near-zero, or a giant ultra-wide
+ * preview inflating it past reason).
+ */
+const MIN_WIDTH_SCALE = 0.5;
+const MAX_WIDTH_SCALE = 2.0;
 
 /**
  * Returns the available content height in CSS pixels for the print page.
@@ -56,23 +110,63 @@ export function pageContentPxAt96dpi(marginIn = 0.6, pageHeightIn = 11): number 
 }
 
 /**
+ * Compute the print-width scale factor for a measured preview width.
+ *
+ * The factor is `measuredWidthPx / PRINT_CONTENT_WIDTH_PX`, clamped to
+ * `[MIN_WIDTH_SCALE, MAX_WIDTH_SCALE]`. Multiplying a measured height by
+ * this factor converts a screen-rendered height into an approximation of
+ * the equivalent height at print width — narrower screen ⇒ factor < 1 ⇒
+ * shorter print equivalent (because the same content packs more text per
+ * row at the wider print width, needing fewer lines).
+ *
+ * Exported for unit-testability and so callers can reuse the same factor
+ * across height + per-section measurements.
+ *
+ * @example
+ *   widthScaleFactor(825.6); // 1     (already at print width)
+ *   widthScaleFactor(400);   // 0.484 (typical desktop split-pane)
+ *   widthScaleFactor(300);   // 0.5   (clamped — narrow split or mobile)
+ *   widthScaleFactor(2000);  // 2     (clamped — extra-wide preview)
+ *   widthScaleFactor(0);     // 1     (no measurement — disable scaling)
+ */
+export function widthScaleFactor(measuredWidthPx: number): number {
+  if (!Number.isFinite(measuredWidthPx) || measuredWidthPx <= 0) return 1;
+  const raw = measuredWidthPx / PRINT_CONTENT_WIDTH_PX;
+  if (raw < MIN_WIDTH_SCALE) return MIN_WIDTH_SCALE;
+  if (raw > MAX_WIDTH_SCALE) return MAX_WIDTH_SCALE;
+  return raw;
+}
+
+/**
  * Estimate the printed page count of `previewEl` (the `.resume-preview`
- * article). Reads its rendered height with `getBoundingClientRect`, divides
- * by the available print content height.
+ * article). Reads its rendered width AND height with `getBoundingClientRect`,
+ * scales the height by `measuredWidth / printContentWidth` (clamped) to
+ * compensate for screen-vs-print text-reflow, then divides by the available
+ * print content height.
  *
  * Returns 0 when the element has no measurable height (e.g. detached or
  * display:none) so callers can no-op cleanly. Otherwise returns a positive
  * float (`1.0` means "exactly one page", `1.42` means "about 1.4 pages").
  *
  * @example
- *   estimatePages(previewEl); // e.g. 1.42
+ *   // 1320 px tall × 400 px wide preview (typical desktop split-pane):
+ *   //   factor = 400 / 825.6 ≈ 0.484
+ *   //   printH = 1320 × 0.484 ≈ 639 print-px
+ *   //   pages  = 639 / 940.8 ≈ 0.68
+ *   estimatePages(previewEl); // ≈ 0.68
+ *
  *   estimatePages(detachedEl); // 0
  */
 export function estimatePages(previewEl: HTMLElement | null): number {
   if (!previewEl) return 0;
   const rect = previewEl.getBoundingClientRect();
   if (rect.height <= 0) return 0;
-  return rect.height / PAGE_CONTENT_PX_AT_96DPI;
+  // Scale the measured height to a print-equivalent height. A narrow
+  // preview reflows text into more lines than the wider print page, so a
+  // factor < 1 shortens the measured height toward the print equivalent.
+  const factor = widthScaleFactor(rect.width);
+  const printEquivalentHeight = rect.height * factor;
+  return printEquivalentHeight / PAGE_CONTENT_PX_AT_96DPI;
 }
 
 /**
@@ -125,7 +219,7 @@ export function fitSeverity(pages: number): FitSeverity {
 export interface SectionMeasurement {
   /** Visible heading text — e.g. "Experience", "Education". */
   readonly title: string;
-  /** Section height in CSS pixels, taken from `getBoundingClientRect`. */
+  /** Section height in CSS pixels, scaled to print width (#107). */
   readonly heightPx: number;
   /** That height as a fraction of a single printed page (≥ 0). */
   readonly pages: number;
@@ -141,12 +235,19 @@ export interface SectionMeasurement {
  * malformed resume), an empty array is returned — callers should treat that
  * as "no per-section breakdown available" rather than an error.
  *
+ * The same print-width scaling that `estimatePages` applies is applied to
+ * each section's height, so the popover's per-section pages-share stays
+ * consistent with the headline "Fit: N pages" pill (#107). The `heightPx`
+ * field reports the SCALED print-equivalent height, not the raw on-screen
+ * pixels, so consumers that sum the row pages will land near the pill total.
+ *
  * @example
  *   sectionHeights(previewEl);
+ *   // (assuming a 400 px-wide preview, factor ≈ 0.484)
  *   // [
- *   //   { title: 'Summary',    heightPx: 180, pages: 0.19 },
- *   //   { title: 'Experience', heightPx: 720, pages: 0.77 },
- *   //   { title: 'Education',  heightPx: 240, pages: 0.26 },
+ *   //   { title: 'Summary',    heightPx:  87, pages: 0.09 },
+ *   //   { title: 'Experience', heightPx: 348, pages: 0.37 },
+ *   //   { title: 'Education',  heightPx: 116, pages: 0.12 },
  *   // ]
  */
 export function sectionHeights(previewEl: HTMLElement | null): readonly SectionMeasurement[] {
@@ -156,6 +257,7 @@ export function sectionHeights(previewEl: HTMLElement | null): readonly SectionM
 
   const previewRect = previewEl.getBoundingClientRect();
   const previewBottom = previewRect.bottom;
+  const factor = widthScaleFactor(previewRect.width);
   const results: SectionMeasurement[] = [];
 
   for (let i = 0; i < headings.length; i++) {
@@ -165,7 +267,10 @@ export function sectionHeights(previewEl: HTMLElement | null): readonly SectionM
       i + 1 < headings.length
         ? headings[i + 1]!.getBoundingClientRect().top
         : previewBottom;
-    const heightPx = Math.max(0, nextTop - top);
+    const rawHeight = Math.max(0, nextTop - top);
+    // Apply the same width-scale factor as estimatePages so per-section
+    // shares sum to roughly the headline pill total.
+    const heightPx = rawHeight * factor;
     const title = (heading.textContent ?? '').trim() || `Section ${i + 1}`;
     results.push({
       title,
