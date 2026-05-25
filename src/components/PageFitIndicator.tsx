@@ -298,6 +298,12 @@ export default function PageFitIndicator({
           onClick={() => setOpen((prev) => !prev)}
         >
           <span className="page-fit__dot" aria-hidden="true" />
+          {/* The label already leads with `Fit:` / `Fits` — that prefix IS
+              the kicker rhythm for this control. The leading "Fit" text
+              is styled with the section-kicker tone via the `::first-word`
+              shaping below in CSS; visible label content stays
+              unchanged so existing `Fits 1 page` / `Fit: 1.4 pages`
+              regex matchers keep working (#135). */}
           <span className="page-fit__label" id={labelId}>
             {label}
           </span>

@@ -692,6 +692,20 @@ body[data-app-phase='hero'] .app-header {
   margin-bottom: var(--space-2);
 }
 
+/* Section kicker — the small-caps mono label that prefixes a value cluster
+   (THEME · LAYOUT · FIT in the toolbar; group titles in the Settings drawer;
+   "What's working" and "Next step" in Resume Health). The primitive was
+   referenced across the codebase but missing as a real definition (#135);
+   this rule is the canonical source of truth. */
+.section-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ui-fg-muted);
+}
+
 .text-input {
   width: 100%;
   padding: 0.45rem 0.6rem;
@@ -790,6 +804,41 @@ body[data-app-phase='hero'] .app-header {
 .studio__toolbar-spacer {
   flex: 1;
   min-width: var(--space-3);
+}
+
+/* ------------------------------------------------------------------ */
+/* Toolbar rhythm (#135).                                              */
+/*                                                                     */
+/* The toolbar is grouped into clusters of `[KICKER] [value]` (THEME,  */
+/* LAYOUT, FIT) separated by 1-px hairlines, with Save-as-PDF as the   */
+/* only conventionally clickable button. Pill outlines on the theme    */
+/* trigger, page-fit pill, export trigger, and gear icon are removed   */
+/* so they read as "text with affordance" — the kicker carries the     */
+/* label, the value carries the meaning, and the separator carries     */
+/* the grouping.                                                       */
+/* ------------------------------------------------------------------ */
+
+/* Hairline vertical separator between toolbar groups. A 1-px rule on
+   the existing border token; an explicit min-height keeps it tall
+   enough to read as a deliberate divider even when the surrounding
+   text is small. `aria-hidden` on the JSX node hides it from AT. */
+.studio__toolbar-sep {
+  display: inline-block;
+  width: 1px;
+  align-self: stretch;
+  /* Explicit height so the rule reads at the right size even when the
+     surrounding cluster has no padding to stretch against. */
+  height: 1.5rem;
+  background: var(--ui-border);
+  flex-shrink: 0;
+}
+
+/* Inside the mobile More drawer the column stacking already separates
+   rows — a horizontal hairline between them would read as decoration. */
+@media (max-width: 639.98px) {
+  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-sep {
+    display: none;
+  }
 }
 
 /* Hard row-break for the toolbar (#112). `flex-basis: 100%` forces the
@@ -2462,56 +2511,63 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   position: relative;
 }
 
-/* Collapsed: the single trigger button showing the current theme. */
+/* Collapsed: the single trigger button showing the current theme.
+   Reworked for #135: the outline + panel-fill are dropped so the
+   trigger reads as a kicker + value pair (THEME · GitHub Light Default ▾)
+   rather than a chrome'd pill. The button still receives a focus-visible
+   ring (inherited from the global :focus-visible rule) for keyboard a11y. */
 .theme-picker__trigger {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-width: 12rem;
-  padding: 0.34rem var(--space-2) 0.34rem 0.4rem;
+  padding: 0.25rem 0.3rem 0.25rem 0.2rem;
   font-family: var(--font-mono);
   color: var(--ui-fg);
-  background: var(--ui-panel);
-  border: 1px solid var(--ui-border-strong);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  box-shadow: var(--ui-inset-highlight);
   cursor: pointer;
   text-align: left;
   transition:
     background-color 110ms ease,
-    border-color 110ms ease;
+    border-color 110ms ease,
+    color 110ms ease;
 }
 
-.theme-picker__trigger:hover {
+.theme-picker__trigger:hover,
+.theme-picker__trigger[aria-expanded='true'] {
+  /* Subtle wash on hover + active (popover-open) keeps the affordance
+     discoverable without restoring the old pill outline. */
   background: var(--ui-panel-hover);
-  border-color: var(--ui-accent);
+  color: var(--ui-fg);
 }
 
 .theme-picker__trigger-label {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
   line-height: 1.2;
   min-width: 0;
 }
 
 .theme-picker__trigger-kicker {
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ui-fg-subtle);
+  /* Tone provided by `.section-kicker` on the same element. This class
+     remains as a stable selector for the mobile visually-hidden treatment
+     in the < 640 px block below. */
 }
 
 .theme-picker__trigger-name {
   font-size: 0.84rem;
   font-weight: 600;
+  color: var(--ui-fg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .theme-picker__trigger-caret {
-  margin-left: auto;
+  /* No `margin-left: auto` — the trigger no longer has a min-width pill
+     to fill, so the caret sits flush after the theme name. */
   color: var(--ui-fg-muted);
 }
 
@@ -2831,6 +2887,47 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   position: relative;
 }
 
+/* The Export trigger button (direct `.btn` child of `.export-panel`) lives
+   in the toolbar's row-2 cluster and was previously rendered with the full
+   pill outline. #135 strips the outline + panel fill so it reads as text
+   with affordance ("Export ▾") matching the rhythm of the kicker groups.
+   The focus-visible outline and the active state (popover open) keep the
+   control discoverable for keyboard + sighted users. */
+.studio__toolbar .export-panel > .btn {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--ui-fg);
+  /* Match the kicker-group padding so the trigger sits at the same
+     baseline as the THEME / LAYOUT / FIT clusters. */
+  padding: 0.25rem 0.4rem;
+}
+
+.studio__toolbar .export-panel > .btn:hover,
+.studio__toolbar .export-panel > .btn[aria-expanded='true'] {
+  background: var(--ui-panel-hover);
+  border-color: transparent;
+  color: var(--ui-fg);
+}
+
+/* The rightmost gear icon (Settings drawer trigger) lives inside a
+   `studio__toolbar-collapsible` span. #135 strips its outline + panel
+   fill so it reads as a quiet glyph rather than a chrome'd pill,
+   matching the rest of the toolbar's text-with-affordance rhythm. */
+.studio__toolbar > .studio__toolbar-collapsible > .btn--icon {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--ui-fg-muted);
+}
+
+.studio__toolbar > .studio__toolbar-collapsible > .btn--icon:hover,
+.studio__toolbar > .studio__toolbar-collapsible > .btn--icon[aria-expanded='true'] {
+  background: var(--ui-panel-hover);
+  border-color: transparent;
+  color: var(--ui-fg);
+}
+
 .export-panel__dialog {
   display: flex;
   flex-direction: column;
@@ -2970,33 +3067,34 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 /* Layout selector (#30)                                               */
 /* ------------------------------------------------------------------ */
 
+/* LayoutSelector — segmented control (#30, restyled #135).
+   The kicker (`LAYOUT`) now sits INLINE to the left of the segmented
+   options so the cluster reads as `LAYOUT [Classic|Modern|Compact]` —
+   the same kicker + value rhythm as the THEME and FIT groups. The
+   outer chrome on the segments is softened (no panel fill, no inset
+   shadow) to align with the rest of the toolbar; the segments still
+   carry a discrete border so the 3-way toggle reads as a unit. */
 .layout-selector {
   display: inline-flex;
-  flex-direction: column;
-  gap: 0.18rem;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   border: 0;
 }
 
 .layout-selector__legend {
-  /* Render the fieldset legend as a small kicker label above the
-     segmented control, matching the rest of the toolbar's tone. */
+  /* Tone comes from the shared `.section-kicker` utility applied via
+     JSX in #135. The legend participates in the inline-flex row as a
+     flex item, so it sits inline to the LEFT of the segmented options. */
   padding: 0;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ui-fg-subtle);
 }
 
 .layout-selector__options {
   display: inline-flex;
-  background: var(--ui-panel);
-  border: 1px solid var(--ui-border-strong);
+  background: transparent;
+  border: 1px solid var(--ui-border);
   border-radius: var(--radius-sm);
-  box-shadow: var(--ui-inset-highlight);
   padding: 2px;
 }
 
@@ -4484,14 +4582,16 @@ details.studio__pane--editor {
    container (`color: inherit`) so the two segments stay in lockstep; the
    per-segment `--ok / --warn / --danger` modifiers below are kept for the
    case where the trigger is rendered without the wrapping chip — defensive,
-   no current callsite. */
+   no current callsite. #139's chip + #135's text-with-affordance rhythm
+   converge here: the chip already has `background: transparent` / `border: 0`,
+   so the rhythm contract is already satisfied. */
 .page-fit__pill {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.3rem 0.7rem;
+  padding: 0.25rem 0.3rem;
   font-family: var(--font-mono);
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: inherit;
@@ -4507,7 +4607,7 @@ details.studio__pane--editor {
 }
 
 .page-fit__pill:hover,
-.page-fit__pill:focus-visible {
+.page-fit__pill[aria-expanded='true'] {
   background: var(--ui-panel-hover);
   outline: none;
 }
