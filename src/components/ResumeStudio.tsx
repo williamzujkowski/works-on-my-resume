@@ -43,7 +43,7 @@ import {
   setStoredThemeSlug,
   type ResumeSnapshot,
 } from '../utils/storage';
-import MarkdownUploader from './MarkdownUploader';
+import MarkdownUploader, { type MarkdownUploaderHandle } from './MarkdownUploader';
 import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor';
 import ResumePreview from './ResumePreview';
 import ResumeHealth from './ResumeHealth';
@@ -112,8 +112,10 @@ export default function ResumeStudio() {
   const [markdown, setMarkdown] = useState('');
   const [parsed, setParsed] = useState<ParsedResume | null>(null);
   const [sourceName, setSourceName] = useState('resume.md');
-
-  /* Baseline markdown for the modeline's `●draft` indicator (#134).
+  /* Baseline markdown for the modeline's `●draft` indicator (#134)
+     AND the document tab strip's dirty `●` indicator (#138). Single
+     source of truth: any load path resets it; the tab strip and the
+     modeline read the same `markdown !== baselineMarkdown` signal.
      Set on every load path (upload, sample, snapshot, draft restore, clear)
      so `markdown !== baseline` means "the user has typed something the
      current source state doesn't reflect yet". Stays a plain string so
@@ -250,6 +252,11 @@ export default function ResumeStudio() {
      ResumeStudio owns this ref because Health and the editor live in
      sibling sub-trees (the split panes); the ref is the cross-pane bridge. */
   const editorHandleRef = useRef<MarkdownEditorHandle>(null);
+  /* Imperative handle into the uploader, used to drive its file picker
+     from the editor tab strip's "Replace file" button (#138). The
+     uploader still owns the hidden <input type="file"> and its
+     read/parse pipeline; the tab strip is just a new trigger. */
+  const uploaderHandleRef = useRef<MarkdownUploaderHandle>(null);
 
   /* Mobile editor accordion state (#100). Controlled: `open` flows from
      state into the `<details>` element, and the element's native onToggle
@@ -429,7 +436,8 @@ export default function ResumeStudio() {
         setMarkdown(saved);
         // A restored draft is, by definition, the baseline of the next
         // session — without this the modeline's ●draft pill would flash
-        // on first paint (#134).
+        // on first paint (#134), and the editor tab strip's dirty `●`
+        // would light up on the first idle re-render (#138).
         setBaselineMarkdown(saved);
         setSourceName('saved-draft.md');
         setLoadAnnouncement('Restored your saved draft.');
@@ -930,8 +938,9 @@ export default function ResumeStudio() {
     const overwritingSavedDraft = isDraftPersistenceEnabled() && (getDraft()?.length ?? 0) > 0;
 
     setMarkdown(text);
-    // Loaded content is the new baseline (#134) — the ●draft indicator
-    // stays off until the user starts editing.
+    // Loaded content is the new baseline (#134, #138) — both the
+    // modeline `●draft` indicator and the editor tab strip's dirty `●`
+    // stay off until the user starts editing.
     setBaselineMarkdown(text);
     setSourceName(name || 'resume.md');
 
@@ -1096,7 +1105,8 @@ export default function ResumeStudio() {
     (snap: ResumeSnapshot) => {
       setMarkdown(snap.markdown);
       // Loading a snapshot resets the baseline — the writer should not see
-      // a `●draft` indicator just because they loaded their own save (#134).
+      // a `●draft` indicator just because they loaded their own save (#134),
+      // and the document tab strip's dirty `●` stays off too (#138).
       setBaselineMarkdown(snap.markdown);
       setSourceName(`snapshot · ${snap.name}`);
       // Restore the theme + template the snapshot was captured with, if
@@ -1123,8 +1133,8 @@ export default function ResumeStudio() {
   const handleClear = useCallback(() => {
     setMarkdown('');
     setParsed(null);
-    // Reset the modeline baseline so the ●draft pill isn't carried across
-    // a clear (#134) — Phase 1 starts fresh.
+    // Reset the modeline + tab-strip baseline so neither indicator is
+    // carried across a clear (#134, #138) — Phase 1 starts fresh.
     setBaselineMarkdown('');
     setCursorLine(null);
     setCursorColumn(null);
@@ -1398,13 +1408,21 @@ export default function ResumeStudio() {
           open={editorOpen}
           onToggle={(event) => setEditorOpen(event.currentTarget.open)}
         >
-          <summary className="studio__pane-header studio__pane-header--summary">
+          <summary
+            className="studio__pane-header studio__pane-header--summary"
+            aria-label={`Markdown editor — ${sourceName}`}
+          >
             <span className="studio__pane-dots" aria-hidden="true">
               <span className="studio__pane-dot" />
               <span className="studio__pane-dot" />
               <span className="studio__pane-dot" />
             </span>
-            <span className="studio__pane-tab">{sourceName}</span>
+            {/* The filename pill that used to sit here is now part of the
+                editor's document tab strip (#138). On mobile, where the
+                accordion is collapsed, we still show the filename in the
+                summary as a one-line affordance — the tab strip below is
+                hidden by the closed <details>. */}
+            <span className="studio__pane-tab studio__pane-tab--mobile-only">{sourceName}</span>
             {/* Mobile-only accordion affordance (#100). Visible below 640px
                 when a resume is loaded; CSS hides it on wider viewports
                 where the editor pane is always expanded as a peer of the
@@ -1417,6 +1435,7 @@ export default function ResumeStudio() {
           </summary>
           <div className="studio__pane-body">
             <MarkdownUploader
+              ref={uploaderHandleRef}
               onLoad={handleResumeLoaded}
               hasResume={hasResume}
               lineCount={lineCount}
@@ -1455,6 +1474,12 @@ export default function ResumeStudio() {
               onChange={setMarkdown}
               editorRef={editorHandleRef}
               onCaretChange={handleCaretChange}
+              sourceName={sourceName}
+              loadedMarkdown={baselineMarkdown}
+              onReplaceFile={
+                hasResume ? () => uploaderHandleRef.current?.openReplaceDialog() : undefined
+              }
+              onClear={hasResume ? handleClear : undefined}
             />
             {/* Tailor for a role (#91). Local-only JD keyword overlap.
                 Mounted below the editor so it sits alongside the textarea

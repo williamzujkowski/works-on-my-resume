@@ -228,23 +228,49 @@ test('bullet-rewrite tray closes when the caret leaves the bullet (#93)', async 
   await expect(trigger).toHaveCount(0);
 });
 
-test('after loading a resume the uploader collapses to its compact bar', async ({ page }) => {
+test('after loading a resume the editor shows the document tab strip', async ({ page }) => {
   // Phase 1: dropzone is the hero. The "Drop a Markdown file here" copy is its giveaway.
   await expect(page.getByText(/drop a markdown file here/i)).toBeVisible();
 
   await loadSampleResume(page);
 
   // On mobile (#100) the editor pane collapses to a <details> accordion
-  // when a resume is loaded — expand it so the uploader's compact bar is
-  // reachable for the assertions below.
+  // when a resume is loaded — expand it so the tab strip is reachable
+  // for the assertions below.
   await expandMobileEditor(page);
 
-  // Phase 2: that dropzone copy is gone. The compact bar shows the file name + line count.
+  // Phase 2: that dropzone copy is gone. The new tab strip carries the
+  // filename + line count where the uploader's compact bar used to. The
+  // collapsed `.uploader__loaded` bar (#51) was removed in #138.
   await expect(page.getByText(/drop a markdown file here/i)).toHaveCount(0);
-  // The filename appears in two places — the studio pane-tab and the
-  // uploader's compact bar; we only care that the compact bar is now mounted.
-  await expect(page.locator('.uploader__loaded-name')).toHaveText('sample-resume.md');
-  await expect(page.locator('.uploader__loaded-lines')).toContainText(/lines?/);
-  // And the Clear button is mounted (Phase 2 affordance).
+  const tabstrip = page.locator('[data-testid="editor-tabstrip"]');
+  await expect(tabstrip).toBeVisible();
+  await expect(tabstrip.locator('.editor__tab-name')).toHaveText('sample-resume.md');
+  // The line count is a plain number, right-aligned in muted color.
+  await expect(tabstrip.locator('.editor__tab-lines')).toHaveText(/^\d+$/);
+  // And the Replace / Clear actions moved here from the old bar.
   await expect(page.getByRole('button', { name: /^clear$/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^replace file$/i })).toBeVisible();
+});
+
+test('the dirty indicator appears once the user types into the textarea', async ({ page }) => {
+  await loadSampleResume(page);
+  await expandMobileEditor(page);
+
+  // A freshly-loaded buffer is clean: the dirty dot is not painted.
+  const tab = page.locator('[data-testid="editor-tabstrip"] .editor__tab').first();
+  await expect(tab).toBeVisible();
+  await expect(tab).not.toHaveClass(/editor__tab--dirty/);
+
+  // Type one character into the editor — the buffer now differs from the
+  // last-loaded markdown, so the `●` dirty indicator should appear.
+  const textarea = page.getByLabel(/markdown source/i);
+  await textarea.click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' ');
+
+  await expect(tab).toHaveClass(/editor__tab--dirty/);
+  // The dot glyph itself is rendered (CSS reserves the width even when
+  // clean — but the glyph is present only on the dirty class).
+  await expect(tab.locator('.editor__tab-dot')).toHaveText('●');
 });

@@ -1585,45 +1585,10 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   font-weight: 600;
 }
 
-/* Phase 2: the collapsed one-line "file is loaded" affordance (#51). */
-.uploader__loaded {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--ui-bg);
-  border: 1px solid var(--ui-border-strong);
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-}
-
-.uploader__loaded-icon {
-  display: flex;
-  color: var(--ui-accent);
-}
-
-.uploader__loaded-name {
-  font-weight: 600;
-  color: var(--ui-fg);
-}
-
-.uploader__loaded-sep {
-  color: var(--ui-fg-subtle);
-}
-
-.uploader__loaded-lines {
-  color: var(--ui-fg-muted);
-}
-
-.uploader__loaded-spacer {
-  flex: 1;
-  min-width: var(--space-2);
-}
-
-.uploader__loaded-action {
-  font-size: 0.74rem;
-}
+/* The Phase 2 ".uploader__loaded" collapsed bar moved into the editor's
+   document tab strip in #138; the uploader's Phase 2 view now mounts
+   only the hidden file input. No visible styles needed here for the
+   loaded state. */
 
 /* ----- Optional "Import from Gist" disclosure (#33) ----- */
 .uploader__gist {
@@ -1907,6 +1872,146 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   flex-direction: column;
   flex: 1;
   gap: var(--space-2);
+}
+
+/* ----- Document tab strip (#138) -----
+   The editor's "real code-editor" file-tab row. Sits at the very top
+   of the editor pane, above the toolbar. A single active tab today,
+   but the markup is a `<ul>` of `<li>`s so multi-buffer support (e.g.
+   snapshots-as-tabs, #94 follow-on) drops in without restyling.
+
+   Visual language: the strip carries the same elevated-panel tint as
+   the rest of the pane chrome; the active tab punches down into the
+   editor surface (`background: var(--ui-bg)`, matching the textarea),
+   with a top accent stripe in `--ui-accent` that calls out "this is
+   the currently focused buffer". The filename is mono + slightly
+   heavier; the line count is right-aligned in `--ui-fg-muted`. */
+.editor__tabstrip {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding: 0;
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-bottom: 1px solid var(--ui-border);
+  border-top-left-radius: var(--radius-sm);
+  border-top-right-radius: var(--radius-sm);
+  box-shadow: var(--ui-inset-highlight);
+}
+
+.editor__tabs {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: 1;
+  min-width: 0;
+}
+
+/* A single buffer tab. Forward-compatible with multiple tabs — the
+   sizing assumes a row of tabs that can grow individually rather than
+   one rigid pill. The 2 px transparent top border becomes the accent
+   stripe on the active tab without shifting layout. */
+.editor__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.4rem var(--space-3) 0.4rem var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ui-fg-muted);
+  background: transparent;
+  border-top: 2px solid transparent;
+  border-right: 1px solid transparent;
+}
+
+/* Active tab: punches down into the editor surface so it reads as
+   "current buffer". The top accent stripe ties it to `--ui-accent`. */
+.editor__tab--active {
+  color: var(--ui-fg);
+  background: var(--ui-bg);
+  border-top-color: var(--ui-accent);
+  border-right-color: var(--ui-border);
+}
+
+/* The dirty `●`. Reserves its glyph width even when clean so the
+   filename never jumps left/right as the user starts/stops editing. */
+.editor__tab-dot {
+  display: inline-block;
+  width: 0.7em;
+  min-width: 0.7em;
+  text-align: center;
+  color: var(--ui-accent);
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.editor__tab--dirty .editor__tab-dot {
+  color: var(--ui-accent);
+}
+
+.editor__tab-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.editor__tab-lines {
+  flex-shrink: 0;
+  margin-left: var(--space-3);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-fg-subtle);
+}
+
+/* Trailing actions cluster (Replace file / Clear). The actions move
+   here from the now-removed uploader collapsed bar (#138 constraint).
+   They keep their ghost-button look and live on the trailing edge of
+   the strip so the file-tab itself stays clean. */
+.editor__tabstrip-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-right: var(--space-2);
+}
+
+.editor__tabstrip-action {
+  font-size: 0.72rem;
+  padding: 0.28rem 0.45rem;
+}
+
+/* Below 640px the editor pane lives inside a <details> accordion (#100).
+   The tab strip stays mounted inside the body; the summary still shows
+   its own filename pill (`.studio__pane-tab--mobile-only`) so the
+   collapsed-row reading "● ● ● sample-resume.md · 5 lines · edit"
+   still works as a single-line affordance. The strip itself only
+   appears when the accordion is open, so there's no visual duplication
+   in either state. */
+@media (max-width: 640px) {
+  .editor__tabstrip {
+    flex-wrap: wrap;
+  }
+  .editor__tabstrip-actions {
+    margin-left: auto;
+  }
+}
+
+/* The summary's filename pill is now mobile-only: desktop has the
+   document tab strip below, so we hide the duplicate in the summary
+   above 640px to avoid two file labels stacked one over the other. */
+@media (min-width: 641px) {
+  .studio__pane-tab--mobile-only {
+    display: none;
+  }
 }
 
 /* The label + toolbar row above the editing surface. */
