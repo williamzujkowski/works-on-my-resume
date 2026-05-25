@@ -823,7 +823,14 @@ const STAGE_LABEL: Record<CareerStage, string> = {
  */
 export function stageProgress(score: number, stage: CareerStage): StageProgress {
   const next = NEXT_STAGE[stage];
-  const threshold = next === null ? 100 : STAGE_NEXT_THRESHOLD[stage];
+  // `STAGE_NEXT_THRESHOLD[stage]` is the bar for the writer's CURRENT tier —
+  // they've cleared it by definition. The meter measures distance to the
+  // NEXT tier, so look up the next stage's bar (a `mid` writer aims for
+  // the senior bar = 100, not their own bar = 90). Without this lookup
+  // chain the meter rendered "98 → 90 to advance to SENIOR" — wrong
+  // direction, wrong number. At the top tier `next` is null and the
+  // threshold falls back to 100 with delta 0.
+  const threshold = next === null ? 100 : STAGE_NEXT_THRESHOLD[next];
   const delta = next === null ? 0 : Math.max(0, threshold - score);
   return {
     current: stage,
