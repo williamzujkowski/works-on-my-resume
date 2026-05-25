@@ -49,18 +49,26 @@ import ResumePreview from './ResumePreview';
 import ResumeHealth from './ResumeHealth';
 import ThemePicker from './ThemePicker';
 import ThemePresets from './ThemePresets';
-import ThemeControls from './ThemeControls';
 import LayoutSelector from './LayoutSelector';
-import AtsModeToggle from './AtsModeToggle';
 import ExportPanel from './ExportPanel';
-import SnapshotsMenu from './SnapshotsMenu';
 import KeyboardHelp, { getStoredShortcutsEnabled, setStoredShortcutsEnabled } from './KeyboardHelp';
 import ExampleDialog from './ExampleDialog';
 import PageFitIndicator from './PageFitIndicator';
 import TailorForRole from './TailorForRole';
+import AppHero from './AppHero';
+import SettingsDrawer from './SettingsDrawer';
 import Icon from './Icon';
 import Toast from './Toast';
 import { wcagLevel } from '../utils/wcag';
+
+/**
+ * Number of starter templates shipped under `public/templates/*.md`. Used by
+ * the empty-state hero (#127) to render the TEMPLATES stat counter. Kept as
+ * a literal because Astro's static build inlines the public/ tree and the
+ * count is small + stable; if a fifth template lands the value moves here
+ * in one place.
+ */
+const STARTER_TEMPLATE_COUNT = 4;
 
 /** sessionStorage key for the ATS preview mode (#31). */
 const ATS_MODE_SESSION_KEY = 'womr:ats-mode';
@@ -150,6 +158,24 @@ export default function ResumeStudio() {
 
   /* ----- Keyboard-shortcut help overlay (#58) ----- */
   const [helpOpen, setHelpOpen] = useState(false);
+
+  /* ----- Mobile "More" menu (#131) -----
+     On viewports < 640px the toolbar wraps to four+ rows and pushes the
+     resume header out of frame. The fix collapses everything except
+     ThemePicker + Save-as-PDF behind a single "More" trigger that opens a
+     vertically-stacked drawer over the toolbar. State is a single boolean;
+     CSS does the heavy lifting via a data attribute on the toolbar root.
+     Default off so SSR and first-paint agree. */
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const mobileMoreTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileMoreDrawerRef = useRef<HTMLDivElement>(null);
+
+  /* ----- Settings drawer (#128) -----
+     Right-anchored modal drawer that holds low-frequency controls (ATS
+     toggle, draft autosave, clear workspace, snapshots, theme nav, shortcut
+     legend). Opens from the gear icon at the rightmost toolbar slot. */
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsTriggerRef = useRef<HTMLButtonElement>(null);
 
   /* ----- "Open an example" dialog (#120) -----
      When the Resume Health panel asks to open an example for a section the
@@ -463,6 +489,21 @@ export default function ResumeStudio() {
     document.body.dataset.printMode = printMode;
   }, [printMode]);
 
+  /* ---------------------------------------------------------------- *
+   * Reflect the empty-state hero / loaded-workbench phase onto <body> *
+   * via `data-app-phase` (#127). The CSS rule                         *
+   *   body[data-app-phase='hero'] .app-header { display: none; }      *
+   * hides the static AppHeader astro chrome while the React-driven    *
+   * hero is the loud landing presence, avoiding a double-rendered     *
+   * brand row. On unmount the attribute is cleared.                   *
+   * ---------------------------------------------------------------- */
+  useEffect(() => {
+    document.body.dataset.appPhase = hasResume ? 'workbench' : 'hero';
+    return () => {
+      delete document.body.dataset.appPhase;
+    };
+  }, [hasResume]);
+
   /**
    * Change the active layout template (#30). Persists to localStorage and
    * reflects into the URL as `?layout=<slug>`, the same shape as `?theme=`
@@ -660,6 +701,15 @@ export default function ResumeStudio() {
     if (pick) changeTheme(pick);
   }, [themes, theme, changeTheme]);
 
+  /* On close of the settings drawer (#128), restore focus to the gear button
+     so a keyboard user lands where they started. Declared ahead of the
+     global keydown effect so the Escape branch can reference it without a
+     temporal-dead-zone error (#131 build fix). */
+  const closeSettings = useCallback(() => {
+    setSettingsOpen(false);
+    window.setTimeout(() => settingsTriggerRef.current?.focus(), 0);
+  }, []);
+
   /* ---------------------------------------------------------------- *
    * Global keyboard shortcuts.                                        *
    * Escape ALWAYS works — it is never gated, so a panel can always be *
@@ -677,14 +727,24 @@ export default function ResumeStudio() {
       if (event.key === 'Escape') {
         if (exportOpen) setExportOpen(false);
         if (themePickerOpen) setThemePickerOpen(false);
+        // The Settings drawer (#128) owns its own Escape handling — focus
+        // trap, nested-popover deference (SnapshotsMenu's inner popover
+        // closes BEFORE the drawer does). Calling closeSettings() from
+        // the global handler would race that logic and skip the popover-
+        // level Esc step. The drawer's own onClose path restores focus
+        // to the gear button when it closes.
         if (isEditableTarget(event.target)) {
           (event.target as HTMLElement).blur();
         }
         return;
       }
 
-      // The help overlay traps focus and handles its own keys.
+      // The help overlay and settings drawer trap focus and handle their
+      // own keys — let them own the keyboard while open. Escape inside the
+      // drawer is handled by the drawer itself (which calls onClose); the
+      // global Escape handler above short-circuits before this guard.
       if (helpOpen) return;
+      if (settingsOpen) return;
 
       // Never hijack typing, and never fight browser/OS chords.
       if (isEditableTarget(event.target)) return;
@@ -733,13 +793,78 @@ export default function ResumeStudio() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [exportOpen, themePickerOpen, helpOpen, hasResume, shortcutsEnabled, stepTheme, randomTheme]);
+  }, [
+    exportOpen,
+    themePickerOpen,
+    helpOpen,
+    settingsOpen,
+    hasResume,
+    shortcutsEnabled,
+    stepTheme,
+    randomTheme,
+  ]);
 
-  /* On close of the help overlay, restore focus to whatever opened it. */
+  /* ---------------------------------------------------------------- *
+   * Mobile More menu (#131): non-modal dismissal.                     *
+   * Outside-click closes the drawer; Escape closes it and restores    *
+   * focus to the trigger. The drawer is purely a mobile reorg, so we  *
+   * also auto-close when the viewport widens past 640px — otherwise   *
+   * a user rotating into landscape would be left looking at a stale   *
+   * fixed drawer covering a desktop layout that no longer needs it.   *
+   * ---------------------------------------------------------------- */
+  useEffect(() => {
+    if (!mobileMoreOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+      if (mobileMoreDrawerRef.current?.contains(target)) return;
+      if (mobileMoreTriggerRef.current?.contains(target)) return;
+      setMobileMoreOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        setMobileMoreOpen(false);
+        mobileMoreTriggerRef.current?.focus();
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [mobileMoreOpen]);
+
+  useEffect(() => {
+    if (!mobileMoreOpen) return;
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia('(min-width: 640px)');
+    function handle(event: MediaQueryListEvent) {
+      if (event.matches) setMobileMoreOpen(false);
+    }
+    // Defensive: if the listener attaches after the user already crossed
+    // the breakpoint (e.g. via devtools snap), close immediately.
+    if (mql.matches) {
+      setMobileMoreOpen(false);
+      return;
+    }
+    mql.addEventListener('change', handle);
+    return () => mql.removeEventListener('change', handle);
+  }, [mobileMoreOpen]);
+
+  /* On close of the help overlay, restore focus to whatever opened it.
+     After the #128 consolidation the toolbar no longer carries a dedicated
+     keyboard-shortcuts icon button — the dialog is opened either from
+     inside the Settings drawer's Help section, or via the `?` global
+     shortcut. `helpTriggerRef` remains for forward-compatibility (in case
+     the icon is reintroduced); when it's null, the focus restore falls
+     back to the Settings gear, which is the closest sensible target. */
   const closeHelp = useCallback(() => {
     setHelpOpen(false);
-    // Defer so the dialog has unmounted before we move focus.
-    window.setTimeout(() => helpTriggerRef.current?.focus(), 0);
+    window.setTimeout(() => {
+      const target = helpTriggerRef.current ?? settingsTriggerRef.current;
+      target?.focus();
+    }, 0);
   }, []);
 
   /* ---------------------------------------------------------------- *
@@ -975,6 +1100,18 @@ export default function ResumeStudio() {
         {loadAnnouncement}
       </p>
 
+      {/* ----- Empty-state hero (#127). Rendered ONLY when no resume is
+           loaded; once a resume lands, the static AppHeader astro chrome
+           returns (the body-level data-app-phase attribute drives the
+           swap) and the workbench toolbar below takes over. ----- */}
+      {!hasResume && (
+        <AppHero
+          themeCount={themes.length}
+          layoutCount={RESUME_TEMPLATES.length}
+          templateCount={STARTER_TEMPLATE_COUNT}
+        />
+      )}
+
       {/* ----- Toolbar: theme + export controls. Phase 2 only (#43). -----
            When the ATS preview is active (#98) we tag the toolbar with the
            `--ats-active` modifier. The modifier scales opacity / removes
@@ -994,25 +1131,38 @@ export default function ResumeStudio() {
                      as PDF, Export, Snapshots, shortcuts help). */}
       {hasResume && (
         <div
-          className={
-            previewMode === 'ats'
-              ? 'studio__toolbar studio__toolbar--ats-active'
-              : 'studio__toolbar'
-          }
+          className={(() => {
+            const classes = ['studio__toolbar'];
+            if (previewMode === 'ats') classes.push('studio__toolbar--ats-active');
+            if (mobileMoreOpen) classes.push('studio__toolbar--more-open');
+            return classes.join(' ');
+          })()}
           data-print-hide
+          data-mobile-more-open={mobileMoreOpen ? 'true' : 'false'}
+          ref={mobileMoreDrawerRef}
         >
-          {/* ----- Row 1: theme + layout choice ----- */}
+          {/* ----- Row 1: theme + layout choice -----
+              Wrappers carrying `studio__toolbar-collapsible` are
+              `display: contents` on desktop (transparent in flex layout)
+              but collapse into the mobile More drawer at < 640px (#131).
+              ThemePicker + Save-as-PDF are deliberately NOT wrapped so
+              they stay visible on mobile alongside the More trigger. */}
           <div className="studio__toolbar-themable">
             {/* Curated audience presets (#95). One-click theme + layout
                 combos that sit ahead of the picker so a fresh visitor can
                 land a tasteful look without scrolling 545 themes. */}
-            <ThemePresets
-              currentTheme={theme}
-              currentTemplate={template}
-              onThemeChange={changeTheme}
-              onTemplateChange={changeTemplate}
-            />
+            <span className="studio__toolbar-collapsible">
+              <ThemePresets
+                currentTheme={theme}
+                currentTemplate={template}
+                onThemeChange={changeTheme}
+                onTemplateChange={changeTemplate}
+              />
+            </span>
 
+            {/* ThemePicker — one of two controls that stay visible on
+                mobile (#131). Not wrapped in collapsible so the mobile
+                CSS leaves it alone. */}
             <ThemePicker
               themes={themes}
               themesLoading={!themesReady}
@@ -1027,19 +1177,19 @@ export default function ResumeStudio() {
               onOpenChange={setThemePickerOpen}
             />
 
-            <LayoutSelector
-              templates={RESUME_TEMPLATES}
-              current={template}
-              onChange={changeTemplate}
-            />
+            <span className="studio__toolbar-collapsible">
+              <LayoutSelector
+                templates={RESUME_TEMPLATES}
+                current={template}
+                onChange={changeTemplate}
+              />
+            </span>
           </div>
-
-          <AtsModeToggle active={previewMode === 'ats'} onChange={changePreviewMode} />
 
           {previewMode === 'ats' && (
             <button
               type="button"
-              className="studio__ats-exit-pill"
+              className="studio__ats-exit-pill studio__toolbar-collapsible"
               onClick={() => changePreviewMode(false)}
               aria-label="Exit ATS preview"
             >
@@ -1048,22 +1198,21 @@ export default function ResumeStudio() {
             </button>
           )}
 
-          {/* Hard row break (#112). `flex-basis: 100%` forces the next
-              child onto a new line regardless of how much horizontal room
-              is left, so the toolbar always reads as two grouped rows on
-              wide viewports. On narrow viewports the toolbar still
-              wraps additionally via the normal flex-wrap rules. */}
-          <span className="studio__toolbar-rowbreak" aria-hidden="true" />
+          {/* Hard row break (#112, #128). After the #128 consolidation Row 2
+              hosts only the review-and-export rhythm: page-fit pill, Save
+              as PDF (primary), Export, and a gear icon for the rest. ATS
+              toggle, snapshots, shortcut legend, theme prev/next/random,
+              and the keyboard help icon all moved into the Settings drawer
+              — discoverable via the gear, with keyboard shortcuts (← → r
+              / p e ?) still wired here so the drawer is discoverability,
+              not the only path. Tagged collapsible so the mobile More
+              drawer doesn't carry a phantom row break (#131). */}
+          <span
+            className="studio__toolbar-rowbreak studio__toolbar-collapsible"
+            aria-hidden="true"
+          />
 
           {/* ----- Row 2: review aids + save/export ----- */}
-          <div className="studio__toolbar-themable">
-            <ThemeControls
-              current={theme}
-              onPrevious={() => stepTheme(-1)}
-              onNext={() => stepTheme(1)}
-              onRandom={randomTheme}
-            />
-          </div>
 
           {/* Page-fit indicator (#92). Reads `.resume-preview` height with
               getBoundingClientRect, divides by US-Letter @ 0.6in content
@@ -1072,13 +1221,15 @@ export default function ResumeStudio() {
               suggestions, and a checkbox to overlay page-break ruler lines
               on the preview. Sits next to Save-as-PDF so the estimate and
               the export action read as a pair. */}
-          <PageFitIndicator previewRef={previewRef} layout={template} parsed={parsed} />
+          <span className="studio__toolbar-collapsible">
+            <PageFitIndicator previewRef={previewRef} layout={template} parsed={parsed} />
+          </span>
 
-          {/* Soft spacer between the review-aids cluster (theme nav, page
-              fit) and the save/export cluster. `flex: 1` so the two
-              clusters anchor to opposite ends of the row, which preserves
-              the visual hierarchy: review on the left, save on the right. */}
-          <div className="studio__toolbar-spacer" />
+          {/* Soft spacer that anchors the save/export cluster to the right
+              edge of the row, matching the OKLCH reference layout.
+              Collapsible so the mobile More drawer doesn't carry a phantom
+              horizontal stretch (#131). */}
+          <div className="studio__toolbar-spacer studio__toolbar-collapsible" />
 
           {/* Save as PDF — primary toolbar action (#90). A direct,
               single-click path to the most common export. Lives as a peer
@@ -1088,13 +1239,36 @@ export default function ResumeStudio() {
               button should ride. Calling window.print() picks up
               document.body.dataset.printMode (set by the existing print
               mode state) so the user's choice of conservative vs theme
-              print is honoured. */}
+              print is honoured. Stays inline on mobile (#131). */}
           <button type="button" className="btn btn--primary" onClick={() => window.print()}>
             <Icon name="file" size={14} />
             Save as PDF
           </button>
 
-          <div className="export-panel">
+          {/* Mobile "More" trigger (#131). `display: none` on desktop —
+              the toolbar already shows everything. On viewports < 640px
+              CSS reveals it and hides every `studio__toolbar-collapsible`
+              child, putting them inside an in-toolbar drawer that flows
+              on top of the resume preview when opened. The button is a
+              proper `<button aria-haspopup="menu" aria-expanded>` so AT
+              users can navigate the same way as the export popover. The
+              accessible name is intentionally stable across open/closed
+              states — `aria-expanded` carries the toggle signal so the
+              user's hook on the button doesn't move under them. */}
+          <button
+            type="button"
+            ref={mobileMoreTriggerRef}
+            className="btn studio__toolbar-more-trigger"
+            aria-haspopup="menu"
+            aria-expanded={mobileMoreOpen}
+            aria-label="More toolbar actions"
+            onClick={() => setMobileMoreOpen((open) => !open)}
+          >
+            <span aria-hidden="true">More</span>
+            <Icon name={mobileMoreOpen ? 'close' : 'chevron-down'} size={14} />
+          </button>
+
+          <div className="export-panel studio__toolbar-collapsible">
             <button
               type="button"
               ref={exportTriggerRef}
@@ -1121,83 +1295,27 @@ export default function ResumeStudio() {
             )}
           </div>
 
-          {/* Resume version snapshots (#94). Sits between the Export popover
-              and the help chip. Disabled (with tooltip) when draft autosave
-              is OFF — snapshots are gated on the same opt-in so the privacy
-              invariant from #32 is preserved. */}
-          <SnapshotsMenu
-            snapshots={snapshots}
-            enabled={draftEnabled}
-            suggestedName={suggestedSnapshotName}
-            onSave={handleSaveSnapshot}
-            onLoad={handleLoadSnapshot}
-            onDelete={handleDeleteSnapshot}
-          />
-
-          {/* Shortcut legend chip (#99). Collapsed from the multi-row
-              legend to a single discreet "shortcuts (?)" affordance. Hover
-              / keyboard focus reveals a small inline popover listing the
-              keys; clicking opens the existing KeyboardHelp dialog (which
-              is what the `?` shortcut also does). Hidden on coarse
-              pointers — the popover is purely a hover/focus reveal and
-              the dialog remains reachable from the keyboard-shortcuts
-              icon button next to it. */}
-          <span className="studio__shortcuts-chip" data-print-hide>
+          {/* ----- Settings drawer trigger (#128) -----
+              Rightmost slot of Row 2 on desktop. Opens the modal drawer
+              that holds the ATS toggle, draft autosave, clear workspace,
+              snapshots, theme nav, and the shortcut legend. On mobile
+              (#131) it collapses into the More menu — keyboard shortcuts
+              still discover the underlying actions, so a desktop user who
+              learned the chord set isn't left without a way in. */}
+          <span className="studio__toolbar-collapsible">
             <button
               type="button"
-              className="studio__shortcuts-chip-trigger"
-              onClick={() => setHelpOpen(true)}
+              ref={settingsTriggerRef}
+              className="btn btn--icon"
               aria-haspopup="dialog"
-              aria-expanded={helpOpen}
-              aria-label="Show keyboard shortcuts"
+              aria-expanded={settingsOpen}
+              onClick={() => setSettingsOpen(true)}
+              title="Settings"
+              aria-label="Open settings"
             >
-              shortcuts <span aria-hidden="true">(?)</span>
+              <Icon name="settings" />
             </button>
-            <span className="studio__shortcuts-chip-popover" role="presentation">
-              {shortcutsEnabled ? (
-                <>
-                  <span>
-                    <kbd>←</kbd> <kbd>→</kbd> theme
-                  </span>
-                  <span>
-                    <kbd>r</kbd> random
-                  </span>
-                  <span>
-                    <kbd>/</kbd> search themes
-                  </span>
-                  <span>
-                    <kbd>p</kbd> print
-                  </span>
-                  <span>
-                    <kbd>e</kbd> export
-                  </span>
-                  <span>
-                    <kbd>?</kbd> all shortcuts
-                  </span>
-                  <span>
-                    <kbd>Esc</kbd> close
-                  </span>
-                </>
-              ) : (
-                <span className="studio__shortcuts-off">
-                  Single-key shortcuts are off — <kbd>Esc</kbd> still closes panels.
-                </span>
-              )}
-            </span>
           </span>
-
-          <button
-            type="button"
-            ref={helpTriggerRef}
-            className="btn btn--icon"
-            aria-haspopup="dialog"
-            aria-expanded={helpOpen}
-            onClick={() => setHelpOpen(true)}
-            title="Keyboard shortcuts (?)"
-            aria-label="Keyboard shortcuts"
-          >
-            <Icon name="help" />
-          </button>
         </div>
       )}
 
@@ -1340,14 +1458,20 @@ export default function ResumeStudio() {
               </button>
             </div>
 
-            {/* Theme name + WCAG badge (#88). The badge carries text + a
-                glyph, so the conformance level is never colour-only.
-                Shown only on the Preview tab — the Health tab has its own
-                score banner and the theme is irrelevant there. */}
+            {/* Theme name + WCAG badge (#88, #130). The badge reports a
+                single tiered pill (`AAA · 13.4:1`) on the WORST of the two
+                conformance signals — body text on background, and accent
+                on background. The glyph + literal still carry the level so
+                colour is never the sole channel. Shown only on the Preview
+                tab — the Health tab has its own score banner and the theme
+                is irrelevant there. */}
             {previewTab === 'preview' && (
               <span className="studio__pane-meta">
                 <span className="studio__pane-theme-name">{theme.name}</span>
-                <WcagBadge ratio={theme.contrastRatio} />
+                <WcagBadge
+                  fgRatio={theme.contrast.fgOnBg}
+                  accentRatio={theme.contrast.accentOnBg}
+                />
               </span>
             )}
           </div>
@@ -1396,6 +1520,31 @@ export default function ResumeStudio() {
         />
       )}
 
+      {/* ----- Settings drawer (#128). Right-anchored modal that hosts the
+           low-frequency controls that used to live across four toolbar
+           islands (ATS toggle, snapshots, shortcuts chip, keyboard-help
+           icon). Mounted only when open. ----- */}
+      {settingsOpen && (
+        <SettingsDrawer
+          onClose={closeSettings}
+          atsActive={previewMode === 'ats'}
+          onAtsChange={changePreviewMode}
+          draftEnabled={draftEnabled}
+          onDraftEnabledChange={changeDraftEnabled}
+          onClearWorkspace={handleClear}
+          snapshots={snapshots}
+          suggestedSnapshotName={suggestedSnapshotName}
+          onSaveSnapshot={handleSaveSnapshot}
+          onLoadSnapshot={handleLoadSnapshot}
+          onDeleteSnapshot={handleDeleteSnapshot}
+          shortcutsEnabled={shortcutsEnabled}
+          onOpenKeyboardHelp={() => setHelpOpen(true)}
+          onPreviousTheme={() => stepTheme(-1)}
+          onNextTheme={() => stepTheme(1)}
+          onRandomTheme={randomTheme}
+        />
+      )}
+
       {/* ----- Resume Health → Open-an-example dialog (#120) -----
            Mounted only when the Health panel asks for an example AND the
            writer's resume doesn't already have that section. Shows the
@@ -1425,35 +1574,57 @@ function matchesDark(): boolean {
 }
 
 /**
- * Small WCAG conformance badge for the preview pane header (#88).
+ * Single WCAG conformance pill for the preview pane header (#88, #130).
  *
- * Carries text + a glyph so the level is never conveyed by colour alone:
+ * #130 collapses the previous two-chip arrangement (body-text + accent
+ * ratios) into ONE pill that surfaces the WORST of the two pairs. This
+ * matches the OKLCH terminal-themes reference and gives the reviewer a
+ * single legibility number to scan instead of two competing chips.
+ *
+ * The badge carries text + a glyph so the level is never conveyed by
+ * colour alone:
  *  - AAA → check glyph + green tint
  *  - AA  → 'AA' literal + amber tint
  *  - fails AA → ⚠ + red tint
  *
- * The numeric ratio appears alongside the level so a reader who knows the
- * thresholds can sanity-check at a glance.
+ * The accessible label spells out BOTH ratios so users who care about the
+ * per-pair breakdown can still hear them — the visual pill stays single
+ * for the OKLCH-inspired silhouette.
+ *
+ * `className` adds the `--worst-accent` modifier when the binding constraint
+ * is the accent (not the body text), so the CSS could surface the pair
+ * source in a follow-up — today it's purely an information-architecture hook.
  */
-function WcagBadge({ ratio }: { ratio: number }) {
-  const level = wcagLevel(ratio);
-  const className =
+function WcagBadge({ fgRatio, accentRatio }: { fgRatio: number; accentRatio: number }) {
+  // The pill represents the WORST of the two pairs — that's the constraint
+  // a reviewer should know about. Accent rarely beats body text on
+  // luminance-balanced themes, but a low-accent theme can fail AA while the
+  // body still reads AAA; the user needs to see that.
+  const worst = Math.min(fgRatio, accentRatio);
+  const isAccentWorse = accentRatio < fgRatio;
+  const level = wcagLevel(worst);
+  const baseClass =
     level === 'AAA'
       ? 'studio__pane-wcag studio__pane-wcag--aaa'
       : level === 'AA'
         ? 'studio__pane-wcag studio__pane-wcag--aa'
         : 'studio__pane-wcag studio__pane-wcag--fail';
+  const className = isAccentWorse ? `${baseClass} studio__pane-wcag--worst-accent` : baseClass;
   // Glyph + literal carry the meaning; the colour is reinforcement only.
   const glyph = level === 'AAA' ? '✓' : level === 'AA' ? 'AA' : '⚠';
-  // Full sentence for AT — same tone as the picker/controls labels.
-  const label = `Body text contrast ${ratio.toFixed(1)}:1 — WCAG ${level}`;
+  // Full sentence for AT — surfaces BOTH ratios so a screen-reader user
+  // still has the per-pair breakdown the visual pill collapses.
+  const source = isAccentWorse ? 'accent' : 'body text';
+  const label =
+    `WCAG ${level} — worst contrast ${worst.toFixed(1)}:1 (${source}). ` +
+    `Body text: ${fgRatio.toFixed(1)}:1. Accent: ${accentRatio.toFixed(1)}:1.`;
   return (
     <span className={className} title={label} aria-label={label} role="img">
       <span className="studio__pane-wcag-glyph" aria-hidden="true">
         {glyph}
       </span>
       <span className="studio__pane-wcag-text">
-        {level === 'fails AA' ? 'fails' : level} · {ratio.toFixed(1)}:1
+        {level === 'fails AA' ? 'fails' : level} · {worst.toFixed(1)}:1
       </span>
     </span>
   );

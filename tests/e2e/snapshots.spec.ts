@@ -17,7 +17,12 @@
  *     row disappears.
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, expandMobileEditor, loadSampleResume } from './helpers';
+import {
+  clearAppStorage,
+  expandMobileEditor,
+  loadSampleResume,
+  openSettingsDrawer,
+} from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await clearAppStorage(page);
@@ -28,6 +33,10 @@ test('gate: with draft autosave OFF the Snapshots trigger is disabled and the pr
   page,
 }) => {
   await loadSampleResume(page);
+  // #128: Snapshots now live inside the Settings drawer rather than as a
+  // standalone toolbar control. Open the drawer first so the disabled
+  // trigger (with its privacy tooltip) is reachable to assert against.
+  await openSettingsDrawer(page);
 
   // The trigger button is in the DOM but `disabled`. We assert on the
   // `disabled` attribute rather than visibility because it's still rendered
@@ -65,6 +74,9 @@ test('save round-trip: snapshot the sample, replace the body, then Load restores
   // computed accessible name includes the long hint copy.
   await page.locator('.studio__draft-toggle input[type="checkbox"]').check();
 
+  // #128: Snapshots live inside the Settings drawer now.
+  await openSettingsDrawer(page);
+
   // Open the Snapshots popover and confirm the default save name reflects
   // the resume's frontmatter.name (Avery Quinn in the bundled sample).
   // #112: with zero snapshots saved the trigger is icon-only and labelled
@@ -86,8 +98,13 @@ test('save round-trip: snapshot the sample, replace the body, then Load restores
   await expect(dialog.getByText('Stripe pass')).toBeVisible();
   await page.keyboard.press('Escape');
 
-  // The trigger count updates.
+  // The trigger count updates — still inside the (still-open) drawer.
   await expect(page.getByRole('button', { name: /Snapshots \(1\)/i })).toBeVisible();
+
+  // #128: close the drawer so the editor textarea below is no longer
+  // covered by the modal overlay. Esc here closes the drawer (the
+  // SnapshotsMenu popover was already closed above).
+  await page.keyboard.press('Escape');
 
   // Now wreck the editor body so loading the snapshot has something to
   // restore from. The textarea is the canonical edit surface.
@@ -99,7 +116,8 @@ test('save round-trip: snapshot the sample, replace the body, then Load restores
   const article = page.getByRole('article', { name: /rendered resume/i });
   await expect(article.getByText('Not Avery Quinn')).toBeVisible();
 
-  // Reopen and Load the snapshot. Avery is back.
+  // Reopen the drawer and Load the snapshot. Avery is back.
+  await openSettingsDrawer(page);
   await page.getByRole('button', { name: /Snapshots \(1\)/i }).click();
   const reopened = page.getByRole('dialog', { name: /Save snapshot/i });
   await reopened.getByRole('button', { name: /^Load snapshot Stripe pass$/ }).click();
@@ -120,6 +138,9 @@ test('cap: saving 11 snapshots keeps the visible count at 10 (oldest evicted)', 
   // computed accessible name includes the long hint copy.
   await page.locator('.studio__draft-toggle input[type="checkbox"]').check();
 
+  // #128: snapshots live inside the Settings drawer now.
+  await openSettingsDrawer(page);
+
   // Save 11 snapshots, naming each so we can verify which one was evicted.
   // #112: zero-state trigger is icon-only and labelled "Save snapshot".
   await page.getByRole('button', { name: 'Save snapshot', exact: true }).click();
@@ -136,11 +157,12 @@ test('cap: saving 11 snapshots keeps the visible count at 10 (oldest evicted)', 
   }
 
   // The count tops out at 10 (cap enforced in storage.ts saveSnapshot).
+  // First Esc closes the Snapshots popover; the drawer remains open.
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: /Snapshots \(10\)/i })).toBeVisible();
 
-  // Reopen the dialog and verify the oldest (snap-01) is gone and the
-  // newest (snap-11) is present.
+  // Reopen the snapshots popover (still inside the drawer) and verify the
+  // oldest (snap-01) is gone and the newest (snap-11) is present.
   await page.getByRole('button', { name: /Snapshots \(10\)/i }).click();
   const reopened = page.getByRole('dialog', { name: /Save snapshot/i });
   await expect(reopened.getByText('snap-11')).toBeVisible();
@@ -158,6 +180,9 @@ test('delete: removing a snapshot decrements the count and removes the row', asy
   // getByRole('checkbox', ...) with a name regex is brittle because the
   // computed accessible name includes the long hint copy.
   await page.locator('.studio__draft-toggle input[type="checkbox"]').check();
+
+  // #128: snapshots live inside the Settings drawer now.
+  await openSettingsDrawer(page);
 
   // Save two snapshots so we have something to delete and something to keep.
   // #112: zero-state trigger is icon-only and labelled "Save snapshot".

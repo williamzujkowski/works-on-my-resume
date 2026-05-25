@@ -25,6 +25,7 @@ import {
   clearAppStorage,
   expandMobileEditor,
   loadSampleResume,
+  openSettingsDrawer,
   openThemePickerReady,
   waitForThemesReady,
 } from './helpers';
@@ -143,6 +144,10 @@ test('snapshots menu open has no serious or critical a11y violations', async ({ 
   // Snapshots are gated behind the "Remember this resume on this device"
   // toggle (#32 / #94). Enable it so the trigger is interactive.
   await page.locator('.studio__draft-toggle input[type="checkbox"]').check();
+
+  // #128: Snapshots live inside the Settings drawer now. Open the drawer
+  // so the SnapshotsMenu is reachable.
+  await openSettingsDrawer(page);
 
   // Match either of the two trigger labels SnapshotsMenu exposes — the
   // legacy `Snapshots (0)` form and the zero-state `Save snapshot` form

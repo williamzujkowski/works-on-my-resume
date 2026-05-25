@@ -20,7 +20,12 @@
  * because the row-count signal doesn't translate.
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, loadSampleResume, waitForThemesReady } from './helpers';
+import {
+  clearAppStorage,
+  loadSampleResume,
+  openSettingsDrawer,
+  waitForThemesReady,
+} from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await clearAppStorage(page);
@@ -88,6 +93,10 @@ test('with zero snapshots, Snapshots (0) is not in the DOM — only the icon-onl
 }) => {
   await loadSampleResume(page);
 
+  // #128: Snapshots live inside the Settings drawer. Open it so the
+  // zero-state trigger is reachable.
+  await openSettingsDrawer(page);
+
   /* No snapshots have been saved (the gate is OFF by default in tests),
      so the trigger must NOT read as "Snapshots (0)". The icon-only
      "Save snapshot" trigger is the new zero-state affordance. With the
@@ -108,7 +117,10 @@ test('arrow keys still cycle themes after the toolbar reshape', async ({ page })
   await expect(page.locator('.theme-picker__trigger-name').first()).toHaveText('Dracula');
 
   // Park focus on a non-editable focusable element so global shortcuts fire.
-  await page.getByRole('button', { name: /random theme/i }).focus();
+  // #128: the Random theme button moved into the Settings drawer; the
+  // Save-as-PDF button is a stable, always-visible non-editable toolbar
+  // anchor that serves the same purpose here.
+  await page.getByRole('button', { name: /^save as pdf$/i }).focus();
 
   const before = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--resume-bg').trim(),

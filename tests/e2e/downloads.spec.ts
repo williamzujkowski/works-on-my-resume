@@ -40,6 +40,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   clearAppStorage,
   loadSampleResume,
+  openMobileMoreMenu,
   waitForThemesReady,
 } from './helpers';
 
@@ -104,10 +105,18 @@ async function clickDownload(
 ): Promise<string> {
   /* The Export panel may already be open from an earlier action in the same
      test (the panel persists between clicks). Guard the open() so we don't
-     toggle it shut by clicking the trigger twice. */
+     toggle it shut by clicking the trigger twice.
+
+     Mobile (#131): the Export trigger collapses behind the More menu on
+     viewports < 640 px — open the drawer first when the trigger isn't
+     immediately visible. Idempotent and a no-op on desktop. */
   const panel = page.getByRole('dialog', { name: /export/i });
   if ((await panel.count()) === 0 || !(await panel.isVisible())) {
-    await page.getByRole('button', { name: /^export$/i }).click();
+    const trigger = page.getByRole('button', { name: /^export$/i });
+    if (!(await trigger.isVisible())) {
+      await openMobileMoreMenu(page);
+    }
+    await trigger.click();
     await expect(panel).toBeVisible();
   }
 

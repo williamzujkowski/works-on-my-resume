@@ -13,6 +13,8 @@ import { test, expect } from '@playwright/test';
 import {
   clearAppStorage,
   loadSampleResume,
+  openMobileMoreMenu,
+  openSettingsDrawer,
   openThemePickerReady,
   waitForThemesReady,
 } from './helpers';
@@ -206,8 +208,13 @@ test('enabling ATS preview tags the toolbar with the greyed-out modifier class a
   await expect(toolbar).not.toHaveClass(/studio__toolbar--ats-active/);
   await expect(page.getByRole('button', { name: /exit ats preview/i })).toHaveCount(0);
 
-  // Flip ATS mode on via the existing toggle.
+  // #128: the ATS toggle moved into the Settings drawer. Open the drawer
+  // and flip the switch. The exit-pill that appears in the toolbar is the
+  // primary "you're in ATS mode" affordance for sighted users.
+  await openSettingsDrawer(page);
   await page.getByRole('switch', { name: /ats preview/i }).check();
+  // Close the drawer so the toolbar grey-out and exit pill are unobstructed.
+  await page.keyboard.press('Escape');
 
   // The toolbar now carries the modifier class (the visible grey-out is
   // applied by CSS via this class), and the persistent exit pill is shown.
@@ -227,8 +234,13 @@ test('curated theme presets (#95): clicking Modern applies the Dracula theme + m
   // Baseline: no preset should be the active one at boot — the default
   // light theme + classic layout don't match any of the three curated
   // presets (the Conservative preset is `github-light-default`, not the
-  // hardcoded WOMR Default fallback).
+  // hardcoded WOMR Default fallback). Mobile (#131): theme presets are
+  // collapsed behind the More menu — open the drawer first when the pill
+  // isn't immediately visible.
   const modernPill = page.getByRole('button', { name: /^modern preset/i });
+  if (!(await modernPill.isVisible())) {
+    await openMobileMoreMenu(page);
+  }
   await expect(modernPill).toBeVisible();
   await expect(modernPill).toHaveAttribute('aria-pressed', 'false');
 
@@ -303,4 +315,27 @@ test('closing the picker without selecting reverts a hover preview', async ({ pa
 
   // The trigger name should also be unchanged.
   await expect(page.locator('.theme-picker__trigger-name').first()).toHaveText(triggerName);
+});
+
+test('the preview header shows exactly ONE WCAG pill — collapsed worst-case (#130)', async ({
+  page,
+}) => {
+  // The badge has the .studio__pane-wcag class regardless of level. After
+  // #130 the preview header carries a SINGLE pill — the worst of the two
+  // pairs (body text and accent) — not the legacy two-chip layout.
+  const badges = page.locator('.studio__pane-header .studio__pane-wcag');
+  await expect(badges).toHaveCount(1);
+
+  // The pill's accessible label spells out BOTH ratios so screen-reader
+  // users still get the per-pair breakdown that the visual single-pill
+  // collapses.
+  const single = badges.first();
+  await expect(single).toHaveAttribute('aria-label', /Body text:.*Accent:/i);
+
+  // And the visible text is the single `<glyph> LEVEL · ratio:1` format,
+  // not a pair joined by a separator. The leading glyph (✓ / AA / ⚠) is
+  // followed by the level + ratio. Normalize whitespace first so a
+  // newline between glyph and text doesn't trip the match.
+  const text = (await single.innerText()).replace(/\s+/g, ' ').trim();
+  expect(text).toMatch(/^(✓|AA|⚠)\s+(AAA|AA|fails)\s+·\s+\d+(\.\d+)?:1$/);
 });

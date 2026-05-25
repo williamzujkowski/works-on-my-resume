@@ -14,18 +14,31 @@
  * only that the label matches one of the two known shapes.
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, loadSampleResume } from './helpers';
+import { clearAppStorage, loadSampleResume, openMobileMoreMenu } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await clearAppStorage(page);
   await page.goto('');
 });
 
+/**
+ * Reveal the page-fit pill in the toolbar. On desktop it's inline; on
+ * mobile (#131) it collapses behind the More menu, so we open the drawer
+ * first when the pill isn't immediately visible. Idempotent.
+ */
+async function revealPageFitPill(page: import('@playwright/test').Page) {
+  const pill = page.locator('.page-fit__pill');
+  if (!(await pill.isVisible())) {
+    await openMobileMoreMenu(page);
+  }
+  await expect(pill).toBeVisible();
+  return pill;
+}
+
 test('page-fit pill appears in Phase 2 and reports a page estimate', async ({ page }) => {
   await loadSampleResume(page);
 
-  const pill = page.locator('.page-fit__pill');
-  await expect(pill).toBeVisible();
+  const pill = await revealPageFitPill(page);
 
   // Either "Fits 1 page" or "Fit: N.N pages" — the exact value depends on
   // viewport + fonts + theme, so match the shape rather than a literal.
@@ -49,8 +62,7 @@ test('page-fit estimate for the bundled sample is in the right ballpark (#107)',
   // estimate as far as a wider desktop preview can.
   await loadSampleResume(page);
 
-  const pill = page.locator('.page-fit__pill');
-  await expect(pill).toBeVisible();
+  const pill = await revealPageFitPill(page);
 
   const text = (await pill.textContent())?.trim() ?? '';
 
@@ -74,7 +86,8 @@ test('clicking the pill opens a popover with section heights and the approximate
 }) => {
   await loadSampleResume(page);
 
-  await page.locator('.page-fit__pill').click();
+  const pill = await revealPageFitPill(page);
+  await pill.click();
 
   const popover = page.getByRole('dialog', { name: /page fit details/i });
   await expect(popover).toBeVisible();
@@ -87,7 +100,8 @@ test('clicking the pill opens a popover with section heights and the approximate
 test('toggling the ruler shows then hides page-break lines on the preview', async ({ page }) => {
   await loadSampleResume(page);
 
-  await page.locator('.page-fit__pill').click();
+  const pill = await revealPageFitPill(page);
+  await pill.click();
   const popover = page.getByRole('dialog', { name: /page fit details/i });
 
   // Ruler off by default — no overlay in the DOM.
@@ -113,7 +127,7 @@ test('toggling the ruler shows then hides page-break lines on the preview', asyn
 test('pressing Escape closes the popover and returns focus to the pill', async ({ page }) => {
   await loadSampleResume(page);
 
-  const pill = page.locator('.page-fit__pill');
+  const pill = await revealPageFitPill(page);
   await pill.click();
 
   const popover = page.getByRole('dialog', { name: /page fit details/i });

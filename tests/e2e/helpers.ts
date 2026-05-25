@@ -155,3 +155,61 @@ export async function openThemePickerReady(page: Page): Promise<void> {
     )
     .toBeGreaterThan(1);
 }
+
+/**
+ * Open the Settings drawer (#128) and wait for it to be visible.
+ *
+ * The drawer hosts the controls that used to live in the toolbar as separate
+ * islands: ATS toggle, draft autosave, clear workspace, snapshots, theme
+ * nav (prev/next/random), and the shortcut legend. Tests that interact with
+ * any of those controls open the drawer first via this helper.
+ *
+ * Mobile (#131): on viewports < 640 px the gear icon is collapsed behind the
+ * "More" toolbar menu. The helper opens that first when the gear isn't
+ * already visible — keeps every test that drives the Settings drawer
+ * working on both projects without per-test branching.
+ */
+export async function openSettingsDrawer(page: Page): Promise<void> {
+  const gear = page.getByRole('button', { name: /open settings/i });
+  if (!(await gear.isVisible())) {
+    await openMobileMoreMenu(page);
+  }
+  await gear.click();
+  const drawer = page.getByRole('dialog', { name: /^settings$/i });
+  await expect(drawer).toBeVisible();
+}
+
+/**
+ * Open the mobile "More" toolbar menu (#131). On viewports < 640 px the
+ * non-essential toolbar controls (Presets, LayoutSelector, ATS-exit pill,
+ * Page-fit, Export, Settings gear) are hidden until the More trigger is
+ * tapped. Tests that need to drive any of those controls on the
+ * `mobile-iphone-13` project call this first.
+ *
+ * Idempotent: if the trigger is already expanded the call is a no-op.
+ * Safe on desktop too (the trigger is `display: none` on >= 640 px, so the
+ * visibility guard short-circuits).
+ */
+export async function openMobileMoreMenu(page: Page): Promise<void> {
+  const trigger = page.getByRole('button', { name: /more toolbar actions/i });
+  if (!(await trigger.isVisible())) return;
+  const expanded = await trigger.getAttribute('aria-expanded');
+  if (expanded === 'true') return;
+  await trigger.click();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+}
+
+/**
+ * Reveal a collapsible toolbar control on mobile by opening the More menu
+ * first when the target is hidden behind it (#131). The helper looks up
+ * the target by role/name and, if not visible, opens the mobile drawer.
+ * On desktop the target is already visible inline so the call is a no-op.
+ */
+export async function revealToolbarControl(page: Page, name: RegExp): Promise<Locator> {
+  const target = page.getByRole('button', { name });
+  if (!(await target.isVisible())) {
+    await openMobileMoreMenu(page);
+  }
+  await expect(target).toBeVisible();
+  return target;
+}

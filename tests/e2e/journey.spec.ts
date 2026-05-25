@@ -8,34 +8,40 @@
  *     appears, the resume is rendered.
  *   - Clear: returns to Phase 1.
  *
- * The shortcut affordance is the `shortcuts (?)` chip on the right edge of
- * the toolbar (#99) — it replaces the legacy "Shortcuts" legend row.
+ * The discoverable settings affordance is the gear icon at the right edge
+ * of the toolbar (#128) — it opens a drawer that hosts ATS, snapshots,
+ * theme nav, and the shortcut legend. The legacy `shortcuts (?)` chip
+ * and standalone keyboard-help icon were absorbed into the drawer.
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, loadSampleResume } from './helpers';
+import { clearAppStorage, loadSampleResume, openMobileMoreMenu } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await clearAppStorage(page);
   await page.goto('');
 });
 
-test('phase 1: toolbar and shortcut chip are absent until a resume is loaded', async ({ page }) => {
-  // The empty-state preview is the giveaway that we are in Phase 1.
-  await expect(page.getByText(/no resume loaded yet/i)).toBeVisible();
+test('phase 1: toolbar and settings gear are absent until a resume is loaded', async ({ page }) => {
+  // Phase 1 used to show the static "no resume loaded yet" panel; after
+  // #96 it shows the faded-sample preview, and after #127 the app-hero
+  // sits above it. The empty-state hero is the giveaway.
+  await expect(page.locator('.app-hero')).toHaveCount(1);
 
   // The theme picker trigger and Export button live in the Phase 2 toolbar.
   await expect(page.getByRole('button', { name: /^theme /i })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^export$/i })).toHaveCount(0);
 
-  // The shortcut chip (#99) is the toolbar's discoverable shortcut affordance.
-  await expect(page.locator('.studio__shortcuts-chip')).toHaveCount(0);
+  // The Settings gear (#128) is the toolbar's discoverable affordance for
+  // ATS/snapshots/theme-nav/help — not mounted in Phase 1 either.
+  await expect(page.getByRole('button', { name: /open settings/i })).toHaveCount(0);
 
   // The uploader's hero affordance — "Load sample" and "Choose file" — IS present.
   await expect(page.getByRole('button', { name: /load sample/i })).toBeVisible();
 });
 
-test('phase 2: loading the sample reveals the toolbar, shortcut chip, and rendered resume', async ({
+test('phase 2: loading the sample reveals the toolbar, settings gear, and rendered resume', async ({
   page,
+  isMobile,
 }) => {
   await loadSampleResume(page);
 
@@ -45,14 +51,25 @@ test('phase 2: loading the sample reveals the toolbar, shortcut chip, and render
   await expect(article).toBeVisible();
   await expect(article.getByText('Avery Quinn')).toBeVisible();
 
-  // Toolbar now mounted.
+  // Toolbar now mounted. ThemePicker + Save-as-PDF stay inline on both
+  // projects; Export + Settings gear stay inline on desktop, but
+  // collapse behind the mobile "More" menu on viewports < 640 px (#131).
   await expect(page.getByRole('button', { name: /^theme /i })).toBeVisible();
+
+  if (isMobile === true) {
+    // Mobile: open the More drawer first so Export + Settings become
+    // visible. The drawer is the new mobile discoverability path.
+    await openMobileMoreMenu(page);
+  }
   await expect(page.getByRole('button', { name: /^export$/i })).toBeVisible();
 
-  // Shortcut chip now mounted. The trigger is visible on fine-pointer devices;
-  // assert its presence in the DOM (the `pointer: coarse` media hides it on
-  // mobile but the element is still attached).
-  await expect(page.locator('.studio__shortcuts-chip')).toHaveCount(1);
+  // Settings gear (#128) now mounted — the consolidated affordance that
+  // replaced the legacy `shortcuts (?)` chip and the standalone help icon.
+  await expect(page.getByRole('button', { name: /open settings/i })).toBeVisible();
+
+  // The empty-state hero (#127) collapses once a resume is loaded — no
+  // double-render of the brand row.
+  await expect(page.locator('.app-hero')).toHaveCount(0);
 });
 
 test('faded sample preview (#96): empty pane renders the bundled sample dimmed with a "Try the sample" CTA', async ({
@@ -152,7 +169,8 @@ test('clear: returns to the empty Phase 1 state', async ({ page }, testInfo) => 
   await expect(page.getByRole('article', { name: /rendered resume/i })).toHaveCount(0);
   await expect(page.getByLabel(/markdown source/i)).toHaveValue('');
 
-  // Toolbar + shortcut chip gone.
+  // Toolbar + settings gear gone — and the empty-state hero is back.
   await expect(page.getByRole('button', { name: /^theme /i })).toHaveCount(0);
-  await expect(page.locator('.studio__shortcuts-chip')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /open settings/i })).toHaveCount(0);
+  await expect(page.locator('.app-hero')).toHaveCount(1);
 });

@@ -23,11 +23,25 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
   clearAppStorage,
   loadSampleResume,
+  openMobileMoreMenu,
   previewArticle,
   resetPrintMode,
   setPrintMode,
   waitForThemesReady,
 } from './helpers';
+
+/**
+ * Open the Export panel by clicking its toolbar trigger. Mobile (#131) puts
+ * the trigger behind the collapsed More menu, so open the drawer first when
+ * the trigger isn't already visible. Idempotent and a no-op on desktop.
+ */
+async function openExportPanel(page: Page): Promise<void> {
+  const trigger = page.getByRole('button', { name: /^export$/i });
+  if (!(await trigger.isVisible())) {
+    await openMobileMoreMenu(page);
+  }
+  await trigger.click();
+}
 
 /**
  * Selectors for every piece of app chrome that print.css must hide.
@@ -526,7 +540,7 @@ test('print.css @page footer rule remains loaded in theme mode (#109)', async ({
 
 test('Download HTML export contains every section heading from the sample', async ({ page }) => {
   // Open the Export panel. Its trigger is the toolbar "Export" button.
-  await page.getByRole('button', { name: /^export$/i }).click();
+  await openExportPanel(page);
 
   // The Download HTML button lives inside the panel.
   const downloadButton = page.getByRole('button', { name: /download html/i });
@@ -587,7 +601,7 @@ test('Download HTML export defaults to data-print-mode="conservative"', async ({
   // Conservative is the in-app default (ResumeStudio mounts with
   // `printMode = 'conservative'`); the export should reflect that without
   // the user touching the radio group.
-  await page.getByRole('button', { name: /^export$/i }).click();
+  await openExportPanel(page);
 
   const { html, filename } = await downloadHtmlBody(page);
 
@@ -611,7 +625,7 @@ test('Download HTML export defaults to data-print-mode="conservative"', async ({
 test('Download HTML export with print mode "theme" writes data-print-mode="theme"', async ({
   page,
 }) => {
-  await page.getByRole('button', { name: /^export$/i }).click();
+  await openExportPanel(page);
 
   // Flip the radio group to theme print mode. The radio input itself can
   // report as outside the viewport when the export panel is positioned as

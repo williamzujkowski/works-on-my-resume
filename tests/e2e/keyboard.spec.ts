@@ -48,6 +48,7 @@ test.beforeEach(async ({ page }) => {
 
 test('? opens the help dialog, Escape closes it and restores focus to the help trigger', async ({
   page,
+  isMobile,
 }) => {
   await page.keyboard.press('?');
   const dialog = page.getByRole('dialog', { name: /keyboard shortcuts/i });
@@ -57,26 +58,26 @@ test('? opens the help dialog, Escape closes it and restores focus to the help t
 
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
-  // ResumeStudio restores focus to its `helpTriggerRef` — the icon-only
-  // "Keyboard shortcuts" button in the toolbar — on close. That is the
-  // documented contract regardless of who pressed `?`. The shortcut chip
-  // sibling has the accessible name "Show keyboard shortcuts", so we
-  // match the icon button exactly.
-  await expect(page.getByRole('button', { name: 'Keyboard shortcuts', exact: true })).toBeFocused();
+  // After the #128 consolidation the dedicated "Keyboard shortcuts"
+  // toolbar icon is gone — the dialog opens either from inside the
+  // Settings drawer or via the global `?` shortcut. Focus restore falls
+  // back to the Settings gear, the closest sensible target — when it is
+  // visible. On mobile (#131) the gear collapses behind the More menu,
+  // so the focus restore is best-effort: the dialog is gone and the
+  // user is back on the toolbar's keyboard-accessible surface.
+  if (isMobile !== true) {
+    await expect(page.getByRole('button', { name: /open settings/i })).toBeFocused();
+  }
 });
 
 test('with single-key shortcuts disabled, r does NOT shuffle the theme', async ({ page }) => {
   // Open the help dialog via the `?` keyboard shortcut, uncheck the master
-  // toggle, close. The legacy "All shortcuts" affordance was collapsed into
-  // a hover/focus chip (#99); the dialog is the canonical entry point now.
+  // toggle, close. The legacy "All shortcuts" chip was absorbed into the
+  // Settings drawer's Help section (#128); the dialog is still the
+  // canonical entry point for the master toggle.
   await page.keyboard.press('?');
   await page.getByRole('checkbox', { name: /single-key shortcuts enabled/i }).uncheck();
   await page.keyboard.press('Escape');
-
-  // Confirm the chip popover reflects the off state — discoverable signal #1.
-  // The shortcut chip is hidden on coarse pointers but visible in default
-  // Playwright runs (fine pointer).
-  await expect(page.getByText(/single-key shortcuts are off/i).first()).toBeAttached();
 
   const before = await readBgVar(page);
 
@@ -107,8 +108,11 @@ test('arrow keys shuffle the theme when shortcuts are enabled and focus is non-e
   await expect(page.locator('.theme-picker__trigger-name').first()).toHaveText('Dracula');
 
   // Park focus on a non-editable, focusable element so `event.target` in the
-  // global keydown handler is definitely outside any text field.
-  await page.getByRole('button', { name: /random theme/i }).focus();
+  // global keydown handler is definitely outside any text field. #128: the
+  // Random theme button moved into the Settings drawer; the Save-as-PDF
+  // button is a stable always-visible toolbar peer that serves the same
+  // role for parking focus here.
+  await page.getByRole('button', { name: /^save as pdf$/i }).focus();
 
   const beforeName = await page.locator('.theme-picker__trigger-name').first().textContent();
   const beforeBg = await readBgVar(page);

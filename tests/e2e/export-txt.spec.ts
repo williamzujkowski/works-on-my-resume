@@ -16,7 +16,12 @@
  * existence check on canonical resume text.
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, loadSampleResume, waitForThemesReady } from './helpers';
+import {
+  clearAppStorage,
+  loadSampleResume,
+  openMobileMoreMenu,
+  waitForThemesReady,
+} from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await clearAppStorage(page);
@@ -37,7 +42,14 @@ test.beforeEach(async ({ page }) => {
 async function downloadPlainTextBody(
   page: import('@playwright/test').Page,
 ): Promise<{ text: string; filename: string }> {
-  await page.getByRole('button', { name: /^export$/i }).click();
+  /* Mobile (#131): Export sits inside the collapsed More menu on
+     viewports < 640 px; open the drawer first if the trigger isn't
+     immediately visible. */
+  const exportTrigger = page.getByRole('button', { name: /^export$/i });
+  if (!(await exportTrigger.isVisible())) {
+    await openMobileMoreMenu(page);
+  }
+  await exportTrigger.click();
 
   const downloadButton = page.getByRole('button', { name: /download plain text/i });
   await expect(downloadButton).toBeVisible();

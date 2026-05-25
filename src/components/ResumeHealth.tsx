@@ -151,20 +151,29 @@ export default function ResumeHealth({
       {report.findings.length === 0 ? (
         <p className="health__empty">Looking solid for a {labelFor(stage).toLowerCase()} resume.</p>
       ) : (
-        <ul className="health__list">
-          {report.findings.map((finding, i) => (
-            <FindingItem
-              // The same rule id can fire multiple times (weak-verb on
-              // every offending line); include the index for uniqueness.
-              key={`${finding.id}-${finding.line ?? 'doc'}-${i}`}
-              finding={finding}
-              onJumpToLine={onJumpToLine}
-              onJumpToOffender={onJumpToOffender}
-              onInsertRewrite={onInsertRewrite}
-              onJumpToSection={onJumpToSection}
-            />
-          ))}
-        </ul>
+        <>
+          {/* Small-caps mono kicker (#129) above the findings list — pairs
+              with the matching kickers in the toolbar / drawer / tailor
+              groups so the panel reads as part of the same typographic
+              family. */}
+          <h3 className="section-kicker health__findings-kicker">
+            Findings ({report.findings.length})
+          </h3>
+          <ul className="health__list">
+            {report.findings.map((finding, i) => (
+              <FindingItem
+                // The same rule id can fire multiple times (weak-verb on
+                // every offending line); include the index for uniqueness.
+                key={`${finding.id}-${finding.line ?? 'doc'}-${i}`}
+                finding={finding}
+                onJumpToLine={onJumpToLine}
+                onJumpToOffender={onJumpToOffender}
+                onInsertRewrite={onInsertRewrite}
+                onJumpToSection={onJumpToSection}
+              />
+            ))}
+          </ul>
+        </>
       )}
     </section>
   );
