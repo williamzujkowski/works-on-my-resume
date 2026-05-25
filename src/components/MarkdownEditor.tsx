@@ -205,6 +205,7 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const snippetWrapRef = useRef<HTMLDivElement>(null);
   const snippetTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -238,6 +239,66 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
     const rows = Math.max(lineCount, 1);
     return Array.from({ length: rows }, (_, i) => i + 1);
   }, [lineCount]);
+
+  /* ----- Structural overlay rows (#141) -----
+     The overlay paints two subtle structural cues behind the textarea:
+       - a 2 px accent left-rail on heading lines (first non-whitespace `#`)
+       - a 1 px-tinted background band over the leading frontmatter block
+         (the region between an opening `---` on line 0 and the next `---`)
+
+     We emit one `<div>` per source line; class selection happens here so
+     the JSX stays declarative. Memoized on `value` so an unchanged source
+     skips the array allocation on caret-only re-renders. Frontmatter
+     detection is deliberately strict: the opening `---` must sit on line
+     0 (consistent with how the upstream parser keys identity off the
+     leading block). The closing fence is the first `---` line after it;
+     when the writer hasn't typed it yet the band extends to end-of-doc,
+     which is fine — the band is the visual hint that "you're inside a
+     frontmatter block right now". */
+  interface OverlayRow {
+    /** 0-based line index — used as the React key. */
+    index: number;
+    /** Raw line text. For empty lines we substitute a non-breaking
+        space character so the row keeps its line-height contribution
+        to vertical metrics (an empty `<div>` with `white-space: pre-wrap`
+        does NOT reliably measure to one line height; an explicit char
+        side-steps that and keeps the per-line vertical register matching
+        the textarea exactly). */
+    text: string;
+    /** Line begins with `#` after stripping leading whitespace. */
+    isHeading: boolean;
+    /** Line is inside (or is a fence of) the leading frontmatter block. */
+    isFrontmatter: boolean;
+  }
+  const overlayRows = useMemo<OverlayRow[]>(() => {
+    const lines = value.split('\n');
+    // Locate the closing frontmatter fence, if any. The opener must be at
+    // line 0 (strict match — bare `---`, optional trailing whitespace).
+    const hasOpenerAt0 = lines.length > 0 && /^---\s*$/.test(lines[0]);
+    let closeIndex = -1;
+    if (hasOpenerAt0) {
+      for (let i = 1; i < lines.length; i++) {
+        if (/^---\s*$/.test(lines[i])) {
+          closeIndex = i;
+          break;
+        }
+      }
+    }
+    // The frontmatter band spans line 0 through closeIndex (inclusive)
+    // when both fences are present. With only the opener typed so far,
+    // we extend the band to end-of-document so the writer sees the band
+    // grow with their input — disappearing the moment they type the close.
+    const frontmatterEnd = hasOpenerAt0 ? (closeIndex >= 0 ? closeIndex : lines.length - 1) : -1;
+    return lines.map((text, index) => {
+      const stripped = text.replace(/^\s+/, '');
+      return {
+        index,
+        text,
+        isHeading: stripped.length > 0 && stripped.charCodeAt(0) === 35 /* '#' */,
+        isFrontmatter: hasOpenerAt0 && index <= frontmatterEnd,
+      };
+    });
+  }, [value]);
 
   /* ----- Bullet-rewrite eligibility (#93) -----
      When the caret sits on a Markdown bullet inside an Experience-style
@@ -345,12 +406,20 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
     });
   }, []);
 
-  /* Keep the gutter's vertical scroll locked to the textarea's. */
+  /* Keep the gutter's and the structural overlay's vertical scroll locked
+     to the textarea's. The overlay (#141) sits behind the textarea and
+     mirrors line layout; out-of-sync scroll would smear the heading rail
+     across the wrong lines, so the same callback drives both. */
   const syncScroll = useCallback(() => {
     const gutter = gutterRef.current;
+    const overlay = overlayRef.current;
     const textarea = textareaRef.current;
-    if (gutter && textarea) {
-      gutter.scrollTop = textarea.scrollTop;
+    if (textarea) {
+      if (gutter) gutter.scrollTop = textarea.scrollTop;
+      if (overlay) {
+        overlay.scrollTop = textarea.scrollTop;
+        overlay.scrollLeft = textarea.scrollLeft;
+      }
     }
   }, []);
 
@@ -494,6 +563,7 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
         const maxScroll = Math.max(0, ta.scrollHeight - ta.clientHeight);
         ta.scrollTop = Math.round(maxScroll * ratio);
         if (gutterRef.current) gutterRef.current.scrollTop = ta.scrollTop;
+        if (overlayRef.current) overlayRef.current.scrollTop = ta.scrollTop;
       }
 
       return {
@@ -573,6 +643,7 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
             const maxScroll = Math.max(0, t.scrollHeight - t.clientHeight);
             t.scrollTop = Math.round(maxScroll * ratio);
             if (gutterRef.current) gutterRef.current.scrollTop = t.scrollTop;
+            if (overlayRef.current) overlayRef.current.scrollTop = t.scrollTop;
           }, 0);
         },
 
@@ -607,6 +678,7 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
           const maxScroll = Math.max(0, ta.scrollHeight - ta.clientHeight);
           ta.scrollTop = Math.round(maxScroll * ratio);
           if (gutterRef.current) gutterRef.current.scrollTop = ta.scrollTop;
+          if (overlayRef.current) overlayRef.current.scrollTop = ta.scrollTop;
         },
       };
     },
@@ -721,6 +793,33 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
             </span>
           ))}
         </div>
+        {/* ----- Editor pane: overlay + textarea -----
+            Inside the flex surface the gutter is the first column; the
+            pane is the second. It wraps the overlay (#141) and the
+            textarea so the overlay can position itself absolutely
+            against the textarea's frame rather than the whole surface
+            (which would leak the heading rail across the gutter). */}
+        <div className="editor__pane">
+        {/* ----- Structural overlay (#141) -----
+            A purely decorative layer that sits behind the textarea and
+            paints two subtle cues — a 2 px accent left-rail on heading
+            lines, and a 1 px-tinted band over the leading frontmatter
+            block. `aria-hidden` + `pointer-events: none` keep the
+            textarea the controllable element; the overlay's
+            `white-space: pre-wrap` (toggled to `pre` by `--nowrap`)
+            mirrors the textarea so wrap behavior stays consistent. */}
+        <div className="editor__overlay" ref={overlayRef} aria-hidden="true">
+          {overlayRows.map((row) => {
+            const classes = ['editor__overlay-line'];
+            if (row.isHeading) classes.push('editor__overlay-heading');
+            if (row.isFrontmatter) classes.push('editor__overlay-frontmatter');
+            return (
+              <div key={row.index} className={classes.join(' ')}>
+                {row.text.length === 0 ? '\u00A0' : row.text}
+              </div>
+            );
+          })}
+        </div>
         <textarea
           id={textareaId}
           ref={textareaRef}
@@ -755,6 +854,7 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
           }}
           onScroll={syncScroll}
         />
+        </div>
       </div>
 
       {/* ----- Bullet-rewrite affordance (#93) -----
