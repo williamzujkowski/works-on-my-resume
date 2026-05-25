@@ -124,6 +124,43 @@ test('toggling the ruler shows then hides page-break lines on the preview', asyn
   await expect(page.locator('.page-fit-ruler')).toHaveCount(0);
 });
 
+test('chip renders the print-mode label next to the Fit value (#139)', async ({ page }) => {
+  // The hidden-state hazard #139 closes by surfacing the print mode as a
+  // visible segment of the chip. Once a resume is loaded, the chip should
+  // expose a print-mode <select> whose value is the current mode.
+  await loadSampleResume(page);
+  await revealPageFitPill(page);
+
+  const modeSelect = page.locator('.page-fit__mode-select');
+  await expect(modeSelect).toBeVisible();
+  // Default print mode is `conservative` (set in ResumeStudio).
+  await expect(modeSelect).toHaveValue('conservative');
+  // The chip's accessible label spells out that the choice affects both the
+  // print path and the Fit estimate — the whole point of pulling the
+  // toggle out of the hidden Export panel.
+  await expect(modeSelect).toHaveAccessibleName(/print mode/i);
+});
+
+test('selecting Themed in the chip flips body[data-print-mode] (#139)', async ({ page }) => {
+  // The chip is now the primary surface for the print mode. The Export
+  // panel's radio remains as a redundant mirror, but a user should be able
+  // to flip the mode without ever opening Export.
+  await loadSampleResume(page);
+  await revealPageFitPill(page);
+
+  const modeSelect = page.locator('.page-fit__mode-select');
+  await modeSelect.selectOption('theme');
+  await expect.poll(async () => page.evaluate(() => document.body.dataset.printMode)).toBe(
+    'theme',
+  );
+
+  // Pick Conservative — the body attribute follows.
+  await modeSelect.selectOption('conservative');
+  await expect.poll(async () => page.evaluate(() => document.body.dataset.printMode)).toBe(
+    'conservative',
+  );
+});
+
 test('pressing Escape closes the popover and returns focus to the pill', async ({ page }) => {
   await loadSampleResume(page);
 

@@ -1235,7 +1235,13 @@ export default function ResumeStudio() {
               on the preview. Sits next to Save-as-PDF so the estimate and
               the export action read as a pair. */}
           <span className="studio__toolbar-collapsible">
-            <PageFitIndicator previewRef={previewRef} layout={template} parsed={parsed} />
+            <PageFitIndicator
+              previewRef={previewRef}
+              layout={template}
+              parsed={parsed}
+              printMode={printMode}
+              onPrintModeChange={setPrintMode}
+            />
           </span>
 
           {/* Soft spacer that anchors the save/export cluster to the right
