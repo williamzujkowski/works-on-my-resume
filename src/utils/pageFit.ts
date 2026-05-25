@@ -161,6 +161,15 @@ export function estimatePages(previewEl: HTMLElement | null): number {
   if (!previewEl) return 0;
   const rect = previewEl.getBoundingClientRect();
   if (rect.height <= 0) return 0;
+  // Viewport-collapse guard (#126). When the host viewport is zero-width
+  // (headless tabs not in foreground, embed contexts, off-screen iframes)
+  // the article collapses to ~50 px wide and ~200,000 px tall — and the
+  // page-fit pill ends up reading "121.2 pages". The width-scale factor
+  // already clamps low, but it can't tell the difference between "narrow
+  // mobile pane" and "viewport totally collapsed". 200 px is a hard floor
+  // below which we treat the measurement as unreliable and report 0
+  // (callers render the pill as "—" or hide it).
+  if (rect.width < 200) return 0;
   // Scale the measured height to a print-equivalent height. A narrow
   // preview reflows text into more lines than the wider print page, so a
   // factor < 1 shortens the measured height toward the print equivalent.
@@ -178,7 +187,7 @@ export function estimatePages(previewEl: HTMLElement | null): number {
  *   - `pages` is rounded to one decimal for display only.
  *
  * @example
- *   formatPagesLabel(0);    // "Fits 1 page"     (no measurement yet)
+ *   formatPagesLabel(0);    // "Fit: —"          (no measurement yet — #126)
  *   formatPagesLabel(0.83); // "Fits 1 page"
  *   formatPagesLabel(1);    // "Fits 1 page"
  *   formatPagesLabel(1.04); // "Fits 1 page"     (rounds to 1.0)
@@ -186,6 +195,12 @@ export function estimatePages(previewEl: HTMLElement | null): number {
  *   formatPagesLabel(2.31); // "Fit: 2.3 pages"
  */
 export function formatPagesLabel(pages: number): string {
+  // A zero estimate now signals "measurement unavailable" (article detached
+  // or viewport collapsed; see the width-floor guard in estimatePages).
+  // Render an em-dash rather than the optimistic "Fits 1 page" we used to
+  // show — that label looked like a positive answer for a no-answer state
+  // (#126).
+  if (pages <= 0) return 'Fit: —';
   // Round to one decimal first so a 1.04 estimate reads as "Fits 1 page"
   // rather than the pedantic "Fit: 1.0 pages".
   const rounded = Math.round(pages * 10) / 10;
