@@ -2443,7 +2443,8 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   font-weight: 600;
 }
 
-.export-panel__group {
+.export-panel__group,
+.export-panel__section {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -2462,6 +2463,45 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+/* Download rows now lead with a 4ch monospace format glyph (PDF / MD /
+   HTM / TXT / JSON / CSS / ZIP) so the popover reads like a directory
+   listing (#136). The glyph slot is fixed-width — every row's label
+   column lines up regardless of glyph length. Buttons inside the
+   grouped sections become left-aligned flex containers; the `btn`
+   primitive defaults to center, so override it locally. */
+.export-panel__section .export-panel__buttons .btn {
+  justify-content: flex-start;
+  gap: 0;
+}
+
+.export-panel__glyph {
+  display: inline-block;
+  width: 4ch;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: left;
+  color: var(--ui-fg-subtle);
+}
+
+/* When the row is the primary action (PDF), the label sits on the
+   accent — keep the glyph readable against that background by leaning
+   toward the on-accent foreground token rather than the muted neutral
+   the unstyled rows use. */
+.export-panel__section .btn--primary .export-panel__glyph {
+  color: color-mix(in oklch, var(--ui-accent-contrast) 78%, transparent);
+}
+
+/* When the row is disabled (no resume loaded), the .btn primitive dims
+   its label via `color`; mirror that dim onto the glyph so the row
+   reads as a unit, not a label + brighter prefix. */
+.export-panel__section .btn[disabled] .export-panel__glyph {
+  color: inherit;
+  opacity: 0.7;
 }
 
 .export-panel__radio-group {
