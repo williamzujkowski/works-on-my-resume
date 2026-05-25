@@ -1408,7 +1408,10 @@ export default function ResumeStudio() {
           open={editorOpen}
           onToggle={(event) => setEditorOpen(event.currentTarget.open)}
         >
-          <summary className="studio__pane-header studio__pane-header--summary">
+          <summary
+            className="studio__pane-header studio__pane-header--summary"
+            aria-label={`Markdown editor — ${sourceName}`}
+          >
             <span className="studio__pane-dots" aria-hidden="true">
               <span className="studio__pane-dot" />
               <span className="studio__pane-dot" />

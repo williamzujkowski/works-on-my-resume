@@ -790,14 +790,21 @@ export default function MarkdownEditor({
           relate to. */}
       {showTabStrip && (
         <div className="editor__tabstrip" data-testid="editor-tabstrip">
-          <ul className="editor__tabs" role="tablist" aria-label="Open documents">
+          {/* The tab strip is presentational today (a single static tab,
+              not real tab navigation). When multi-tab support lands, the
+              `<ul>` will earn `role="tablist"` and the `<li>` will earn
+              `role="tab"` + `aria-selected` — but with a single
+              non-interactive tab today, ARIA roles would force us to
+              fake the tab role and trip axe's `aria-required-children`
+              rule. The accessible name still flows through the
+              visually-hidden status span below. */}
+          <ul className="editor__tabs" aria-label="Open documents">
             <li
               className={
                 isDirty
                   ? 'editor__tab editor__tab--active editor__tab--dirty'
                   : 'editor__tab editor__tab--active'
               }
-              role="presentation"
             >
               {/* The dirty dot reads as "this buffer has unsaved
                   changes". `aria-hidden` because the same information
