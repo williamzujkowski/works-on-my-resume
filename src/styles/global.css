@@ -418,6 +418,45 @@ a {
   letter-spacing: -0.03em;
   color: var(--ui-fg);
   line-height: 1.05;
+  /* Title shimmer (#140 bonus): a diagonal scanline sweeps the wordmark
+     once on mount so the empty hero feels staged rather than static. The
+     effect is layered via ::after so the underlying text node stays
+     untouched (no transform on the glyphs themselves — print and a11y
+     trees see the plain text). Disabled under prefers-reduced-motion via
+     the global block in `@media (prefers-reduced-motion: reduce)`. */
+  position: relative;
+  overflow: hidden;
+}
+
+/* The shimmer overlay only mounts under no-preference. Under reduced
+   motion the pseudo-element is suppressed entirely so the title is plain
+   text with no decorative sweep. */
+@media (prefers-reduced-motion: no-preference) {
+  .app-hero__title::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      115deg,
+      transparent 30%,
+      color-mix(in oklch, var(--ui-accent) 35%, transparent) 50%,
+      transparent 70%
+    );
+    transform: translateX(-110%);
+    /* ~200 ms sweep at +80 ms (#140 bonus). The shimmer runs once —
+       `both` fill keeps the post-state hidden (transform: translateX(110%)). */
+    animation: app-hero-shimmer 220ms cubic-bezier(0.22, 1, 0.36, 1) 80ms 1 both;
+  }
+
+  @keyframes app-hero-shimmer {
+    from {
+      transform: translateX(-110%);
+    }
+    to {
+      transform: translateX(110%);
+    }
+  }
 }
 
 .app-hero__tagline {
@@ -482,6 +521,27 @@ a {
   color: var(--ui-border-strong);
   font-size: 1.1rem;
   line-height: 1;
+}
+
+/* Check-stat fade-in (#140): the Offline-ready check is the last entrance
+   in the staggered tick-up — it fades in ~400 ms after the Themes counter
+   starts. The number stats animate via JS (textContent ticks 0 → final),
+   the check is iconography so it gets a class-toggled fade instead. The
+   `--check-enter` modifier is omitted under prefers-reduced-motion in
+   AppHero.tsx, so the icon mounts at opacity 1 with no animation. */
+.app-hero__stat--check-enter {
+  animation: app-hero-check-fade 400ms cubic-bezier(0.22, 1, 0.36, 1) 400ms both;
+}
+
+@keyframes app-hero-check-fade {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 640px) {

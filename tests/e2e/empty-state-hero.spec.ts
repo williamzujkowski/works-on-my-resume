@@ -71,3 +71,85 @@ test('the body-level data-app-phase attribute flips on load + unload', async ({ 
   // Phase 2 → data-app-phase='workbench'.
   await expect(page.locator('body')).toHaveAttribute('data-app-phase', 'workbench');
 });
+
+/**
+ * #140 — stat counters tick up on mount with a staggered entrance.
+ *
+ * The numbers animate from 0 to their final values over ~500 ms via
+ * `requestAnimationFrame` writing `textContent`. Themes leads, Layouts
+ * staggers +100 ms, Templates +200 ms; the Offline-ready check fades in
+ * via a CSS class at +400 ms. Under prefers-reduced-motion: reduce the
+ * effect is skipped — the final values are rendered immediately at mount.
+ *
+ * Both specs use `page.emulateMedia` to pin the reduced-motion preference
+ * BEFORE navigation, so AppHero's mount-time `matchMedia` read picks up
+ * the requested value. (Setting `reducedMotion` via `test.use` is unreliable
+ * when the worker reuses contexts across describe blocks.)
+ */
+test('#140 stat counters animate on mount and tag the check stat with --check-enter', async ({
+  page,
+}) => {
+  // The top-level beforeEach already navigated; reset media + re-navigate
+  // so AppHero's mount-time `matchMedia` read picks up the requested value.
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('');
+
+  // Hero is mounted before we assert on its children.
+  await expect(page.locator('.app-hero')).toBeVisible();
+
+  // Three numeric stat values (Themes, Layouts, Templates).
+  const numericStats = page.locator('.app-hero__stat-value:not(.app-hero__stat-value--icon)');
+  await expect(numericStats).toHaveCount(3);
+
+  // After the entrance budget all three numeric stats land on a positive
+  // integer. We don't pin the exact themeCount because the hero is
+  // rendered while the lazy 545-theme dataset is still resolving — the
+  // boot fallback may be lower. The animation contract is: from 0, to a
+  // positive integer, within ~1 s.
+  await expect.poll(
+    async () => {
+      const texts = await numericStats.allTextContents();
+      return texts.every((t) => {
+        const n = Number(t);
+        return Number.isInteger(n) && n > 0;
+      });
+    },
+    {
+      timeout: 1500,
+      message: 'stat counters should reach their final values within ~1 s',
+    },
+  ).toBe(true);
+
+  // Sanity-check the icon stat: it carries the `--check-enter` modifier
+  // when motion is allowed.
+  await expect(page.locator('.app-hero__stat--check')).toHaveClass(/app-hero__stat--check-enter/);
+});
+
+test('#140 stat counters skip the entrance under prefers-reduced-motion: reduce', async ({
+  page,
+}) => {
+  // The top-level beforeEach already navigated; set the media query and
+  // re-navigate so AppHero's mount-time `matchMedia` read sees `reduce`.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('');
+
+  // The hero is present.
+  await expect(page.locator('.app-hero')).toBeVisible();
+
+  // Under reduced-motion the check stat must NOT carry the entrance
+  // modifier — AppHero.tsx omits it. (This also means the icon is
+  // visible at opacity 1 from frame zero.)
+  await expect(page.locator('.app-hero__stat--check')).not.toHaveClass(
+    /app-hero__stat--check-enter/,
+  );
+
+  // The numeric stat values must already be at their final state — no
+  // "0" anywhere among the three numeric counters.
+  const numericStats = page.locator('.app-hero__stat-value:not(.app-hero__stat-value--icon)');
+  await expect(numericStats).toHaveCount(3);
+  for (const text of await numericStats.allTextContents()) {
+    const n = Number(text);
+    // Final state must be a positive integer — no transient zero.
+    expect(Number.isInteger(n) && n > 0).toBe(true);
+  }
+});
