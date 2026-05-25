@@ -25,6 +25,7 @@ import {
   clearAppStorage,
   expandMobileEditor,
   loadSampleResume,
+  openMobileMoreMenu,
   openSettingsDrawer,
   openThemePickerReady,
   waitForThemesReady,
@@ -129,7 +130,12 @@ test('tailor disclosure open has no serious or critical a11y violations', async 
 test('page-fit popover open has no serious or critical a11y violations', async ({ page }) => {
   await loadSampleResume(page);
 
+  // Mobile (#131): the page-fit pill collapses behind the More menu —
+  // open the drawer first when the pill isn't immediately visible.
   const pill = page.locator('.page-fit__pill');
+  if (!(await pill.isVisible())) {
+    await openMobileMoreMenu(page);
+  }
   await expect(pill).toBeVisible();
   await pill.click();
   await expect(page.getByRole('dialog', { name: /page fit details/i })).toBeVisible();

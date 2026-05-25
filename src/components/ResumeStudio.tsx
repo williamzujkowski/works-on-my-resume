@@ -821,11 +821,30 @@ export default function ResumeStudio() {
       setMobileMoreOpen(false);
     }
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        setMobileMoreOpen(false);
-        mobileMoreTriggerRef.current?.focus();
+      if (event.key !== 'Escape') return;
+      /* The drawer hosts other popovers (Page-fit, Export, Settings).
+         Each of those owns its own Escape handler that closes itself and
+         restores focus to ITS trigger inside the drawer. Document-level
+         listeners are siblings, not ancestors, so `stopPropagation` from
+         a child popover does NOT prevent this one from also firing.
+         Guard by checking what just received focus: if focus landed on a
+         control INSIDE the drawer (a child popover closed), leave the
+         drawer open. Only close when focus is outside the drawer or
+         already on the More trigger itself. */
+      if (typeof document !== 'undefined') {
+        const active = document.activeElement;
+        if (
+          active instanceof HTMLElement &&
+          mobileMoreDrawerRef.current?.contains(active) &&
+          active !== mobileMoreTriggerRef.current
+        ) {
+          // A drawer-internal control just received focus — that's a
+          // child-popover-close, not a drawer-dismiss.
+          return;
+        }
       }
+      setMobileMoreOpen(false);
+      mobileMoreTriggerRef.current?.focus();
     }
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);

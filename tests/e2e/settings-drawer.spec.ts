@@ -76,7 +76,16 @@ test('Escape closes the drawer and restores focus to the gear button', async ({ 
   await expect(page.getByRole('button', { name: /open settings/i })).toBeFocused();
 });
 
-test('click-outside the drawer dismisses it', async ({ page }) => {
+test('click-outside the drawer dismisses it', async ({ page }, testInfo) => {
+  // On mobile the drawer takes width: 100vw — there is no visible overlay
+  // strip to click. Esc / close button / a back-gesture are the dismiss
+  // paths there (covered by the Escape spec above). The click-outside
+  // affordance is a desktop concern.
+  test.skip(
+    testInfo.project.name === 'mobile-iphone-13',
+    'drawer fills the viewport on mobile — no overlay strip to click',
+  );
+
   await openSettingsDrawer(page);
   const drawer = page.getByRole('dialog', { name: /^settings$/i });
   await expect(drawer).toBeVisible();
