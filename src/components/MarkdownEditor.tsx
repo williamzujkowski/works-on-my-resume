@@ -74,6 +74,15 @@ interface MarkdownEditorProps {
   onChange: (value: string) => void;
   /** Imperative-handle ref. Optional — most callers don't need it. */
   editorRef?: Ref<MarkdownEditorHandle>;
+  /**
+   * Called whenever the caret moves (selection change, click, keyup,
+   * arrow-key, programmatic jump). Both values are 1-based; `null` means
+   * the textarea has no caret yet (the user has not focused it this
+   * session, or it just blurred). Powers the status-line cursor segment
+   * (#134). The component still owns its internal `caret` state for the
+   * bullet-rewrite affordance; this callback is a strict observer.
+   */
+  onCaretChange?: (line: number | null, column: number | null) => void;
 }
 
 /** Session-scoped key for the soft-wrap preference. */
@@ -199,7 +208,12 @@ One or two sentences describing who you are and what you do.
    list all five so nothing is unreachable. */
 const QUICK_SNIPPETS: Snippet[] = SNIPPETS.filter((s) => s.quickLabel !== undefined);
 
-export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownEditorProps) {
+export default function MarkdownEditor({
+  value,
+  onChange,
+  editorRef,
+  onCaretChange,
+}: MarkdownEditorProps) {
   const textareaId = useId();
   const snippetMenuId = useId();
 
@@ -341,6 +355,30 @@ export default function MarkdownEditor({ value, onChange, editorRef }: MarkdownE
       setRewriteTrayOpen(false);
     }
   }, [rewriteContext, rewriteTrayOpen]);
+
+  /* ----- Caret → (line, column) observer (#134) -----
+     The status line wants the current 1-based cursor position. We already
+     track `caret` (the selectionStart offset) for the bullet-rewrite
+     affordance, so the cheapest place to emit line/column is right here:
+     when either `caret` or `value` changes, re-derive the position and
+     hand it up. Pure function of the latest two inputs — no separate
+     storage layer. */
+  useEffect(() => {
+    if (!onCaretChange) return;
+    if (caret === null) {
+      onCaretChange(null, null);
+      return;
+    }
+    // Clamp into the live document; an externally-driven value change
+    // (snapshot load, clear) can leave the previous `caret` pointing past
+    // the new end-of-document for a tick.
+    const safe = Math.max(0, Math.min(caret, value.length));
+    const upto = value.slice(0, safe);
+    const newlineIndex = upto.lastIndexOf('\n');
+    const line = upto.length === 0 ? 1 : upto.split('\n').length;
+    const column = newlineIndex === -1 ? safe + 1 : safe - newlineIndex;
+    onCaretChange(line, column);
+  }, [caret, value, onCaretChange]);
 
   /* Close the rewrite tray on an outside pointer-down. Mirrors the
      section-snippet popover's pattern. */

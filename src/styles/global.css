@@ -1212,6 +1212,172 @@ body[data-app-phase='hero'] .app-header {
   border-color: var(--ui-danger);
 }
 
+/* ------------------------------------------------------------------ */
+/* Studio status line (#134) — vim-modeline-style state strip.         */
+/*                                                                     */
+/* Mono, uppercase kickers, ~28 px tall. Thin vertical separators      */
+/* rendered with `::after { content: '│' }` so we never add a real     */
+/* divider element to the DOM tree. `position: sticky; bottom: 0`     */
+/* pins it to the bottom of the `.studio` container as the editor /    */
+/* preview pane scroll. Hidden on print (the component carries         */
+/* `data-print-hide`, and print.css generic rule turns it off).        */
+/*                                                                     */
+/* On viewports ≤ 640 px (matching the mobile breakpoint used by the   */
+/* toolbar More menu) the lines / cursor / fit / WCAG segments hide    */
+/* via `display: none`, leaving filename + HEALTH + dirty dot — the    */
+/* terminal-modeline minimum.                                          */
+/* ------------------------------------------------------------------ */
+.studio__statusline {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  min-height: 28px;
+  padding: 0 var(--space-3);
+  margin-top: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1;
+  background: color-mix(in oklch, var(--ui-bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg-muted);
+  font-variant-numeric: tabular-nums;
+  /* Hide the scrollbar that `overflow-x: auto` would otherwise paint
+     when segments overflow on narrow widths. The fade is purely visual. */
+  scrollbar-width: none;
+}
+
+.studio__statusline::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .studio__statusline {
+    background: var(--ui-bg-elevated);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Each segment carries a trailing `│` separator via `::after`. The last
+   one is suppressed below — using `:last-child` keeps the rule honest
+   when a segment is conditionally absent (cursor missing, dirty off,
+   parsed null). */
+.studio__statusline-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0 var(--space-2);
+  white-space: nowrap;
+  position: relative;
+}
+
+.studio__statusline-seg::after {
+  content: '│';
+  position: absolute;
+  right: -0.2em;
+  color: var(--ui-border-strong);
+  font-weight: 400;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.studio__statusline-seg:last-child::after {
+  content: none;
+}
+
+/* Uppercase kicker (HEALTH, FIT, …). Local equivalent of `.section-kicker`
+   tuned for the modeline's tighter type scale — the global utility is
+   still undefined as of this writing, and inlining the contract here
+   keeps the modeline independent of that resolution. */
+.studio__statusline-kicker {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-fg-subtle);
+  font-weight: 600;
+}
+
+.studio__statusline-value {
+  color: var(--ui-fg);
+  font-weight: 500;
+}
+
+/* Filename: subtler tint, ellipsis at narrow widths. */
+.studio__statusline-seg--filename .studio__statusline-value {
+  color: var(--ui-fg-muted);
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+
+/* The `●draft` dot uses the same accent the rest of the chrome reaches
+   for when a state needs to read as "in progress". */
+.studio__statusline-seg--draft .studio__statusline-value {
+  color: var(--ui-accent);
+  font-weight: 600;
+}
+
+.studio__statusline-dot {
+  font-size: 0.85em;
+  line-height: 1;
+  /* Pull the bullet up a hair so it sits on the baseline of the text. */
+  position: relative;
+  top: -0.05em;
+}
+
+/* WCAG tone — same three-tier mapping as the preview-pane badge so the
+   reviewer sees the same green / amber / red regardless of which surface
+   they're looking at. */
+.studio__statusline-seg--wcag-aaa .studio__statusline-value {
+  color: var(--ui-success);
+  font-weight: 600;
+}
+
+.studio__statusline-seg--wcag-aa .studio__statusline-value {
+  color: var(--ui-warning);
+  font-weight: 600;
+}
+
+.studio__statusline-seg--wcag-fail .studio__statusline-value {
+  color: var(--ui-danger);
+  font-weight: 600;
+}
+
+/* Mobile collapse: hide the lower-priority segments and let the modeline
+   read as filename · HEALTH · ●. Match the toolbar's 640 px breakpoint
+   so the chrome shifts together. */
+@media (max-width: 640px) {
+  .studio__statusline-seg--cursor,
+  .studio__statusline-seg--lines,
+  .studio__statusline-seg--fit,
+  .studio__statusline-seg--wcag {
+    display: none;
+  }
+  /* The compact form drops the word "draft", leaving just the bullet. */
+  .studio__statusline-seg--draft .studio__statusline-value {
+    font-size: 0;
+  }
+  .studio__statusline-seg--draft .studio__statusline-dot {
+    font-size: 0.85rem;
+  }
+  /* On the compact form the HEALTH kicker shortens to "H". */
+  .studio__statusline-seg--health .studio__statusline-kicker {
+    font-size: 0;
+  }
+  .studio__statusline-seg--health .studio__statusline-kicker::before {
+    content: 'H';
+    font-size: 0.62rem;
+  }
+}
+
 /* Let the editor pane body grow so its textarea can fill the shared
    height — no dead space beside a tall preview (#52). */
 .studio__pane-body {

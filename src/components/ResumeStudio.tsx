@@ -47,6 +47,7 @@ import MarkdownUploader from './MarkdownUploader';
 import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor';
 import ResumePreview from './ResumePreview';
 import ResumeHealth from './ResumeHealth';
+import StudioStatusLine from './StudioStatusLine';
 import ThemePicker from './ThemePicker';
 import LayoutSelector from './LayoutSelector';
 import ExportPanel from './ExportPanel';
@@ -111,6 +112,22 @@ export default function ResumeStudio() {
   const [markdown, setMarkdown] = useState('');
   const [parsed, setParsed] = useState<ParsedResume | null>(null);
   const [sourceName, setSourceName] = useState('resume.md');
+
+  /* Baseline markdown for the modeline's `●draft` indicator (#134).
+     Set on every load path (upload, sample, snapshot, draft restore, clear)
+     so `markdown !== baseline` means "the user has typed something the
+     current source state doesn't reflect yet". Stays a plain string so
+     the equality check is O(1) on the reference for the common no-edit
+     case and never deeper than a single string-compare otherwise. */
+  const [baselineMarkdown, setBaselineMarkdown] = useState('');
+
+  /* Caret position threaded into the status line (#134). MarkdownEditor
+     emits 1-based line + column via its `onCaretChange` prop; we hold
+     them at the parent so the modeline can render even when the editor
+     is collapsed on mobile. `null` means "no caret yet" (or just blurred);
+     the modeline omits its cursor segment in that state. */
+  const [cursorLine, setCursorLine] = useState<number | null>(null);
+  const [cursorColumn, setCursorColumn] = useState<number | null>(null);
 
   /* ----- Theme state -----
      The ~600 kB theme dataset is code-split (#78): it loads asynchronously
@@ -410,6 +427,10 @@ export default function ResumeStudio() {
       const saved = getDraft();
       if (saved && saved.length > 0) {
         setMarkdown(saved);
+        // A restored draft is, by definition, the baseline of the next
+        // session — without this the modeline's ●draft pill would flash
+        // on first paint (#134).
+        setBaselineMarkdown(saved);
         setSourceName('saved-draft.md');
         setLoadAnnouncement('Restored your saved draft.');
       }
@@ -442,6 +463,13 @@ export default function ResumeStudio() {
     prevHasResumeRef.current = hasResume;
     setEditorOpen(!hasResume);
   }, [hasResume]);
+
+  /** Status-line caret observer (#134). Stable reference so MarkdownEditor's
+      caret-change effect doesn't re-fire on every parent render. */
+  const handleCaretChange = useCallback((line: number | null, column: number | null) => {
+    setCursorLine(line);
+    setCursorColumn(column);
+  }, []);
 
   /** Toggle single-key shortcuts and persist the choice. */
   const changeShortcutsEnabled = useCallback((enabled: boolean) => {
@@ -902,6 +930,9 @@ export default function ResumeStudio() {
     const overwritingSavedDraft = isDraftPersistenceEnabled() && (getDraft()?.length ?? 0) > 0;
 
     setMarkdown(text);
+    // Loaded content is the new baseline (#134) — the ●draft indicator
+    // stays off until the user starts editing.
+    setBaselineMarkdown(text);
     setSourceName(name || 'resume.md');
 
     if (overwritingSavedDraft) {
@@ -1053,6 +1084,9 @@ export default function ResumeStudio() {
       if (!created) return;
       // Re-read so the cap-eviction (oldest dropped on overflow) is reflected.
       setSnapshots(getSnapshots());
+      // Saving a snapshot is the closest thing this app has to a "commit" —
+      // align the baseline so the modeline's ●draft pill clears (#134).
+      setBaselineMarkdown(markdown);
       setLoadAnnouncement(`Snapshot saved: ${created.name}.`);
     },
     [draftEnabled, theme, markdown, template],
@@ -1061,6 +1095,9 @@ export default function ResumeStudio() {
   const handleLoadSnapshot = useCallback(
     (snap: ResumeSnapshot) => {
       setMarkdown(snap.markdown);
+      // Loading a snapshot resets the baseline — the writer should not see
+      // a `●draft` indicator just because they loaded their own save (#134).
+      setBaselineMarkdown(snap.markdown);
       setSourceName(`snapshot · ${snap.name}`);
       // Restore the theme + template the snapshot was captured with, if
       // they still exist in the dataset. A missing theme degrades to the
@@ -1086,6 +1123,11 @@ export default function ResumeStudio() {
   const handleClear = useCallback(() => {
     setMarkdown('');
     setParsed(null);
+    // Reset the modeline baseline so the ●draft pill isn't carried across
+    // a clear (#134) — Phase 1 starts fresh.
+    setBaselineMarkdown('');
+    setCursorLine(null);
+    setCursorColumn(null);
     setSourceName('resume.md');
     setExportOpen(false);
     setThemePickerOpen(false);
@@ -1402,7 +1444,12 @@ export default function ResumeStudio() {
                 </span>
               </label>
             </div>
-            <MarkdownEditor value={markdown} onChange={setMarkdown} editorRef={editorHandleRef} />
+            <MarkdownEditor
+              value={markdown}
+              onChange={setMarkdown}
+              editorRef={editorHandleRef}
+              onCaretChange={handleCaretChange}
+            />
             {/* Tailor for a role (#91). Local-only JD keyword overlap.
                 Mounted below the editor so it sits alongside the textarea
                 the user is editing — the actionable view is "your draft +
@@ -1523,6 +1570,26 @@ export default function ResumeStudio() {
           )}
         </section>
       </div>
+
+      {/* ----- Status line (#134) -----
+           Vim-modeline-style readout pinned to the bottom of the studio
+           container. Consolidates the scattered state signals (filename,
+           line count, cursor, Health score, Fit, dirty marker, WCAG)
+           into a single mono strip. Hidden in Phase 1 — without a resume
+           the modeline would be a row of dashes. Hidden on print via
+           data-print-hide (set inside the component). */}
+      {hasResume && (
+        <StudioStatusLine
+          markdown={markdown}
+          parsed={parsed}
+          sourceName={sourceName}
+          cursorLine={cursorLine}
+          cursorColumn={cursorColumn}
+          dirty={markdown !== baselineMarkdown}
+          previewRef={previewRef}
+          wcag={theme.contrast}
+        />
+      )}
 
       {/* ----- Keyboard-shortcuts help overlay (#58). ----- */}
       {helpOpen && (
