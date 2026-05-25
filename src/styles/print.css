@@ -31,11 +31,15 @@
   body {
     background: #fff;
     margin: 0;
-    /* Page margins live on the body (not on @page) so the body's background
-       reaches the printed page edges — otherwise theme print mode shows the
-       printer's default white paper as a frame around the themed content
-       (#106). Conservative mode is unaffected: white-on-white looks identical. */
-    padding: 0.6in;
+    /* Visible page margins now come from `@page { margin: 0.6in }` below
+       (#133). Body padding was a #106-era workaround so the themed body bg
+       could reach the page edges, but it only paints once at body's actual
+       top/bottom — multi-page resumes lost the top/bottom margin on every
+       page after page 1. The themed bleed is preserved by `html { background }`
+       lower down, which paints across the @page margin area on modern
+       browsers (the canvas root background covers the entire page surface,
+       including the @page margin region). */
+    padding: 0;
   }
 
   .app-shell,
@@ -76,12 +80,16 @@
     display: none !important;
   }
 
-  /* Letter-size pages with zero page margin — the body's 0.6in padding (set
-     above) provides the visible margin. This is what lets theme print mode
-     paint its background all the way to the page edge (#106). */
+  /* Letter-size pages with the visible content margin on @page itself, so
+     every page (1, 2, 3, …) gets identical top/bottom/left/right insets.
+     The previous setup (#106) tried to put the margin on `body { padding }`
+     to let the themed bg bleed to the page edges, but body padding only
+     paints once — page 2+ ended up with content flush to the edge (#133).
+     We now lean on `html { background }` for the theme bleed (the canvas
+     root paints across the @page margin area on modern browsers). */
   @page {
     size: letter;
-    margin: 0;
+    margin: 0.6in;
   }
 
   /* --------------------------------------------------------------

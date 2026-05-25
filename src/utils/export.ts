@@ -269,13 +269,16 @@ body {
   margin-inline: auto;
 }
 
-/* Print: page margin moves from @page onto the body so the body's background
-   reaches the printed page edges — otherwise theme print mode shows the
-   printer's default white paper as a frame around the themed content (#106).
-   Conservative mode looks identical (white-on-white). */
+/* Print: visible page margins live on @page so every page (1, 2, 3, …) gets
+   identical insets. The previous #106 setup pushed the margin onto body
+   padding to let the themed bg bleed to the page edges, but body padding
+   only paints once — multi-page resumes lost their top/bottom margins on
+   every page after page 1 (#133). The themed bleed is preserved by the
+   html-element background rule for theme print mode — the canvas root paints
+   across the @page margin region on modern browsers. */
 @page {
   size: letter;
-  margin: 0;
+  margin: 0.6in;
 }
 
 /* Multi-page footer (#109) — see src/styles/print.css for the full rationale.
@@ -306,7 +309,8 @@ html:has(body[data-print-mode='theme']) {
 
 @media print {
   body {
-    padding: 0.6in;
+    /* No padding here — visible margin lives on @page above (#133). */
+    padding: 0;
   }
 
   .resume-preview {
@@ -339,7 +343,19 @@ html:has(body[data-print-mode='theme']) {
   /* ----------------------------------------------------------------
    * THEME mode — print with the embedded theme's colors. The browser
    * has to be told to actually paint background colors in print.
+   *
+   * The html-level background is what makes the themed colour reach the
+   * page edges through the @page margin region on every printer page
+   * (#133). Without it, the body's bg only paints inside the content area
+   * @page reserves, and the margin bands print on the printer's default
+   * paper colour.
    * -------------------------------------------------------------- */
+  html:has(body[data-print-mode='theme']) {
+    background: var(--resume-bg, #ffffff) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   body[data-print-mode='theme'] {
     background: var(--resume-bg, #ffffff);
     -webkit-print-color-adjust: exact;
