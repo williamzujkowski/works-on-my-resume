@@ -123,28 +123,68 @@ test('Theme picker trigger has no panel outline (drops the pill chrome)', async 
      #135 rhythm dropped the pill outline so the trigger reads as
      `THEME [name] ▾` text with affordance.
 
-     We use the CSS-class locator (`.theme-picker__trigger`) rather than
-     a role-name search: CI's accessibility tree has multiple buttons
-     whose names start with the word "Theme" (the Settings drawer's
-     theme-nav row joins the picker in the toolbar's a11y tree). The
-     class is the unambiguous selector.
+     Rather than read `getComputedStyle` (which reports the LIVE state
+     including any :hover that the runtime cursor produces — cold-CI
+     runs occasionally leave the pointer on the trigger between the
+     last action and the assertion), we walk the matched CSS rules and
+     confirm the *resting-state* rule paints transparent. The hover /
+     [aria-expanded='true'] rule painting `--ui-panel-hover` is the
+     intended active state and is allowed to exist as a separate rule.
 
-     Move the pointer somewhere innocuous before sampling so we never
-     pick up the trigger's :hover wash (which is the intended active
-     state, not the resting state). */
-  await page.mouse.move(0, 0);
+     The CSS-class locator (`.theme-picker__trigger`) is the unambiguous
+     selector. */
   const trigger = page.locator('.theme-picker__trigger').first();
   await expect(trigger).toBeVisible();
-  const style = await trigger.evaluate((el) => {
-    const cs = getComputedStyle(el);
-    return {
-      background: cs.backgroundColor,
-      borderTop: cs.borderTopColor,
+
+  const restingBg = await trigger.evaluate((el) => {
+    /* Walk every stylesheet rule, find ones whose selector text matches
+       the bare `.theme-picker__trigger` (i.e. the resting-state rule,
+       not the :hover / [aria-expanded='true'] variants), and report the
+       `background-color` declaration. Falls back to `getComputedStyle`
+       when the rule list is unreachable (cross-origin stylesheet). */
+    const matchesResting = (selector: string): boolean => {
+      // Resting rule: selector text is exactly `.theme-picker__trigger`
+      // (or starts with it followed by a combinator that isn't a
+      // pseudo-class / attribute). Crucially we EXCLUDE the :hover and
+      // [aria-expanded='true'] siblings which paint the active wash.
+      const trimmed = selector.trim();
+      if (trimmed === '.theme-picker__trigger') return true;
+      return false;
     };
+    let found = '';
+    for (const sheet of Array.from(document.styleSheets)) {
+      let rules: CSSRuleList;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        // Cross-origin stylesheet: skip silently.
+        continue;
+      }
+      for (const rule of Array.from(rules)) {
+        if (!(rule instanceof CSSStyleRule)) continue;
+        // Some rules carry multiple selectors separated by commas.
+        const selectors = rule.selectorText.split(',').map((s) => s.trim());
+        if (selectors.some(matchesResting)) {
+          const bg = rule.style.getPropertyValue('background').trim();
+          const bgc = rule.style.getPropertyValue('background-color').trim();
+          if (bg) found = bg;
+          else if (bgc) found = bgc;
+        }
+      }
+    }
+    return found || getComputedStyle(el).backgroundColor;
   });
 
-  /* rgba(...) with alpha = 0, or the literal "transparent" string — both
-     are valid representations of "no paint at rest". */
-  expect(style.background.replace(/\s/g, '')).toMatch(/(rgba\([^)]+,0\)|transparent)/);
-  expect(style.borderTop.replace(/\s/g, '')).toMatch(/(rgba\([^)]+,0\)|transparent)/);
+  /* The resting-state rule declares `background: transparent` (or an
+     equivalent zero-alpha rgba). Accept either. */
+  expect(restingBg.replace(/\s/g, '')).toMatch(/(rgba\([^)]+,0\)|transparent)/);
+
+  /* The border-top color is computed from `border: 1px solid transparent`;
+     the runtime reports `rgba(0, 0, 0, 0)` for that. Sampling computed
+     style is safe here because the :hover rule doesn't override the
+     border-color (just the background). */
+  const borderTop = await trigger.evaluate(
+    (el) => getComputedStyle(el).borderTopColor,
+  );
+  expect(borderTop.replace(/\s/g, '')).toMatch(/(rgba\([^)]+,0\)|transparent)/);
 });
