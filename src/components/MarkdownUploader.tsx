@@ -447,7 +447,15 @@ function MarkdownUploaderImpl(
      stable so the parent doesn't need a special-case wiring). */
   void onClear;
 
-  /* The shared, visually-hidden file inputs — referenced from both phases. */
+  /* The shared, visually-hidden file inputs — referenced from both phases.
+     Phase 1 still wraps the visible "Pick a file" label around this input
+     (the `<label htmlFor={inputId}>`), so axe is happy there. Phase 2
+     used to ride on the now-removed "Replace file" label inside the
+     collapsed bar; with that label gone (#138 — Replace file moved into
+     the editor tab strip and triggers `openReplaceDialog()` instead),
+     axe correctly flags the bare hidden input. An `aria-label` on the
+     input gives it an accessible name without re-mounting a visible
+     label that we deliberately don't want in either phase. */
   const fileInput = (
     <input
       ref={fileInputRef}
@@ -455,6 +463,7 @@ function MarkdownUploaderImpl(
       className="visually-hidden"
       type="file"
       accept={ACCEPT}
+      aria-label="Replace resume file"
       onChange={handleInputChange}
     />
   );
