@@ -1834,6 +1834,10 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   border-radius: 0;
   resize: none;
   tab-size: 2;
+  /* Keep the textarea above the structural overlay (#141) so caret /
+     selection / text paint over the heading-rail + frontmatter band. */
+  position: relative;
+  z-index: 1;
 }
 
 .editor__textarea:focus {
@@ -1850,6 +1854,93 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 .editor__surface--nowrap .editor__textarea {
   white-space: pre;
   overflow-wrap: normal;
+}
+
+/* ----- Editor pane + structural overlay (#141) -----
+   The pane wraps the textarea and a decorative overlay together. The
+   overlay sits behind the textarea and paints two minimal-but-distinctive
+   structural cues:
+     - a 2 px accent left-rail on any line whose first non-whitespace
+       char is `#` (Markdown heading);
+     - a 1 px-tinted band across the leading frontmatter region (between
+       the opening `---` on line 0 and the next `---`).
+
+   It is intentionally NOT a syntax highlighter — adding more colors would
+   over-decorate this monospace editor. The cues exist to give the writer
+   a quick "where am I" cue when scanning a long document.
+
+   The overlay mirrors the textarea's font / padding / line-height so the
+   per-line `<div>`s register against the same vertical positions the
+   textarea is painting. `white-space: pre-wrap` matches the textarea's
+   wrap-on mode; `.editor__surface--nowrap` flips both to `pre`. Scroll
+   is JS-synced from the textarea (see `syncScroll`). */
+.editor__pane {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+
+.editor__overlay {
+  position: absolute;
+  inset: 0;
+  /* Same font + spacing as the textarea so the per-line `<div>`s land on
+     the same vertical positions the textarea is painting. */
+  padding: var(--editor-pad);
+  font-family: var(--font-mono);
+  font-size: var(--editor-font-size);
+  line-height: var(--editor-line-height);
+  /* Same wrap behavior as the textarea: pre-wrap when soft-wrap is on,
+     pre when off (toggled below by the surface modifier). */
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  /* Overflow hidden + JS-synced scrollTop keeps the overlay's lines in
+     register with the textarea without painting a second scrollbar. */
+  overflow: hidden;
+  /* The textarea stays the controllable element; pointer + selection
+     events fall through. */
+  pointer-events: none;
+  user-select: none;
+  /* Foreground is invisible — we only paint the structural cues. The
+     text is present so per-line wrapping matches the textarea exactly
+     even for non-heading / non-frontmatter lines. */
+  color: transparent;
+  /* The textarea repaints over the top in the regular cascade — the
+     overlay precedes it in DOM order so it sits BEHIND. */
+  z-index: 0;
+}
+
+.editor__overlay-line {
+  /* Each line is a block-level div so the `border-left` rail sits to
+     the left of the text and the `background` band fills the full
+     content width. Min-height keeps blank lines from collapsing. */
+  display: block;
+  min-height: calc(var(--editor-font-size) * var(--editor-line-height));
+  /* Reserve the rail's gutter on every line so heading rows don't push
+     their text right relative to non-heading rows — only the rail's
+     visibility changes between heading and non-heading lines. */
+  border-left: 2px solid transparent;
+  padding-left: 0;
+  margin-left: -2px;
+}
+
+.editor__overlay-heading {
+  border-left-color: var(--ui-accent);
+}
+
+.editor__overlay-frontmatter {
+  /* The tint is intentionally subtle — 0.4 opacity on the panel-elevated
+     surface tone reads as a band, not a panel. `color-mix` is the
+     CSP-friendly equivalent of `background: <var>; opacity: 0.4` without
+     dimming any child content (the overlay has no readable content). */
+  background-color: color-mix(in srgb, var(--ui-bg-elevated) 40%, transparent);
+}
+
+.editor__surface--nowrap .editor__overlay {
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .editor__meta {
