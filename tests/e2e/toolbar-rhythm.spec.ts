@@ -121,10 +121,20 @@ test('Theme picker trigger has no panel outline (drops the pill chrome)', async 
   /* The trigger's resting background should be transparent (no panel
      fill) and its border should not paint a visible 1-px ring — the
      #135 rhythm dropped the pill outline so the trigger reads as
-     `THEME [name] ▾` text with affordance. We accept any zero-alpha
-     color value for background, and a transparent border-top color as
-     a proxy for "no visible outline". */
-  const trigger = page.getByRole('button', { name: /^theme /i });
+     `THEME [name] ▾` text with affordance.
+
+     We use the CSS-class locator (`.theme-picker__trigger`) rather than
+     a role-name search: CI's accessibility tree has multiple buttons
+     whose names start with the word "Theme" (the Settings drawer's
+     theme-nav row joins the picker in the toolbar's a11y tree). The
+     class is the unambiguous selector.
+
+     Move the pointer somewhere innocuous before sampling so we never
+     pick up the trigger's :hover wash (which is the intended active
+     state, not the resting state). */
+  await page.mouse.move(0, 0);
+  const trigger = page.locator('.theme-picker__trigger').first();
+  await expect(trigger).toBeVisible();
   const style = await trigger.evaluate((el) => {
     const cs = getComputedStyle(el);
     return {
