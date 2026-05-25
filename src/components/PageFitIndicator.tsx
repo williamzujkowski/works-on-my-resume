@@ -36,7 +36,7 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import type { ParsedResume, ResumeTemplate } from '../types';
+import type { ParsedResume, PrintMode, ResumeTemplate } from '../types';
 import {
   estimatePages,
   fitSeverity,
@@ -67,6 +67,14 @@ interface PageFitIndicatorProps {
    * null the pill renders nothing.
    */
   parsed: ParsedResume | null;
+  /**
+   * Current print mode (#139). Surfaces the previously-hidden Export-panel
+   * toggle as a second segment of the chip so the user can see — at all
+   * times — what colour profile the Fit estimate and Save-as-PDF will use.
+   */
+  printMode: PrintMode;
+  /** Setter for the print mode; mirrors the Export-panel radio. */
+  onPrintModeChange: (mode: PrintMode) => void;
 }
 
 /* ---------------------------------------------------------------------------
@@ -133,6 +141,8 @@ export default function PageFitIndicator({
   previewRef,
   layout,
   parsed,
+  printMode,
+  onPrintModeChange,
 }: PageFitIndicatorProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -258,19 +268,29 @@ export default function PageFitIndicator({
 
   if (!parsed) return null;
 
-  const pillClass = severityClass(severity);
+  const chipClass = chipSeverityClass(severity);
+  const triggerClass = triggerSeverityClass(severity);
+  const modeSelectClass = modeSeverityClass(severity);
   const pillLabel =
     severity === 'ok'
       ? `${label} — preview fits a single printed page`
       : `${label} — preview exceeds a single printed page; click for trim suggestions`;
+  /* Print-mode dropdown reads as the chip's second segment (#139). Native
+     `<select>` so keyboard, AT, and mobile pickers are all free out of the
+     box. The label string mirrors the radio inside the Export panel; the
+     dropdown's aria-label spells out that the choice affects BOTH the
+     in-app print path AND the Fit estimate so the previously-hidden link
+     is no longer hidden. */
+  const modeAriaLabel =
+    'Print mode — affects the Save as PDF output and the Fit-pages estimate';
 
   return (
     <>
-      <div className="page-fit" ref={rootRef} data-print-hide>
+      <div className={chipClass} ref={rootRef} data-print-hide>
         <button
           type="button"
           ref={triggerRef}
-          className={pillClass}
+          className={triggerClass}
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={popoverId}
@@ -282,6 +302,23 @@ export default function PageFitIndicator({
             {label}
           </span>
         </button>
+        <span className="page-fit__mode-sep" aria-hidden="true">
+          ·
+        </span>
+        <span className="page-fit__mode">
+          <select
+            className={modeSelectClass}
+            value={printMode}
+            onChange={(event) => onPrintModeChange(event.target.value as PrintMode)}
+            aria-label={modeAriaLabel}
+          >
+            <option value="conservative">Conservative</option>
+            <option value="theme">Themed</option>
+          </select>
+          <span className="page-fit__mode-caret" aria-hidden="true">
+            <Icon name="chevron-down" size={10} />
+          </span>
+        </span>
 
         {open && (
           <div
@@ -365,9 +402,30 @@ export default function PageFitIndicator({
   );
 }
 
-/** Map a fit-severity bucket to the pill's CSS class. */
-function severityClass(severity: FitSeverity): string {
+/**
+ * Map a fit-severity bucket to a class — used three times, once per segment
+ * of the combined chip (#139). The chip is now a container that holds the
+ * fit trigger AND the print-mode `<select>`; each segment carries the same
+ * severity modifier so the colour reads continuously across the whole chip.
+ */
+function chipSeverityClass(severity: FitSeverity): string {
+  const base = 'page-fit';
+  if (severity === 'ok') return `${base} ${base}--ok`;
+  if (severity === 'warn') return `${base} ${base}--warn`;
+  return `${base} ${base}--danger`;
+}
+
+/** The fit-side button (FIT · 1.4p). */
+function triggerSeverityClass(severity: FitSeverity): string {
   const base = 'page-fit__pill';
+  if (severity === 'ok') return `${base} ${base}--ok`;
+  if (severity === 'warn') return `${base} ${base}--warn`;
+  return `${base} ${base}--danger`;
+}
+
+/** The mode-side `<select>` styled as the chip's second segment. */
+function modeSeverityClass(severity: FitSeverity): string {
+  const base = 'page-fit__mode-select';
   if (severity === 'ok') return `${base} ${base}--ok`;
   if (severity === 'warn') return `${base} ${base}--warn`;
   return `${base} ${base}--danger`;

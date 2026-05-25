@@ -4334,17 +4334,52 @@ details.studio__pane--editor {
 /* precision. See src/utils/pageFit.ts for the math; this is just CSS. */
 /* ------------------------------------------------------------------ */
 
+/* Combined chip (#139): the Fit pill and the print-mode dropdown live
+   inside ONE pill-shaped container so the user can see at a glance which
+   colour profile the Fit estimate and Save-as-PDF will use. The container
+   carries the severity modifier; each segment inherits the colour by
+   reading `color` from a parent declaration on the chip, so a single fit
+   severity tints the whole chip continuously.
+
+   Visual silhouette:
+     [ • 1.4p ]·[ CONSERVATIVE ▾ ]
+   The dot trigger button sits on the left (still the popover trigger);
+   the `·` separator and the print-mode `<select>` sit on the right. */
 .page-fit {
   position: relative;
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
+  gap: 0;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease,
+    border-color 110ms ease;
 }
 
-/* The pill itself — visually a peer of the shortcut chip + ATS exit pill,
-   sized to read as a status chip rather than a primary action. The
-   severity modifiers (--ok / --warn / --danger) shift the accent color
-   and the leading status dot; the dot carries the meaning so the cue is
-   never colour-only. */
+.page-fit--ok {
+  color: var(--ui-accent);
+  border-color: color-mix(in oklch, var(--ui-accent) 55%, var(--ui-border-strong));
+}
+
+.page-fit--warn {
+  color: #b45309; /* amber-700 */
+  border-color: color-mix(in oklch, #f59e0b 55%, var(--ui-border-strong));
+}
+
+.page-fit--danger {
+  color: #b91c1c; /* red-700 */
+  border-color: color-mix(in oklch, #ef4444 60%, var(--ui-border-strong));
+}
+
+/* The Fit-side trigger button. Sized to read as a status chip rather than
+   a primary action. The severity colour is inherited from the chip
+   container (`color: inherit`) so the two segments stay in lockstep; the
+   per-segment `--ok / --warn / --danger` modifiers below are kept for the
+   case where the trigger is rendered without the wrapping chip — defensive,
+   no current callsite. */
 .page-fit__pill {
   display: inline-flex;
   align-items: center;
@@ -4354,36 +4389,130 @@ details.studio__pane--editor {
   font-size: 0.74rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--ui-fg);
-  background: var(--ui-panel);
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 999px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  /* Round the left side so the hover background hugs the chip's silhouette
+     and never pokes past the rounded outer border. */
+  border-radius: 999px 0 0 999px;
   cursor: pointer;
   transition:
     background-color 110ms ease,
-    color 110ms ease,
-    border-color 110ms ease;
+    color 110ms ease;
 }
 
 .page-fit__pill:hover,
 .page-fit__pill:focus-visible {
   background: var(--ui-panel-hover);
-  border-color: var(--ui-accent);
+  outline: none;
 }
 
+/* Severity modifiers on the trigger itself — preserved for back-compat /
+   defensive rendering. The wrapping chip is the primary colour carrier
+   today (#139). */
 .page-fit__pill--ok {
   color: var(--ui-accent);
-  border-color: color-mix(in oklch, var(--ui-accent) 55%, var(--ui-border-strong));
 }
 
 .page-fit__pill--warn {
-  color: #b45309; /* amber-700 */
-  border-color: color-mix(in oklch, #f59e0b 55%, var(--ui-border-strong));
+  color: #b45309;
 }
 
 .page-fit__pill--danger {
-  color: #b91c1c; /* red-700 */
-  border-color: color-mix(in oklch, #ef4444 60%, var(--ui-border-strong));
+  color: #b91c1c;
+}
+
+/* Separator dot between the Fit segment and the mode segment. Sits inline
+   with both segments and carries the chip colour so the severity reads
+   through the divider too. */
+.page-fit__mode-sep {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.1rem;
+  color: inherit;
+  opacity: 0.6;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  user-select: none;
+}
+
+/* Mode-side wrapper. Holds the native `<select>` and a chevron icon
+   overlayed at the right edge — the select's own dropdown arrow is hidden
+   via `appearance: none` so the chip's silhouette is uniform regardless of
+   platform. */
+.page-fit__mode {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.page-fit__mode-select {
+  /* Strip native chrome — we paint our own chevron next to the text. */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 1.4rem 0.3rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  /* Round the right side so the hover background follows the chip's outer
+     silhouette and never pokes past the rounded outer border. */
+  border-radius: 0 999px 999px 0;
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease;
+}
+
+.page-fit__mode-select:hover,
+.page-fit__mode-select:focus-visible {
+  background: var(--ui-panel-hover);
+  outline: none;
+}
+
+/* Keep the dropdown's own option list in default platform colours — the
+   chip tint is for the chip itself, not the popped menu. The `<option>`
+   elements live in a native popup that doesn't inherit our background. */
+.page-fit__mode-select option {
+  color: var(--ui-fg);
+  background: var(--ui-bg-elevated);
+}
+
+/* Per-severity overrides kept for symmetry; the chip container already
+   inherits down the colour, but specifying the modifier here makes the
+   select usable in isolation too (defensive). */
+.page-fit__mode-select--ok {
+  color: var(--ui-accent);
+}
+
+.page-fit__mode-select--warn {
+  color: #b45309;
+}
+
+.page-fit__mode-select--danger {
+  color: #b91c1c;
+}
+
+/* Visual chevron, painted to the right of the select text. `pointer-events:
+   none` so the click goes through to the native select. */
+.page-fit__mode-caret {
+  position: absolute;
+  right: 0.45rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  opacity: 0.8;
+  pointer-events: none;
 }
 
 .page-fit__dot {

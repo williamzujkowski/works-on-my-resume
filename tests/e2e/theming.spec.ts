@@ -35,7 +35,9 @@ test('opening the picker shows the search input and the option list', async ({ p
 
   // The popover is `<div role="dialog" aria-label="Choose a theme">`.
   await expect(page.getByRole('dialog', { name: /choose a theme/i })).toBeVisible();
-  await expect(page.getByRole('combobox')).toBeFocused();
+  // After #139 the page-fit chip also exposes a `<select>` (implicit role
+  // combobox); scope the focus assertion to the picker's own search box.
+  await expect(page.getByRole('combobox', { name: /search themes/i })).toBeFocused();
   await expect(page.getByRole('listbox', { name: /themes/i })).toBeVisible();
 });
 
@@ -47,8 +49,10 @@ test('typing in the search input narrows the option list', async ({ page }) => {
   expect(totalBefore).toBeGreaterThan(1);
 
   /* "dracula" is a stable name across the dataset; one or more themes should
-     match it, and the filtered count must be strictly less than the total. */
-  await page.getByRole('combobox').fill('dracula');
+     match it, and the filtered count must be strictly less than the total.
+     After #139 the page-fit chip also exposes a `<select>`; scope the
+     combobox lookup so the search input is unambiguous. */
+  await page.getByRole('combobox', { name: /search themes/i }).fill('dracula');
   const filtered = list.getByRole('option');
   await expect.poll(async () => filtered.count()).toBeGreaterThan(0);
   expect(await filtered.count()).toBeLessThan(totalBefore);
@@ -250,7 +254,9 @@ test('closing the picker without selecting reverts a hover preview', async ({ pa
   const optionCount = await options.count();
   let previewedDifferent = false;
   for (let i = 0; i < optionCount && !previewedDifferent; i += 1) {
-    await page.getByRole('combobox').press('ArrowDown');
+    // After #139 the page-fit chip also exposes a `<select>` (implicit
+    // role combobox); scope to the picker's own search input.
+    await page.getByRole('combobox', { name: /search themes/i }).press('ArrowDown');
     const bgNow = await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--resume-bg').trim(),
     );
