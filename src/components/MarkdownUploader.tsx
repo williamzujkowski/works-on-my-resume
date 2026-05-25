@@ -21,7 +21,7 @@
  * clear error; an oversized file produces a non-blocking warning but still
  * loads. Browsers without the File API degrade to a plain message.
  */
-import { useCallback, useId, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useId, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import Icon from './Icon';
 import { fromJsonResume } from '../utils/jsonresume';
 import { fetchGistFiles, isGistUrl, type GistFile } from '../utils/gist';
@@ -44,6 +44,21 @@ interface MarkdownUploaderProps {
   sourceName: string;
   /** Clear the current resume and return to the empty state. */
   onClear: () => void;
+}
+
+/**
+ * Imperative handle exposed via the `ref` prop (#138).
+ *
+ * Lets callers open the underlying file picker from outside the
+ * component. Used by `MarkdownEditor`'s tab strip "Replace file"
+ * button so the affordance can move into the tab strip without
+ * duplicating the file-input plumbing. The uploader keeps owning
+ * the hidden input + the read/parse pipeline; only the trigger
+ * surface moves.
+ */
+export interface MarkdownUploaderHandle {
+  /** Open the system file picker for replacing the current resume file. */
+  openReplaceDialog(): void;
 }
 
 /** Maximum lines of gist content surfaced in the preview card (#68). */
@@ -75,13 +90,10 @@ function hasAcceptedExtension(name: string): boolean {
   return ACCEPTED_EXTENSIONS.some((ext) => lower.endsWith(ext));
 }
 
-export default function MarkdownUploader({
-  onLoad,
-  hasResume,
-  lineCount,
-  sourceName,
-  onClear,
-}: MarkdownUploaderProps) {
+function MarkdownUploaderImpl(
+  { onLoad, hasResume, lineCount, sourceName, onClear }: MarkdownUploaderProps,
+  ref: React.Ref<MarkdownUploaderHandle>,
+) {
   const inputId = useId();
   const jsonInputId = useId();
   const gistInputId = useId();
@@ -215,6 +227,20 @@ export default function MarkdownUploader({
       event.target.value = '';
     },
     [readJsonResume],
+  );
+
+  /* Imperative handle (#138): open the underlying file picker from outside
+     the component so the editor tab strip's "Replace file" button works
+     without duplicating the file-input plumbing. Clicking the hidden
+     <input> is the same path the native <label htmlFor> took before. */
+  useImperativeHandle(
+    ref,
+    () => ({
+      openReplaceDialog() {
+        fileInputRef.current?.click();
+      },
+    }),
+    [],
   );
 
   const handleDrop = useCallback(
@@ -413,11 +439,13 @@ export default function MarkdownUploader({
     [gistPreview, cancelGistPreview],
   );
 
-  const handleClear = useCallback(() => {
-    setError(null);
-    setNotice(null);
-    onClear();
-  }, [onClear]);
+  /* The Phase 2 "Clear" button moved into the editor's tab strip (#138).
+     `onClear` is invoked there directly; the uploader simply clears its
+     own pending error/notice on the next load. Kept on the props
+     contract because the empty Phase 1 view still expects a way to
+     refer back to the studio's clear handler (currently unused, but
+     stable so the parent doesn't need a special-case wiring). */
+  void onClear;
 
   /* The shared, visually-hidden file inputs — referenced from both phases. */
   const fileInput = (
@@ -460,37 +488,21 @@ export default function MarkdownUploader({
     </>
   );
 
-  /* ----- Phase 2: a resume is loaded — collapsed one-line affordance. ----- */
+  /* ----- Phase 2: a resume is loaded.
+     The filename + line count + Replace + Clear affordances moved into
+     the editor's document tab strip (#138). The uploader still mounts
+     its hidden file <input> so the tab strip's "Replace file" button
+     can drive it through `openReplaceDialog()`, and it still surfaces
+     any error / notice messages from a failed upload — the user
+     interaction stays here, just without the visible filename bar. */
   if (hasResume) {
+    // sourceName + lineCount are intentionally unused in this branch — kept on
+    // the props contract for SSR-stable typing and so the editor tab strip and
+    // the uploader read the same source-of-truth from the parent.
+    void sourceName;
+    void lineCount;
     return (
-      <div className="uploader">
-        <div className="uploader__loaded">
-          <span className="uploader__loaded-icon" aria-hidden="true">
-            <Icon name="file" size={15} />
-          </span>
-          <span className="uploader__loaded-name">{sourceName}</span>
-          <span className="uploader__loaded-sep" aria-hidden="true">
-            ·
-          </span>
-          <span className="uploader__loaded-lines">
-            {lineCount} {lineCount === 1 ? 'line' : 'lines'}
-          </span>
-          <span className="uploader__loaded-spacer" />
-          {fileApiAvailable && (
-            <label className="btn btn--ghost uploader__loaded-action" htmlFor={inputId}>
-              <Icon name="replace" size={14} />
-              Replace file
-            </label>
-          )}
-          <button
-            type="button"
-            className="btn btn--ghost uploader__loaded-action"
-            onClick={handleClear}
-          >
-            <Icon name="trash" size={14} />
-            Clear
-          </button>
-        </div>
+      <div className="uploader uploader--phase2">
         {fileInput}
         {messages}
       </div>
@@ -629,6 +641,15 @@ export default function MarkdownUploader({
     </div>
   );
 }
+
+/* forwardRef wrapper so the editor's tab strip (#138) can drive the
+   file picker through a stable imperative handle. The display name is
+   kept for React DevTools clarity. */
+const MarkdownUploader = forwardRef<MarkdownUploaderHandle, MarkdownUploaderProps>(
+  MarkdownUploaderImpl,
+);
+MarkdownUploader.displayName = 'MarkdownUploader';
+export default MarkdownUploader;
 
 /**
  * Preview-before-commit card with optional multi-file picker (#68, #76).

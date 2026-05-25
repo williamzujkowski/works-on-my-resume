@@ -83,6 +83,28 @@ interface MarkdownEditorProps {
    * bullet-rewrite affordance; this callback is a strict observer.
    */
   onCaretChange?: (line: number | null, column: number | null) => void;
+  /**
+   * Document-tab strip props (#138).
+   *
+   * The tab strip at the top of the editor pane reads as a real code-editor
+   * buffer tab: filename in mono, line count right-aligned, and a leading
+   * `●` dot when the buffer is dirty relative to the last-loaded source.
+   *
+   * `sourceName` is the filename shown on the tab (e.g. "sample-resume.md").
+   * `loadedMarkdown` is the baseline the dirty indicator compares against —
+   * the text we last loaded from disk / sample / snapshot. When `value`
+   * differs from this baseline the tab is dirty. Pass an empty string for
+   * the empty Phase 1 state; the tab simply hides when `sourceName` is
+   * absent.
+   *
+   * `onReplaceFile` / `onClear` move the existing affordances from the
+   * uploader's collapsed bar into the tab strip's right edge. Both are
+   * optional — when omitted, those controls don't render.
+   */
+  sourceName?: string;
+  loadedMarkdown?: string;
+  onReplaceFile?: () => void;
+  onClear?: () => void;
 }
 
 /** Session-scoped key for the soft-wrap preference. */
@@ -213,6 +235,10 @@ export default function MarkdownEditor({
   onChange,
   editorRef,
   onCaretChange,
+  sourceName,
+  loadedMarkdown,
+  onReplaceFile,
+  onClear,
 }: MarkdownEditorProps) {
   const textareaId = useId();
   const snippetMenuId = useId();
@@ -246,6 +272,24 @@ export default function MarkdownEditor({
 
   const lineCount = value.length === 0 ? 0 : value.split('\n').length;
   const charCount = value.length;
+
+  /* ----- Tab-strip dirty indicator (#138) -----
+     The buffer is dirty when the current markdown differs from the last
+     known "loaded" baseline — file upload, sample load, snapshot restore,
+     or restored draft. ResumeStudio owns the baseline and threads it down
+     via `loadedMarkdown`; a `useMemo` keeps the comparison off the
+     render-hot path. When no baseline has been provided (open-as-empty
+     state), the tab cannot be dirty — nothing to diverge from. */
+  const isDirty = useMemo(() => {
+    if (loadedMarkdown === undefined) return false;
+    return value !== loadedMarkdown;
+  }, [value, loadedMarkdown]);
+
+  /* Render the tab strip only when we actually have a buffer to label.
+     An empty workspace has no buffer; showing "resume.md  0" there is
+     noise. Once anything is loaded (or the writer starts typing) the
+     filename is meaningful and the tab strip mounts. */
+  const showTabStrip = (sourceName ?? '').length > 0 && (value.length > 0 || isDirty);
 
   /* The gutter renders one number per line; at minimum one row so the gutter
      never collapses to nothing for an empty document. */
@@ -725,6 +769,84 @@ export default function MarkdownEditor({
 
   return (
     <div className="editor">
+      {/* ----- Document tab strip (#138) -----
+          A real-code-editor file-tab at the top of the editor pane: a
+          single active tab whose left accent border, mono filename and
+          muted right-aligned line count read as a buffer-tab in VS Code
+          / Sublime / IntelliJ. The `●` dot prefix appears when the
+          buffer is dirty relative to the last-loaded baseline.
+
+          The JSX is a `<ul>` deliberately — multi-tab support (snapshots
+          as tabs, #94 follow-on) is a future possibility, and starting
+          with a list keeps the markup forward-compatible without forcing
+          the work today. Today only one `<li>` is ever rendered, but the
+          CSS targets the list shape rather than a single element so
+          adding more later won't require any restyling.
+
+          The Replace file / Clear actions move here from the uploader's
+          collapsed bar (#138 constraint: don't break those affordances).
+          They sit on the trailing edge of the strip — same role they
+          played before, but now they live next to the file-tab they
+          relate to. */}
+      {showTabStrip && (
+        <div className="editor__tabstrip" data-testid="editor-tabstrip">
+          <ul className="editor__tabs" role="tablist" aria-label="Open documents">
+            <li
+              className={
+                isDirty
+                  ? 'editor__tab editor__tab--active editor__tab--dirty'
+                  : 'editor__tab editor__tab--active'
+              }
+              role="presentation"
+            >
+              {/* The dirty dot reads as "this buffer has unsaved
+                  changes". `aria-hidden` because the same information
+                  is duplicated in the adjacent visually-hidden status
+                  span for assistive tech. */}
+              <span
+                className="editor__tab-dot"
+                aria-hidden="true"
+                data-dirty={isDirty ? 'true' : 'false'}
+              >
+                {isDirty ? '●' : ''}
+              </span>
+              <span className="editor__tab-name">{sourceName}</span>
+              <span className="editor__tab-lines" aria-hidden="true">
+                {lineCount}
+              </span>
+              <span className="visually-hidden">
+                {isDirty ? 'Modified — ' : ''}
+                {sourceName}, {lineCount} {lineCount === 1 ? 'line' : 'lines'}
+              </span>
+            </li>
+          </ul>
+          {(onReplaceFile || onClear) && (
+            <div className="editor__tabstrip-actions">
+              {onReplaceFile && (
+                <button
+                  type="button"
+                  className="btn btn--ghost editor__tabstrip-action"
+                  onClick={onReplaceFile}
+                >
+                  <Icon name="replace" size={13} />
+                  Replace file
+                </button>
+              )}
+              {onClear && (
+                <button
+                  type="button"
+                  className="btn btn--ghost editor__tabstrip-action"
+                  onClick={onClear}
+                >
+                  <Icon name="trash" size={13} />
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="editor__bar">
         <label className="field-label editor__bar-label" htmlFor={textareaId}>
           Markdown source
