@@ -16,7 +16,7 @@
  * inside the same file.
  */
 import { test, expect, type Page } from '@playwright/test';
-import { clearAppStorage, expandMobileEditor } from './helpers';
+import { clearAppStorage, expandMobileEditor, loadSampleResume } from './helpers';
 
 /** The Resume Health panel region locator. */
 function healthPanel(page: Page) {
@@ -321,4 +321,84 @@ test('in-editor rewrite tray still surfaces when caret lands on an Experience bu
 
   // The original "Rewrite this bullet" trigger from #93 should be visible.
   await expect(page.getByRole('button', { name: /rewrite this bullet/i })).toBeVisible();
+});
+
+/* ------------------------------------------------------------------ */
+/* 6. Coaching blocks (#137): celebrate strip + progress meter +       */
+/*    next-step CTA all render and the CTA jumps the editor.            */
+/* ------------------------------------------------------------------ */
+
+test('coaching blocks render the celebrate strip, progress meter, and next-step CTA', async ({
+  page,
+}) => {
+  // Load the bundled sample (Avery Quinn) — it's a clean senior resume with
+  // plenty of positive signals + a non-zero number of findings at mid stage,
+  // so all three coaching blocks have content.
+  await expandMobileEditor(page);
+  await loadSampleResume(page);
+  await openHealthTab(page);
+
+  const panel = healthPanel(page);
+
+  // (a) What's working strip — at least 3 positive entries.
+  const celebrate = panel.locator('.resume-health__celebrate');
+  await expect(celebrate).toBeVisible();
+  await expect(celebrate.getByRole('heading', { name: /what's working/i })).toBeVisible();
+  const positiveItems = celebrate.locator('.resume-health__celebrate-item');
+  const positiveCount = await positiveItems.count();
+  expect(positiveCount).toBeGreaterThanOrEqual(3);
+
+  // (b) Stage progress meter — carries the score and either the next-tier
+  // hint or the at-the-top affordance. The default stage is `mid` which
+  // advances to `senior`, so we assert on the score + the "advance to"
+  // language.
+  const progress = panel.locator('.resume-health__progress');
+  await expect(progress).toBeVisible();
+  await expect(progress.getByRole('heading', { name: /stage progress/i })).toBeVisible();
+  const label = progress.locator('.resume-health__progress-label');
+  await expect(label).toHaveText('MID');
+  // The meter is a row of █/░ glyphs — at minimum it should contain a fill cell.
+  const meter = progress.locator('.resume-health__progress-meter');
+  const meterText = (await meter.textContent()) ?? '';
+  expect(meterText).toMatch(/█/);
+  expect(meterText).toMatch(/^[█░]+$/);
+  // The hint reads "<score> → 90 to advance to SENIOR" at the mid tier.
+  await expect(progress.locator('.resume-health__progress-hint')).toContainText(/advance to SENIOR/);
+});
+
+test('coaching: clicking the Next step CTA jumps the editor to the offender line', async ({
+  page,
+}) => {
+  // Use the weak-verb fixture so the next-step CTA points at the
+  // "Worked on …" bullet on line 17 — same shape as the existing jump test.
+  await expandMobileEditor(page);
+  await page.getByLabel(/markdown source/i).fill(RESUME_WITH_WEAK_VERB);
+  await expect(page.getByRole('article', { name: /rendered resume/i })).toBeVisible();
+  await openHealthTab(page);
+
+  const panel = healthPanel(page);
+  const next = panel.locator('.resume-health__next');
+  await expect(next).toBeVisible();
+  await expect(next.getByRole('heading', { name: /next step/i })).toBeVisible();
+  // The CTA copy mentions the role + opener replacement for the weak-verb
+  // rule. Match loosely so the exact wording can evolve.
+  const cta = next.getByRole('button');
+  await expect(cta).toBeVisible();
+  await expect(cta).toContainText(/weak opener|number|line 17/i);
+
+  // Re-expand the mobile accordion so the textarea is reachable BEFORE the
+  // jump click — same pattern as the existing weak-verb jump test.
+  await expandMobileEditor(page);
+  await cta.click();
+
+  // The textarea selection should land on the offender substring ("Worked on")
+  // — the same plumbing as the existing #115 Jump-to-line affordance.
+  const textarea = page.getByLabel(/markdown source/i);
+  const selection = await textarea.evaluate((el) => {
+    const ta = el as HTMLTextAreaElement;
+    return {
+      value: ta.value.slice(ta.selectionStart, ta.selectionEnd),
+    };
+  });
+  expect(selection.value).toBe('Worked on');
 });

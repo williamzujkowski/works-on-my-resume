@@ -3491,6 +3491,162 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 /* ------------------------------------------------------------------ */
+/* Resume Health coaching blocks (#137)                                */
+/*                                                                     */
+/* Three blocks sit BELOW the findings list so a single-finding pane    */
+/* no longer leaves 60% of its vertical space empty:                    */
+/*   .resume-health__celebrate — "What's working" strip                 */
+/*   .resume-health__progress  — Stage progress meter                    */
+/*   .resume-health__next      — Next step CTA                          */
+/*                                                                     */
+/* CSP: every rule lives here — the component carries no inline styles. */
+/* ------------------------------------------------------------------ */
+
+.resume-health__celebrate,
+.resume-health__progress,
+.resume-health__next {
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.resume-health__celebrate-kicker,
+.resume-health__progress-kicker,
+.resume-health__next-kicker {
+  margin: 0 0 var(--space-1);
+}
+
+/* "What's working" — mono ✓ list with a soft success tint. The glyph
+   carries the meaning; the tint is reinforcement so users on a high-
+   contrast theme still see what each row is. */
+.resume-health__celebrate-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resume-health__celebrate-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: var(--ui-fg);
+}
+
+.resume-health__celebrate-glyph {
+  color: var(--ui-success);
+  font-weight: 700;
+  flex-shrink: 0;
+  /* Tabular alignment so the ✓ column lines up cleanly regardless of
+     the message text after it. */
+  width: 0.8rem;
+  text-align: center;
+}
+
+.resume-health__celebrate-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Stage progress meter — a single row with label, mono bar, and hint. */
+.resume-health__progress-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+
+.resume-health__progress-label {
+  font-weight: 700;
+  color: var(--ui-fg);
+  letter-spacing: 0.04em;
+  /* Reserve roughly the width of "SENIOR" so the meter cells start on a
+     consistent column across tiers. */
+  min-width: 4.5rem;
+}
+
+.resume-health__progress-meter {
+  color: var(--ui-accent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.resume-health__progress-hint {
+  color: var(--ui-fg-muted);
+  font-size: 0.72rem;
+}
+
+.resume-health__progress-delta {
+  flex-basis: 100%;
+  margin-top: 2px;
+  padding-left: 5.0rem;
+  color: var(--ui-fg-subtle);
+  font-size: 0.7rem;
+}
+
+/* Next step CTA — full-width button with a leading ▸ glyph. Clicking it
+   jumps to the offender line via the existing #115 plumbing. */
+.resume-health__next-cta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-left: 3px solid var(--ui-accent);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--ui-fg);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 110ms ease,
+    border-color 110ms ease,
+    color 110ms ease;
+}
+
+.resume-health__next-cta:hover {
+  background: var(--ui-panel);
+  border-color: var(--ui-border-strong);
+  border-left-color: var(--ui-accent-hover);
+}
+
+.resume-health__next-cta:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.resume-health__next-glyph {
+  color: var(--ui-accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.resume-health__next-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------------ */
 /* Start-from-template modal (#86)                                     */
 /* ------------------------------------------------------------------ */
 

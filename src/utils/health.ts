@@ -83,6 +83,45 @@ export interface HealthReport {
   findings: HealthFinding[];
 }
 
+/**
+ * A single "What's working" entry surfaced alongside the findings list (#137).
+ *
+ * Positives are the inverted complement of the findings rubric: when a check
+ * COULD have flagged the resume but didn't (e.g. quantification rate ≥ floor),
+ * we lift the same evidence into a celebratory line. The `id` mirrors the
+ * finding rule it inverts so the UI can render a deterministic icon/order.
+ */
+export interface Positive {
+  /** Stable id of the rule this positive inverts (e.g. `quantification`). */
+  id: string;
+  /** Short mono label shown after the ✓ glyph. */
+  message: string;
+}
+
+/**
+ * Career-stage progress meter (#137). The Health pane renders this as a
+ * tier label + thin horizontal meter + delta hint so the writer can see the
+ * next milestone at a glance.
+ *
+ * `delta` is the points away from `next` (always non-negative). When the
+ * writer is already at the top tier (`senior` + score 100) `next` is `null`
+ * and `delta` is `0` — the UI renders an at-the-top affordance.
+ */
+export interface StageProgress {
+  /** Current stage tier the rubric is evaluating against. */
+  current: CareerStage;
+  /** Next tier the writer can advance to, or `null` when at the top. */
+  next: CareerStage | null;
+  /** Score the writer must reach to advance. `100` when at the top. */
+  threshold: number;
+  /** Current score (mirrored from the report). */
+  score: number;
+  /** Points away from `threshold`. `0` when at the top or already past it. */
+  delta: number;
+  /** Human label for the current tier (e.g. `MID`). */
+  label: string;
+}
+
 /* ------------------------------------------------------------------ */
 /* Constants — thresholds and word lists                               */
 /* ------------------------------------------------------------------ */
@@ -741,6 +780,318 @@ function computeScore(findings: HealthFinding[], stage: CareerStage): number {
 /* ------------------------------------------------------------------ */
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ */
+/* Stage progression — score thresholds the meter reads against        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Score floors that gate "you're ready for the next tier." Tuned to roughly
+ * match the rubric's intuition: a clean junior resume scores in the high 70s
+ * at its own stage; mid hovers near 90; senior approaches 100. The meter is
+ * coaching, not a verdict — `delta` of zero just means the writer has hit
+ * the threshold, not that they should now retitle themselves.
+ */
+const STAGE_NEXT_THRESHOLD: Record<CareerStage, number> = {
+  junior: 80,
+  mid: 90,
+  senior: 100,
+};
+
+/** Tier order the meter steps through. `null` past the last entry. */
+const NEXT_STAGE: Record<CareerStage, CareerStage | null> = {
+  junior: 'mid',
+  mid: 'senior',
+  senior: null,
+};
+
+/** Upper-case stage labels matching the issue's mock (`MID`, `SENIOR`). */
+const STAGE_LABEL: Record<CareerStage, string> = {
+  junior: 'JUNIOR',
+  mid: 'MID',
+  senior: 'SENIOR',
+};
+
+/**
+ * Compute the stage-progression meter (#137).
+ *
+ * Returns the current tier label + the next tier's score threshold + how many
+ * points away. At the top tier (`senior`) `next` is `null` and `delta` is
+ * `0`. The UI uses `delta` to render the milestone hint:
+ *
+ *   `MID  ████████░░  98 → 100 to advance to SENIOR`
+ */
+export function stageProgress(score: number, stage: CareerStage): StageProgress {
+  const next = NEXT_STAGE[stage];
+  const threshold = next === null ? 100 : STAGE_NEXT_THRESHOLD[stage];
+  const delta = next === null ? 0 : Math.max(0, threshold - score);
+  return {
+    current: stage,
+    next,
+    threshold,
+    score,
+    delta,
+    label: STAGE_LABEL[stage],
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Positives — inverted complement of the findings rubric              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Bullets-per-role count for "What's working" output.
+ *
+ * Mirrors `checkBulletsPerRole` but returns the role groups instead of
+ * findings — used to celebrate balanced roles (every group is in the
+ * 2–6 envelope).
+ */
+function countRoleGroups(markdown: string): { total: number; inRange: number } {
+  const lines = splitLines(markdown);
+  const headings = findHeadings(lines);
+  const bullets = findBullets(lines);
+  if (headings.length === 0 || bullets.length === 0) return { total: 0, inRange: 0 };
+
+  const headingByLine = new Map<number, Heading>();
+  for (const h of headings) headingByLine.set(h.line, h);
+
+  interface Group {
+    heading: Heading;
+    bullets: number;
+  }
+  const groups: Group[] = [];
+  let currentH2: Heading | null = null;
+  let currentH3: Heading | null = null;
+  let currentGroup: Group | null = null;
+
+  for (const li of lines) {
+    const h = headingByLine.get(li.line);
+    if (h) {
+      if (h.level === 2) {
+        currentH2 = h;
+        currentH3 = null;
+        currentGroup = null;
+      } else if (h.level === 3) {
+        currentH3 = h;
+        currentGroup = { heading: h, bullets: 0 };
+        groups.push(currentGroup);
+      }
+      continue;
+    }
+    const bullet = findBulletInLine(li);
+    if (!bullet) continue;
+    if (!isExperienceLikeH2(currentH2)) continue;
+    if (currentH3) {
+      if (!currentGroup || currentGroup.heading !== currentH3) {
+        currentGroup = { heading: currentH3, bullets: 0 };
+        groups.push(currentGroup);
+      }
+      currentGroup.bullets += 1;
+    } else if (currentH2) {
+      if (!currentGroup || currentGroup.heading !== currentH2) {
+        currentGroup = { heading: currentH2, bullets: 0 };
+        groups.push(currentGroup);
+      }
+      currentGroup.bullets += 1;
+    }
+  }
+
+  const populated = groups.filter((g) => g.bullets > 0);
+  const inRange = populated.filter(
+    (g) => g.bullets >= BULLETS_PER_ROLE.min && g.bullets <= BULLETS_PER_ROLE.max,
+  ).length;
+  return { total: populated.length, inRange };
+}
+
+/** Count quantified bullets in the experience-style scope, mirroring `checkQuantification`. */
+function countExperienceBullets(markdown: string): {
+  total: number;
+  withDigits: number;
+  activeOpeners: number;
+} {
+  const lines = splitLines(markdown);
+  const headings = findHeadings(lines);
+  const allBullets = findBullets(lines);
+  if (allBullets.length === 0) return { total: 0, withDigits: 0, activeOpeners: 0 };
+
+  const headingByLine = new Map<number, Heading>();
+  for (const h of headings) headingByLine.set(h.line, h);
+
+  let currentH2: Heading | null = null;
+  let hasExperienceH2 = false;
+  const experienceBullets: Bullet[] = [];
+
+  for (const li of lines) {
+    const h = headingByLine.get(li.line);
+    if (h && h.level === 2) {
+      currentH2 = h;
+      if (isExperienceLikeH2(h)) hasExperienceH2 = true;
+      continue;
+    }
+    if (h) continue;
+    if (!isExperienceLikeH2(currentH2)) continue;
+    const bullet = findBulletInLine(li);
+    if (bullet) experienceBullets.push(bullet);
+  }
+
+  const pool = hasExperienceH2 ? experienceBullets : allBullets;
+  if (pool.length === 0) return { total: 0, withDigits: 0, activeOpeners: 0 };
+
+  const withDigits = pool.filter((b) => /\d/.test(b.content)).length;
+  // Active-verb opener: starts with a capitalized verb (any single capitalized
+  // word) AND does not match any of the WEAK_VERB_PHRASES. The check mirrors
+  // checkWeakVerbs' inversion — passing both is what "active opener" means.
+  let activeOpeners = 0;
+  for (const bullet of pool) {
+    const content = bullet.content.replace(/^[*_~`]+/, '').trimStart();
+    if (!/^[A-Z][a-zA-Z]+\b/.test(content)) continue;
+    let weak = false;
+    for (const phrase of WEAK_VERB_PHRASES) {
+      const re = new RegExp(`^${escapeRegExp(phrase)}\\b`, 'i');
+      if (re.test(content)) {
+        weak = true;
+        break;
+      }
+    }
+    if (!weak) activeOpeners += 1;
+  }
+  return { total: pool.length, withDigits, activeOpeners };
+}
+
+/** Extract numeric tokens from experience-style bullets ("8 years", "140 services", "4x"). */
+function countNumericClaims(markdown: string): number {
+  const lines = splitLines(markdown);
+  const headings = findHeadings(lines);
+  const headingByLine = new Map<number, Heading>();
+  for (const h of headings) headingByLine.set(h.line, h);
+
+  let currentH2: Heading | null = null;
+  let count = 0;
+  for (const li of lines) {
+    const h = headingByLine.get(li.line);
+    if (h && h.level === 2) {
+      currentH2 = h;
+      continue;
+    }
+    if (h) continue;
+    if (!isExperienceLikeH2(currentH2)) continue;
+    const bullet = findBulletInLine(li);
+    if (!bullet) continue;
+    const numbers = bullet.content.match(/\d+/g);
+    if (numbers) count += numbers.length;
+  }
+  return count;
+}
+
+/** First-person hits across all bullets, for the "no first person" positive. */
+function countFirstPersonBullets(markdown: string): number {
+  const lines = splitLines(markdown);
+  const bullets = findBullets(lines);
+  let count = 0;
+  for (const bullet of bullets) {
+    if (findFirstPersonWord(bullet.content)) count += 1;
+  }
+  return count;
+}
+
+/**
+ * Lift 3–5 positive signals out of the same heuristics that produce findings
+ * (#137). Each entry inverts a finding rule: when the rule WOULD have fired
+ * but didn't, we celebrate it.
+ *
+ * Returns at most five entries so the strip stays a celebrate, not a victory
+ * lap. The order mirrors the findings rubric (length → frontmatter → sections
+ * → quantification → active verbs → ...) so the same writer sees a stable
+ * shape between sessions.
+ *
+ * Pure: same inputs → same output. Never throws — when a check can't run
+ * cleanly (no bullets, no Experience section) it simply contributes nothing.
+ */
+export function summarizePositives(
+  markdown: string,
+  parsed: ParsedResume,
+  stage: CareerStage,
+): readonly Positive[] {
+  const positives: Positive[] = [];
+
+  // 1. Quantification rate ≥ floor → "N quantified bullets".
+  const { total: bulletTotal, withDigits, activeOpeners } = countExperienceBullets(markdown);
+  if (bulletTotal > 0) {
+    const ratio = withDigits / bulletTotal;
+    if (ratio >= QUANT_FLOOR[stage] && withDigits >= 2) {
+      positives.push({
+        id: 'quantification',
+        message: `${withDigits} quantified bullets`,
+      });
+    }
+  }
+
+  // 2. Active-verb opener rate ≥ 60% → "active-verb openers".
+  if (bulletTotal >= 3) {
+    const ratio = activeOpeners / bulletTotal;
+    if (ratio >= 0.6) {
+      positives.push({
+        id: 'active-verb',
+        message: 'active-verb openers',
+      });
+    }
+  }
+
+  // 3. Years of progression — derived from the volume of numeric claims in
+  //    experience bullets. "8 years" / "140 services" / "4x" all count; the
+  //    threshold is intentionally low (≥ 4 numeric tokens) so a draft with
+  //    even modest evidence gets celebrated.
+  const numericClaims = countNumericClaims(markdown);
+  if (numericClaims >= 4) {
+    positives.push({
+      id: 'numeric-claims',
+      message: `${numericClaims} numeric claims`,
+    });
+  }
+
+  // 4. Required sections present → "all required sections".
+  const sectionFindings = checkSections(markdown, stage);
+  if (sectionFindings.length === 0) {
+    const required = REQUIRED_SECTIONS_BY_STAGE[stage];
+    positives.push({
+      id: 'sections',
+      message: `${required.length} required sections present`,
+    });
+  }
+
+  // 5. Frontmatter complete → "frontmatter complete".
+  if (checkFrontmatter(parsed).length === 0) {
+    positives.push({
+      id: 'frontmatter',
+      message: 'frontmatter complete',
+    });
+  }
+
+  // 6. No first-person voice in bullets → "third-person voice".
+  const lines = splitLines(markdown);
+  if (findBullets(lines).length >= 3 && countFirstPersonBullets(markdown) === 0) {
+    positives.push({
+      id: 'first-person',
+      message: 'consistent third-person voice',
+    });
+  }
+
+  // 7. Bullets-per-role envelope clean → "N balanced roles".
+  const { total: roleTotal, inRange } = countRoleGroups(markdown);
+  if (roleTotal >= 1 && inRange === roleTotal) {
+    positives.push({
+      id: 'bullets-per-role',
+      message:
+        roleTotal === 1
+          ? '1 balanced role (2–6 bullets)'
+          : `${roleTotal} balanced roles (2–6 bullets)`,
+    });
+  }
+
+  // Cap at five so the strip stays compact. Order is preserved from the list
+  // above — the most-impactful signals (quantification, active verbs) lead.
+  return positives.slice(0, 5);
+}
 
 /**
  * Analyze a Markdown resume and produce a stage-aware `HealthReport`.

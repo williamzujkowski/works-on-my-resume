@@ -20,7 +20,15 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ParsedResume } from '../types';
-import { analyzeResume, type CareerStage, type HealthFinding } from '../utils/health';
+import {
+  analyzeResume,
+  stageProgress,
+  summarizePositives,
+  type CareerStage,
+  type HealthFinding,
+  type StageProgress,
+  type Positive,
+} from '../utils/health';
 import { getRewriteCandidates, type RewriteCandidate } from '../utils/bulletPatterns';
 import { getStoredCareerStage, setStoredCareerStage } from '../utils/storage';
 
@@ -100,6 +108,34 @@ export default function ResumeHealth({
     return analyzeResume(markdown, parsed, stage);
   }, [markdown, parsed, stage]);
 
+  /* ----- Positive signals (#137). Mirror the findings rubric but invert
+     each threshold — entries are celebrated, not flagged. */
+  const positives = useMemo<readonly Positive[]>(() => {
+    if (!parsed) return [];
+    return summarizePositives(markdown, parsed, stage);
+  }, [markdown, parsed, stage]);
+
+  /* ----- Stage progression meter (#137). Pure derivation off the score
+     and the current stage tier — no extra parsing work. */
+  const progress = useMemo<StageProgress | null>(() => {
+    if (!report) return null;
+    return stageProgress(report.score, stage);
+  }, [report, stage]);
+
+  /* ----- Next-step suggestion (#137). The single highest-impact finding
+     the writer can act on. We pick the first finding that carries a `line`
+     (so it's clickable) — findings are emitted in rubric order so the
+     first actionable one is the most-impactful one we have. The CTA
+     phrasing is derived from the finding's id so the language is concrete
+     ("Add a number to your 3rd bullet under …") rather than echoing the
+     finding's existing message verbatim. */
+  const nextStep = useMemo(() => {
+    if (!report) return null;
+    const first = report.findings.find((f) => f.line !== undefined);
+    if (!first) return null;
+    return { finding: first, label: nextStepLabel(first, markdown) };
+  }, [report, markdown]);
+
   /* ----- Empty state: no resume loaded yet ----- */
   if (!parsed || !report) {
     return (
@@ -175,8 +211,217 @@ export default function ResumeHealth({
           </ul>
         </>
       )}
+
+      {/* ----- (a) What's working strip (#137) -----
+           Lifts 3-5 positive signals out of the same heuristics that produce
+           findings — inverted thresholds, soft accent tone, mono. The strip
+           always renders when ≥ 1 positive is found so even an early draft
+           sees one celebrate. Stays hidden on a truly empty parse. */}
+      {positives.length > 0 && (
+        <section className="resume-health__celebrate" aria-label="What's working">
+          <h3 className="section-kicker resume-health__celebrate-kicker">What's working</h3>
+          <ul className="resume-health__celebrate-list">
+            {positives.map((positive) => (
+              <li
+                key={positive.id}
+                className="resume-health__celebrate-item"
+                data-positive={positive.id}
+              >
+                <span className="resume-health__celebrate-glyph" aria-hidden="true">
+                  ✓
+                </span>
+                <span className="resume-health__celebrate-text">{positive.message}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* ----- (b) Stage progress meter (#137) -----
+           Thin horizontal meter + tier label + milestone delta. The meter is
+           computed off the score and the current stage's threshold; at the top
+           tier we render an at-the-top affordance instead of a "→ N" hint. */}
+      {progress && (
+        <section className="resume-health__progress" aria-label="Stage progress">
+          <h3 className="section-kicker resume-health__progress-kicker">Stage progress</h3>
+          <ProgressMeter progress={progress} findingsCount={report.findings.length} />
+        </section>
+      )}
+
+      {/* ----- (c) Next step (#137) -----
+           One actionable suggestion lifted from the highest-impact finding.
+           Clicking jumps to the offender line via the existing #115
+           jumpToOffender plumbing — Health doesn't mutate the source, the
+           editor does. The block stays hidden when there is no actionable
+           finding (e.g. a clean resume) so it doesn't read as a low-value
+           "you're done" line. */}
+      {nextStep && (
+        <section className="resume-health__next" aria-label="Next step">
+          <h3 className="section-kicker resume-health__next-kicker">Next step</h3>
+          <button
+            type="button"
+            className="resume-health__next-cta"
+            onClick={() => {
+              if (nextStep.finding.line === undefined) return;
+              if (nextStep.finding.offender && onJumpToOffender) {
+                onJumpToOffender(nextStep.finding.line, nextStep.finding.offender);
+              } else if (onJumpToLine) {
+                onJumpToLine(nextStep.finding.line);
+              }
+            }}
+          >
+            <span className="resume-health__next-glyph" aria-hidden="true">
+              ▸
+            </span>
+            <span className="resume-health__next-text">{nextStep.label}</span>
+          </button>
+        </section>
+      )}
     </section>
   );
+}
+
+/**
+ * Thin horizontal progress meter (#137). Renders 10 cells out of which a
+ * proportional run is filled, mirroring the issue's mock:
+ *
+ *   `MID  ████████░░  98 → 100 to advance to SENIOR`
+ *
+ * The fill count is the score scaled to the threshold's window; we use ten
+ * cells because it reads as a clean 0-100 ladder in mono.
+ */
+function ProgressMeter({
+  progress,
+  findingsCount,
+}: {
+  progress: StageProgress;
+  findingsCount: number;
+}) {
+  const cells = 10;
+  // Fill is the score's fraction of 100 (not of `threshold`) so the meter
+  // reads as an absolute scale — 50% always means half-filled regardless of
+  // tier. The threshold is rendered as the milestone hint to the right.
+  const filled = Math.min(cells, Math.max(0, Math.round((progress.score / 100) * cells)));
+  const empty = cells - filled;
+  const meterText = '█'.repeat(filled) + '░'.repeat(empty);
+  const atTop = progress.next === null;
+  // Milestone delta — how many findings the writer would need to clear to
+  // reach the threshold. Each finding subtracts 2 points (severity 'warn')
+  // on average; we round up to err on the side of "a few more" rather than
+  // promising a one-step jump. The hint only renders when there's daylight
+  // between score and threshold.
+  const findingsToClear = progress.delta > 0 ? Math.max(1, Math.ceil(progress.delta / 2)) : 0;
+  return (
+    <div className="resume-health__progress-row">
+      <span className="resume-health__progress-label">{progress.label}</span>
+      <span className="resume-health__progress-meter" aria-hidden="true">
+        {meterText}
+      </span>
+      {atTop ? (
+        <span className="resume-health__progress-hint">
+          {progress.score} / 100 — at the top tier
+        </span>
+      ) : (
+        <span className="resume-health__progress-hint">
+          {progress.score} → {progress.threshold} to advance to {STAGE_LABEL_NEXT[progress.current]}
+        </span>
+      )}
+      {findingsToClear > 0 && findingsCount > 0 && (
+        <span className="resume-health__progress-delta">
+          Need {findingsToClear} more {findingsToClear === 1 ? 'finding' : 'findings'} cleared
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Upper-case label for the NEXT tier — used in the meter's "advance to X" hint. */
+const STAGE_LABEL_NEXT: Record<CareerStage, string> = {
+  junior: 'MID',
+  mid: 'SENIOR',
+  senior: 'SENIOR',
+};
+
+/**
+ * Build the "Next step" CTA copy from the highest-impact finding (#137).
+ *
+ * The CTA reads as a concrete action the writer can take in their editor,
+ * not as a restatement of the finding. The rule id picks the verb/object
+ * shape:
+ *  - `quantification` / `weak-verb` — point at a specific bullet under the
+ *    role heading the finding sits inside.
+ *  - everything else — fall back to "Open line N" with the finding message
+ *    as the rationale, so the CTA is still actionable.
+ */
+function nextStepLabel(finding: HealthFinding, markdown: string): string {
+  const line = finding.line ?? 0;
+  const role = enclosingRole(markdown, line);
+  const bulletOrdinal = bulletOrdinalInRole(markdown, line);
+  switch (finding.id) {
+    case 'quantification':
+      return role
+        ? `Add a number to your ${bulletOrdinal ?? 'next'} bullet under "${role}"`
+        : `Add a number to the bullet on line ${line}`;
+    case 'weak-verb':
+      return role
+        ? `Replace the weak opener in your ${bulletOrdinal ?? 'next'} bullet under "${role}"`
+        : `Replace the weak opener on line ${line}`;
+    case 'first-person':
+      return `Rewrite the first-person bullet on line ${line} in implied first person`;
+    case 'buzzwords':
+      return `Replace the buzzword on line ${line} with concrete evidence`;
+    case 'bullets-per-role':
+      return role
+        ? `Rebalance bullets under "${role}" — aim for 3–5`
+        : `Rebalance bullets near line ${line} — aim for 3–5`;
+    case 'sections':
+      return finding.message;
+    default:
+      return `Open line ${line} — ${finding.message}`;
+  }
+}
+
+/**
+ * Return the H3 heading title whose section encloses the given line, or
+ * `null` when the line sits outside any H3. Used so the next-step CTA can
+ * name the role the writer should edit instead of just a line number.
+ */
+function enclosingRole(markdown: string, line: number): string | null {
+  if (line <= 0) return null;
+  const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
+  let role: string | null = null;
+  for (let i = 0; i < Math.min(lines.length, line - 1); i++) {
+    const m = /^###[ \t]+(.+?)[ \t]*#*[ \t]*$/.exec(lines[i]);
+    if (m) role = m[1].trim();
+    const h2 = /^##[ \t]+(.+?)[ \t]*#*[ \t]*$/.exec(lines[i]);
+    if (h2) role = null; // a new H2 resets the role context
+  }
+  return role;
+}
+
+/** "1st" / "2nd" / "3rd" / "Nth" ordinal for the bullet's position under its H3. */
+function bulletOrdinalInRole(markdown: string, line: number): string | null {
+  if (line <= 0) return null;
+  const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
+  let bulletIndex = 0;
+  let foundIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const text = lines[i];
+    if (/^###[ \t]+/.test(text) || /^##[ \t]+/.test(text)) {
+      bulletIndex = 0;
+      continue;
+    }
+    if (/^[ \t]*[-*][ \t]+/.test(text)) {
+      bulletIndex += 1;
+      if (i + 1 === line) {
+        foundIndex = bulletIndex;
+      }
+    }
+  }
+  if (foundIndex <= 0) return null;
+  const suffixes = ['th', 'st', 'nd', 'rd'];
+  const v = foundIndex % 100;
+  return `${foundIndex}${suffixes[(v - 20) % 10] ?? suffixes[v] ?? suffixes[0]}`;
 }
 
 /** Human label for a stage, used in the header copy. */
