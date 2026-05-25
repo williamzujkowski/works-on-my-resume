@@ -73,8 +73,6 @@ test.describe('mobile (iPhone 13)', () => {
        has shifted between #128 (Settings drawer) and #131 (mobile More). */
     const toolbar = page.locator('.studio__toolbar');
     const candidates = [
-      // ThemePresets root carries `theme-presets` class on its container.
-      toolbar.locator('.theme-presets'),
       // LayoutSelector root has class `layout-selector`.
       toolbar.locator('.layout-selector'),
       // PageFitIndicator's root carries `page-fit` (the indicator pill).
@@ -89,6 +87,7 @@ test.describe('mobile (iPhone 13)', () => {
     for (const candidate of candidates) {
       if (await candidate.first().isVisible()) visibleCount++;
     }
+    // Floor of 3 of the 4 remaining secondary controls (#132 dropped Presets).
     expect(visibleCount).toBeGreaterThanOrEqual(3);
   });
 
@@ -136,9 +135,8 @@ test.describe('desktop (1280×800)', () => {
     await expect(moreTrigger).toBeHidden();
 
     /* And the controls that would otherwise live in the More drawer are
-       all visible inline. */
+       all visible inline. (#132: Presets row removed — used to live here.) */
     const toolbar = page.locator('.studio__toolbar');
-    await expect(toolbar.locator('.theme-presets')).toBeVisible();
     await expect(toolbar.locator('.layout-selector')).toBeVisible();
     await expect(toolbar.locator('.page-fit')).toBeVisible();
     await expect(toolbar.getByRole('button', { name: /^export$/i })).toBeVisible();

@@ -48,7 +48,6 @@ import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor';
 import ResumePreview from './ResumePreview';
 import ResumeHealth from './ResumeHealth';
 import ThemePicker from './ThemePicker';
-import ThemePresets from './ThemePresets';
 import LayoutSelector from './LayoutSelector';
 import ExportPanel from './ExportPanel';
 import KeyboardHelp, { getStoredShortcutsEnabled, setStoredShortcutsEnabled } from './KeyboardHelp';
@@ -1167,17 +1166,12 @@ export default function ResumeStudio() {
               ThemePicker + Save-as-PDF are deliberately NOT wrapped so
               they stay visible on mobile alongside the More trigger. */}
           <div className="studio__toolbar-themable">
-            {/* Curated audience presets (#95). One-click theme + layout
-                combos that sit ahead of the picker so a fresh visitor can
-                land a tasteful look without scrolling 545 themes. */}
-            <span className="studio__toolbar-collapsible">
-              <ThemePresets
-                currentTheme={theme}
-                currentTemplate={template}
-                onThemeChange={changeTheme}
-                onTemplateChange={changeTemplate}
-              />
-            </span>
+            {/* Curated audience presets (#95) were removed in #132 — they
+                were redundant with the layout selector (a "Modern" preset
+                and a "Modern" layout button) and their active state went
+                stale the moment a user changed either bundled coordinate.
+                The theme picker's tag chips + WCAG badge are now the path
+                to taste-driven first impressions. */}
 
             {/* ThemePicker — one of two controls that stay visible on
                 mobile (#131). Not wrapped in collapsible so the mobile

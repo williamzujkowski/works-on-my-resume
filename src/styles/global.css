@@ -3426,91 +3426,18 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 /* ------------------------------------------------------------------ */
-/* Curated theme presets (#95)                                         */
+/* Curated theme presets (#95) — removed in #132.                       */
 /*                                                                     */
-/* Three pills above the picker that apply a curated theme + layout    */
-/* combo in one click. The row sits to the LEFT of the existing        */
-/* ThemePicker inside `.studio__toolbar-themable`, which is `display:   */
-/* contents` — so the pills participate directly in the toolbar's flex */
-/* layout and the existing wrap / spacing rules continue to apply.     */
-/*                                                                     */
-/* On narrow viewports the row wraps under itself rather than alongside */
-/* the picker, so the pills never get squeezed off the screen.          */
+/* The Presets row bundled a theme + layout per pill (Conservative /   */
+/* Modern / Creative) and lived alongside the standalone Layout        */
+/* selector (Classic / Modern / Compact). The two controls shared the  */
+/* word "Modern" with two different meanings, and a preset's active    */
+/* state went stale the moment a user changed either of its bundled    */
+/* coordinates. After the theme picker grew tag chips + a WCAG badge   */
+/* and lazy-loaded all 545 themes, presets were vestigial training     */
+/* wheels. Removing the row simplifies the toolbar to two clean        */
+/* independent axes: theme (picker) and layout (selector).             */
 /* ------------------------------------------------------------------ */
-
-.theme-presets {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 0.18rem;
-  margin: 0;
-}
-
-.theme-presets__kicker {
-  /* Match the layout-selector kicker tone so the toolbar reads as a row of
-     small, peer controls. */
-  padding: 0;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ui-fg-subtle);
-}
-
-.theme-presets__row {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-}
-
-.theme-presets__pill {
-  /* A pill shape that echoes the existing exit-ATS pill, but quieter — the
-     preset row is a normal toolbar control, not an urgent affordance. */
-  display: inline-flex;
-  align-items: center;
-  padding: 0.3rem 0.7rem;
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  font-weight: 600;
-  color: var(--ui-fg-muted);
-  background: var(--ui-panel);
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 999px;
-  cursor: pointer;
-  transition:
-    background-color 110ms ease,
-    color 110ms ease,
-    border-color 110ms ease,
-    box-shadow 110ms ease;
-}
-
-.theme-presets__pill:hover,
-.theme-presets__pill:focus-visible {
-  color: var(--ui-fg);
-  background: var(--ui-panel-hover);
-  border-color: var(--ui-accent);
-}
-
-.theme-presets__pill--active {
-  /* Active treatment mirrors the layout-selector active state: an accent
-     ring and a foreground colour bump so the live preset reads as a
-     visible "on" state. `aria-pressed="true"` is also on the element, so
-     AT users hear the state too. */
-  color: var(--ui-fg);
-  background: var(--ui-bg);
-  border-color: var(--ui-accent);
-  box-shadow:
-    inset 0 0 0 1px var(--ui-accent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-@media (max-width: 720px) {
-  /* On narrow viewports allow the pill row to break to its own line so the
-     pills never get squeezed off-screen by the picker trigger. */
-  .theme-presets__row {
-    flex-wrap: wrap;
-  }
-}
 
 /* ------------------------------------------------------------------ */
 /* Faded sample preview (#96)                                          */
