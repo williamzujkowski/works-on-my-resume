@@ -12,6 +12,13 @@
  * false to match. On open it focuses the first *actionable* control (the
  * first print-mode radio, not the Close button). It dismisses on Escape and
  * on outside-click, and on close it restores focus to the Export trigger.
+ *
+ * Grouping (#136): the seven download buttons used to read as a flat list
+ * of identical-tone rows. They're now grouped under three kicker-headed
+ * sections — DOCUMENT (PDF / MD / HTM), DATA (TXT / JSON), ASSETS (CSS /
+ * ZIP) — each row prefixed with a 4ch mono format glyph so the popover
+ * reads like a directory listing. Visible button text is unchanged so
+ * existing e2e label matchers (#125) keep working.
  */
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ParsedResume, PrintMode, ResumeTemplate, ResumeTheme } from '../types';
@@ -51,6 +58,21 @@ interface ExportPanelProps {
    * output, so the file mirrors exactly what the user sees on screen.
    */
   previewRef: React.RefObject<HTMLElement | null>;
+}
+
+/**
+ * Renders a 4ch monospace glyph slot before a download row's label.
+ *
+ * The glyph is decorative — the visible button text already names the
+ * format — so it's hidden from assistive tech. Width is fixed in CSS to
+ * keep every row's label column aligned, terminal-listing style.
+ */
+function FormatGlyph({ children }: { children: string }) {
+  return (
+    <span className="export-panel__glyph" aria-hidden="true">
+      {children}
+    </span>
+  );
 }
 
 export default function ExportPanel({
@@ -150,8 +172,12 @@ export default function ExportPanel({
         </button>
       </div>
 
-      <div className="export-panel__group">
-        <span className="export-panel__group-label">Print / PDF</span>
+      {/* ----- MODE — print appearance toggle -----
+           Applies to the in-app print path AND to the HTML/ZIP downloads
+           (they bake `data-print-mode` into the exported file). Lives at
+           the top because it gates how PDF/HTML render below. */}
+      <div className="export-panel__section">
+        <span className="export-panel__group-label">Mode</span>
         <fieldset className="export-panel__radio-group">
           <legend className="visually-hidden">Print mode</legend>
           <label className="export-panel__radio">
@@ -184,6 +210,14 @@ export default function ExportPanel({
             </span>
           </label>
         </fieldset>
+      </div>
+
+      {/* ----- DOCUMENT — human-readable resume artifacts -----
+           PDF is the primary action; MD and HTM follow as alternate
+           document formats. Each row leads with a 4ch mono format glyph
+           so the popover reads like a directory listing. */}
+      <div className="export-panel__section">
+        <span className="export-panel__group-label">Document</span>
         <div className="export-panel__buttons">
           <button
             type="button"
@@ -191,14 +225,9 @@ export default function ExportPanel({
             onClick={() => window.print()}
             disabled={!hasResume}
           >
-            Print / Save as PDF
+            <FormatGlyph>PDF</FormatGlyph>
+            <span>Print / Save as PDF</span>
           </button>
-        </div>
-      </div>
-
-      <div className="export-panel__group">
-        <span className="export-panel__group-label">Download</span>
-        <div className="export-panel__buttons">
           <button
             type="button"
             className="btn"
@@ -207,8 +236,31 @@ export default function ExportPanel({
               if (parsed) downloadMarkdown(markdown, parsed.frontmatter);
             }}
           >
-            Download Markdown (.md)
+            <FormatGlyph>MD</FormatGlyph>
+            <span>Download Markdown (.md)</span>
           </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={!hasResume}
+            onClick={() => {
+              if (parsed) {
+                downloadResumeHtml(parsed.html, theme, parsed.frontmatter, template, printMode);
+              }
+            }}
+          >
+            <FormatGlyph>HTM</FormatGlyph>
+            <span>Download HTML (.html)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ----- DATA — machine-readable resume artifacts -----
+           Plain text (ATS pipelines) and JSON Resume (programmatic
+           re-import + downstream tooling). */}
+      <div className="export-panel__section">
+        <span className="export-panel__group-label">Data</span>
+        <div className="export-panel__buttons">
           <button
             type="button"
             className="btn"
@@ -227,19 +279,8 @@ export default function ExportPanel({
               downloadPlainText(article, parsed.frontmatter);
             }}
           >
-            Download plain text (.txt)
-          </button>
-          <button
-            type="button"
-            className="btn"
-            disabled={!hasResume}
-            onClick={() => {
-              if (parsed) {
-                downloadResumeHtml(parsed.html, theme, parsed.frontmatter, template, printMode);
-              }
-            }}
-          >
-            Download HTML (.html)
+            <FormatGlyph>TXT</FormatGlyph>
+            <span>Download plain text (.txt)</span>
           </button>
           <button
             type="button"
@@ -249,10 +290,21 @@ export default function ExportPanel({
               if (parsed) downloadJsonResume(toJsonResume(parsed, markdown));
             }}
           >
-            Download JSON Resume (.json)
+            <FormatGlyph>JSON</FormatGlyph>
+            <span>Download JSON Resume (.json)</span>
           </button>
+        </div>
+      </div>
+
+      {/* ----- ASSETS — supporting files -----
+           Theme CSS by itself (theme-only consumers) and the full ZIP
+           bundle (resume.md + resume.html + theme.css). */}
+      <div className="export-panel__section">
+        <span className="export-panel__group-label">Assets</span>
+        <div className="export-panel__buttons">
           <button type="button" className="btn" onClick={() => downloadThemeCss(theme)}>
-            Download theme CSS (.css)
+            <FormatGlyph>CSS</FormatGlyph>
+            <span>Download theme CSS (.css)</span>
           </button>
           <button
             type="button"
@@ -271,7 +323,8 @@ export default function ExportPanel({
               }
             }}
           >
-            Download as .zip
+            <FormatGlyph>ZIP</FormatGlyph>
+            <span>Download as .zip</span>
           </button>
         </div>
         <p className="export-panel__note">
@@ -287,7 +340,7 @@ export default function ExportPanel({
            toolbar can fit in two rows; the affordance is still discoverable
            from `e` → Export. Only the theme slug is copied; never resume
            content. */}
-      <div className="export-panel__group">
+      <div className="export-panel__section">
         <span className="export-panel__group-label">Share</span>
         <div className="export-panel__buttons">
           <button type="button" className="btn" onClick={copyThemeLink}>
