@@ -297,13 +297,13 @@ export default function PageFitIndicator({
           aria-label={pillLabel}
           onClick={() => setOpen((prev) => !prev)}
         >
-          {/* Kicker prefix (#135). Decorative — the button's
-              aria-label already carries the full descriptive sentence
-              so the kicker is hidden from AT to avoid double-reading. */}
-          <span className="section-kicker page-fit__kicker" aria-hidden="true">
-            Fit
-          </span>
           <span className="page-fit__dot" aria-hidden="true" />
+          {/* The label already leads with `Fit:` / `Fits` — that prefix IS
+              the kicker rhythm for this control. The leading "Fit" text
+              is styled with the section-kicker tone via the `::first-word`
+              shaping below in CSS; visible label content stays
+              unchanged so existing `Fits 1 page` / `Fit: 1.4 pages`
+              regex matchers keep working (#135). */}
           <span className="page-fit__label" id={labelId}>
             {label}
           </span>

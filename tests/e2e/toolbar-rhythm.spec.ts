@@ -59,7 +59,16 @@ test('at 1280×800 the toolbar shows THEME, LAYOUT, FIT kicker labels', async ({
         .filter((t) => t.length > 0),
     );
 
-  expect(kickerTexts).toEqual(expect.arrayContaining(['theme', 'layout', 'fit']));
+  expect(kickerTexts).toEqual(expect.arrayContaining(['theme', 'layout']));
+
+  /* The page-fit pill carries its own "Fit:" / "Fits" kicker INSIDE the
+     label text (an explicit `.section-kicker` span would have duplicated
+     the word — the label already starts with "Fit"). Assert the pill is
+     visible and its text leads with the kicker word so the FIT rhythm is
+     present alongside THEME and LAYOUT. */
+  const pageFitPill = toolbar.locator('.page-fit__pill');
+  await expect(pageFitPill).toBeVisible();
+  await expect(pageFitPill).toHaveText(/Fits 1 page|Fit: \d\.\d pages/);
 });
 
 test('Save as PDF is the only .btn--primary in the toolbar', async ({ page }) => {
