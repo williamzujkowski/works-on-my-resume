@@ -52,6 +52,7 @@ const CHROME_SELECTORS = [
   '.app-header',
   '.privacy-notice',
   '.studio__toolbar',
+  '.studio__statusline',
   '.studio__pane--editor',
   '.studio__pane-header',
 ] as const;
