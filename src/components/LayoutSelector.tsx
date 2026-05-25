@@ -36,7 +36,7 @@ export default function LayoutSelector({ templates, current, onChange }: LayoutS
          occasionally treats a `<legend>` inside a flex container as
          decoration. */
     >
-      <legend className="layout-selector__legend">Layout</legend>
+      <legend className="layout-selector__legend section-kicker">Layout</legend>
       <div className="layout-selector__options" role="presentation">
         {templates.map((template) => {
           const id = `layout-${template.slug}`;

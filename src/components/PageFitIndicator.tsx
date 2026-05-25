@@ -297,6 +297,12 @@ export default function PageFitIndicator({
           aria-label={pillLabel}
           onClick={() => setOpen((prev) => !prev)}
         >
+          {/* Kicker prefix (#135). Decorative — the button's
+              aria-label already carries the full descriptive sentence
+              so the kicker is hidden from AT to avoid double-reading. */}
+          <span className="section-kicker page-fit__kicker" aria-hidden="true">
+            Fit
+          </span>
           <span className="page-fit__dot" aria-hidden="true" />
           <span className="page-fit__label" id={labelId}>
             {label}

@@ -1242,6 +1242,13 @@ export default function ResumeStudio() {
               onOpenChange={setThemePickerOpen}
             />
 
+            {/* Hairline separator between THEME and LAYOUT (#135). Wrapped
+                in a `studio__toolbar-collapsible` span so the mobile More
+                drawer omits it alongside the LayoutSelector itself. */}
+            <span className="studio__toolbar-collapsible">
+              <span className="studio__toolbar-sep" aria-hidden="true" />
+            </span>
+
             <span className="studio__toolbar-collapsible">
               <LayoutSelector
                 templates={RESUME_TEMPLATES}
@@ -1296,6 +1303,13 @@ export default function ResumeStudio() {
             />
           </span>
 
+          {/* Hairline separator between FIT and the save/export cluster
+              (#135). Wrapped in a `studio__toolbar-collapsible` span so
+              the mobile More drawer omits it. */}
+          <span className="studio__toolbar-collapsible">
+            <span className="studio__toolbar-sep" aria-hidden="true" />
+          </span>
+
           {/* Soft spacer that anchors the save/export cluster to the right
               edge of the row, matching the OKLCH reference layout.
               Collapsible so the mobile More drawer doesn't carry a phantom
@@ -1315,6 +1329,12 @@ export default function ResumeStudio() {
             <Icon name="file" size={14} />
             Save as PDF
           </button>
+
+          {/* Hairline separator between Save-as-PDF and Export (#135).
+              Collapsible so the mobile drawer omits it. */}
+          <span className="studio__toolbar-collapsible">
+            <span className="studio__toolbar-sep" aria-hidden="true" />
+          </span>
 
           {/* Mobile "More" trigger (#131). `display: none` on desktop —
               the toolbar already shows everything. On viewports < 640px
@@ -1365,6 +1385,12 @@ export default function ResumeStudio() {
               />
             )}
           </div>
+
+          {/* Hairline separator between Export and the Settings gear
+              (#135). Collapsible so the mobile drawer omits it. */}
+          <span className="studio__toolbar-collapsible">
+            <span className="studio__toolbar-sep" aria-hidden="true" />
+          </span>
 
           {/* ----- Settings drawer trigger (#128) -----
               Rightmost slot of Row 2 on desktop. Opens the modal drawer

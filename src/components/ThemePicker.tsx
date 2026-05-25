@@ -355,7 +355,7 @@ export default function ThemePicker({
           borderColor={current.tokens.accent}
         />
         <span className="theme-picker__trigger-label">
-          <span className="theme-picker__trigger-kicker">theme</span>
+          <span className="theme-picker__trigger-kicker section-kicker">Theme</span>
           <span className="theme-picker__trigger-name">{current.name}</span>
         </span>
         {lowContrast && (
