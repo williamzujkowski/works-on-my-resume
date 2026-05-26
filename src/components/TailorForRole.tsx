@@ -416,17 +416,28 @@ export default function TailorForRole({
 
   /* Compact `Tech 5/12 · Soft 3/8 · Domain 2/4` sub-chip. We only render
      categories with at least one term to keep the chip from looking
-     padded — a Tech-only JD shouldn't show `Soft 0/0 · Domain 0/0`. */
-  const categoryChipText = useMemo(() => {
+     padded — a Tech-only JD shouldn't show `Soft 0/0 · Domain 0/0`.
+     Two shapes: a string for screen-reader / aria-label use, and a
+     parts array so the rendered chip can typeset the bucket NAME in
+     serif (it's a category label) and the matched/total readout in
+     mono (it's a tabular count). #165 mono-sweep. */
+  const categoryChipParts = useMemo(() => {
     if (!byCategory) return null;
-    const parts: string[] = [];
+    const parts: Array<{ label: string; count: string }> = [];
     for (const cat of CATEGORY_ORDER) {
       const stats = byCategory[cat];
       if (stats.total === 0) continue;
-      parts.push(`${CATEGORY_LABELS[cat]} ${stats.matched}/${stats.total}`);
+      parts.push({
+        label: CATEGORY_LABELS[cat],
+        count: `${stats.matched}/${stats.total}`,
+      });
     }
-    return parts.length > 0 ? parts.join(' · ') : null;
+    return parts.length > 0 ? parts : null;
   }, [byCategory]);
+  const categoryChipText = useMemo(() => {
+    if (!categoryChipParts) return null;
+    return categoryChipParts.map((p) => `${p.label} ${p.count}`).join(' · ');
+  }, [categoryChipParts]);
 
   /* ----- Render ----- */
   return (
@@ -508,9 +519,22 @@ export default function TailorForRole({
               Keyword overlap results
             </h3>
 
-            {categoryChipText && (
+            {categoryChipParts && categoryChipText && (
               <p className="tailor__category-chip" aria-label={`By category: ${categoryChipText}`}>
-                {categoryChipText}
+                {categoryChipParts.map((part, idx) => (
+                  <span key={part.label}>
+                    {idx > 0 && (
+                      <>
+                        {' '}
+                        <span className="tailor__category-chip-sep" aria-hidden="true">
+                          ·
+                        </span>{' '}
+                      </>
+                    )}
+                    <span className="tailor__category-chip-label">{part.label}</span>{' '}
+                    <span className="tailor__category-chip-count">{part.count}</span>
+                  </span>
+                ))}
               </p>
             )}
 
