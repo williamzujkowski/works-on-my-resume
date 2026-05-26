@@ -75,7 +75,7 @@ test.beforeEach(async ({ page }) => {
   await clearAppStorage(page);
   await page.goto('');
   await loadSampleResume(page);
-  // After #80 the ~545-theme dataset loads lazily on idle. No test in this
+  // After #80 the ~465-theme dataset loads lazily on idle. No test in this
   // file currently snapshots per-theme tokens, but several already read
   // `--resume-accent` from `document.documentElement` (conservative-mode and
   // modern-overlay tests below), and future per-theme print assertions will

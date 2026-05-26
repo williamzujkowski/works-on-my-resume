@@ -103,7 +103,7 @@ test('#140 stat counters animate on mount and tag the check stat with --check-en
 
   // After the entrance budget all three numeric stats land on a positive
   // integer. We don't pin the exact themeCount because the hero is
-  // rendered while the lazy 545-theme dataset is still resolving — the
+  // rendered while the lazy ~465-theme dataset is still resolving — the
   // boot fallback may be lower. The animation contract is: from 0, to a
   // positive integer, within ~1 s.
   await expect.poll(

@@ -480,7 +480,7 @@ a {
   color: var(--ui-fg);
 }
 
-/* Stat counter row: THEMES 545 · LAYOUTS 4 · TEMPLATES 4 · OFFLINE-READY. */
+/* Stat counter row: THEMES ~465 · LAYOUTS 4 · TEMPLATES 4 · OFFLINE-READY. */
 .app-hero__stats {
   display: flex;
   flex-wrap: wrap;
@@ -2704,9 +2704,12 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   color: var(--ui-success);
 }
 
-.theme-picker__contrast-icon--warn {
-  color: var(--ui-warning);
-}
+/* `.theme-picker__contrast-icon--warn`, `.theme-picker__trigger-warning`,
+   and `.theme-picker__checkbox` lived here. All three went away in #153:
+   the resume-safe toggle was removed (every theme in the dataset clears
+   the threshold by construction), and the low-contrast warning glyph on
+   the trigger / inside the contrast readout is unreachable for the same
+   reason. */
 
 .theme-picker__accent-dot {
   width: 0.7rem;
@@ -2716,27 +2719,11 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   flex-shrink: 0;
 }
 
-/* Non-blocking low-contrast warning on the always-visible picker trigger. */
-.theme-picker__trigger-warning {
-  display: inline-flex;
-  align-items: center;
-  color: var(--ui-warning);
-}
-
-.theme-picker__checkbox {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 0.76rem;
-  color: var(--ui-fg-muted);
-  cursor: pointer;
-}
-
 /* ----- Facet-tag chip row (#87) -----
-   Sits between the search input and the resume-safe toggle. Each chip is a
-   real <button> with aria-pressed; the row uses flex-wrap so a narrow
-   popover folds chips onto a second line cleanly. The `Reset` chip uses a
-   muted modifier so it reads as a control, not a filter. */
+   Sits between the search input and the option list. Each chip is a real
+   <button> with aria-pressed; the row uses flex-wrap so a narrow popover
+   folds chips onto a second line cleanly. The `Reset` chip uses a muted
+   modifier so it reads as a control, not a filter. */
 .theme-picker__tags {
   display: flex;
   flex-wrap: wrap;
@@ -2865,15 +2852,11 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   color: #2a2f37;
 }
 
-.badge--safe {
-  border-color: var(--ui-success);
-  color: var(--ui-success);
-}
-
-.badge--unsafe {
-  border-color: var(--ui-warning);
-  color: var(--ui-warning);
-}
+/* `.badge--safe` and `.badge--unsafe` lived here. Both went away in #153:
+   the unsafe-badge was removed from the picker's option rows (every theme
+   in the dataset clears the resume-safe threshold by construction), and
+   `.badge--safe` had no remaining caller after the preview-pane
+   conformance badge moved to its own class in #88. */
 
 /* `.theme-controls__copied` was the inline copy-confirmation pip next to
    the toolbar's "Copy theme link" button; both moved into the Export
@@ -4150,7 +4133,8 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 /* word "Modern" with two different meanings, and a preset's active    */
 /* state went stale the moment a user changed either of its bundled    */
 /* coordinates. After the theme picker grew tag chips + a WCAG badge   */
-/* and lazy-loaded all 545 themes, presets were vestigial training     */
+/* and lazy-loaded the whole theme dataset, presets were vestigial     */
+/* training                                                            */
 /* wheels. Removing the row simplifies the toolbar to two clean        */
 /* independent axes: theme (picker) and layout (selector).             */
 /* ------------------------------------------------------------------ */
