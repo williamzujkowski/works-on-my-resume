@@ -18,7 +18,7 @@
  * No resume content is persisted by this component. The career-stage slug is
  * the only thing written to localStorage, matching the project's posture.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ParsedResume } from '../types';
 import {
   analyzeResume,
@@ -282,13 +282,22 @@ export default function ResumeHealth({
 }
 
 /**
- * Thin horizontal progress meter (#137). Renders 10 cells out of which a
- * proportional run is filled, mirroring the issue's mock:
+ * Thin graphical progress meter (#174). Replaces the original ASCII bar
+ * (#137) with a single rounded track + animated ochre fill. Structure:
  *
- *   `MID  ████████░░  98 → 100 to advance to SENIOR`
+ *   MID                              ← mono kicker
+ *   ▭▭▭▭▭▭▭▭▭▭░░          98 / 100  ← bar (track + ochre fill) + value
+ *   Need 2 more findings cleared     ← serif muted hint below
  *
- * The fill count is the score scaled to the threshold's window; we use ten
- * cells because it reads as a clean 0-100 ladder in mono.
+ * The fill width is dynamic, so it can't ride on an inline `style=` (CSP
+ * blocks inline styles — see CONTRIBUTING.md). We mirror the canonical
+ * `ThemeSwatch` / `AccentDot` pattern from `ThemePicker.tsx`: mount a ref,
+ * then `useLayoutEffect` writes the width directly via the CSSOM.
+ *
+ * Accessibility: the bar wrapper carries `role="progressbar"` and
+ * `aria-valuenow/min/max`, so SR users hear "98 of 100 — Stage progress".
+ * The motion budget (~400ms width transition) lives in the CSS rule and
+ * is neutralized by the global `prefers-reduced-motion` block.
  */
 function ProgressMeter({
   progress,
@@ -297,50 +306,61 @@ function ProgressMeter({
   progress: StageProgress;
   findingsCount: number;
 }) {
-  const cells = 10;
-  // Fill is the score's fraction of 100 (not of `threshold`) so the meter
-  // reads as an absolute scale — 50% always means half-filled regardless of
-  // tier. The threshold is rendered as the milestone hint to the right.
-  const filled = Math.min(cells, Math.max(0, Math.round((progress.score / 100) * cells)));
-  const empty = cells - filled;
-  const meterText = '█'.repeat(filled) + '░'.repeat(empty);
-  const atTop = progress.next === null;
+  // Fill is the score's fraction of the tier threshold. At the top tier
+  // (`threshold` = 100) this is the absolute score; below the top, the
+  // bar fills to "how close am I to the next milestone?" which is what
+  // the visual question is really asking. Clamp to [0, 100].
+  const denom = progress.threshold > 0 ? progress.threshold : 100;
+  const percent = Math.min(100, Math.max(0, Math.round((progress.score / denom) * 100)));
+
+  const fillRef = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const el = fillRef.current;
+    if (!el) return;
+    // CSP: width is dynamic per score, so we paint it through the CSSOM
+    // rather than an inline `style` attribute. See CONTRIBUTING.md.
+    el.style.setProperty('width', percent + '%');
+  }, [percent]);
+
   // Milestone delta — how many findings the writer would need to clear to
-  // reach the threshold. Each finding subtracts 2 points (severity 'warn')
-  // on average; we round up to err on the side of "a few more" rather than
-  // promising a one-step jump. The hint only renders when there's daylight
-  // between score and threshold.
+  // reach the threshold. Each finding subtracts ~2 points (severity 'warn')
+  // on average; round up so the copy errs on "a few more" rather than
+  // promising a one-step jump. Only render when there's daylight and the
+  // writer actually has findings to clear.
   const findingsToClear = progress.delta > 0 ? Math.max(1, Math.ceil(progress.delta / 2)) : 0;
+  const atTop = progress.next === null;
+  const hint = atTop
+    ? 'At the top tier — nothing left to clear.'
+    : findingsToClear > 0 && findingsCount > 0
+      ? `Need ${findingsToClear} more ${findingsToClear === 1 ? 'finding' : 'findings'} cleared`
+      : null;
+
   return (
     <div className="resume-health__progress-row">
       <span className="resume-health__progress-label">{progress.label}</span>
-      <span className="resume-health__progress-meter" aria-hidden="true">
-        {meterText}
-      </span>
-      {atTop ? (
-        <span className="resume-health__progress-hint">
-          {progress.score} / 100 — at the top tier
+      <div className="resume-health__progress-track">
+        <div
+          className="resume-health__progress-bar"
+          role="progressbar"
+          aria-valuenow={progress.score}
+          aria-valuemin={0}
+          aria-valuemax={progress.threshold}
+          aria-label="Stage progress"
+        >
+          <span
+            ref={fillRef}
+            className="resume-health__progress-fill"
+            aria-hidden="true"
+          />
+        </div>
+        <span className="resume-health__progress-value">
+          {progress.score} / {progress.threshold}
         </span>
-      ) : (
-        <span className="resume-health__progress-hint">
-          {progress.score} → {progress.threshold} to advance to {STAGE_LABEL_NEXT[progress.current]}
-        </span>
-      )}
-      {findingsToClear > 0 && findingsCount > 0 && (
-        <span className="resume-health__progress-delta">
-          Need {findingsToClear} more {findingsToClear === 1 ? 'finding' : 'findings'} cleared
-        </span>
-      )}
+      </div>
+      {hint && <span className="resume-health__progress-hint">{hint}</span>}
     </div>
   );
 }
-
-/** Upper-case label for the NEXT tier — used in the meter's "advance to X" hint. */
-const STAGE_LABEL_NEXT: Record<CareerStage, string> = {
-  junior: 'MID',
-  mid: 'SENIOR',
-  senior: 'SENIOR',
-};
 
 /**
  * Build the "Next step" CTA copy from the highest-impact finding (#137).
