@@ -38,8 +38,14 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { RefObject } from 'react';
-import type { CareerStage } from '../utils/health';
-import { analyzeResume } from '../utils/health';
+import type { CareerStage, WordsSeverity } from '../utils/health';
+import {
+  analyzeResume,
+  targetPages,
+  wordCount,
+  wordsSeverity,
+  wordsTarget,
+} from '../utils/health';
 import { estimatePages } from '../utils/pageFit';
 import { wcagLevel } from '../utils/wcag';
 import { getStoredCareerStage } from '../utils/storage';
@@ -100,6 +106,17 @@ function compactPagesLabel(pages: number): string {
   if (pages <= 0) return '—';
   const rounded = Math.round(pages * 10) / 10;
   return `${rounded.toFixed(1)}p`;
+}
+
+/**
+ * Map a `WordsSeverity` to the BEM modifier suffix the stylesheet keys off
+ * (`ok | warn | danger`). Kept as a tiny mapping rather than inlined so the
+ * JSX className expression doesn't carry a switch statement. The three
+ * classes mirror the Fit chip's severity palette — same hues, same rubric
+ * (#155).
+ */
+function wordsSeverityClass(severity: WordsSeverity): string {
+  return `studio__statusline-seg--words-${severity}`;
 }
 
 export default function StudioStatusLine({
@@ -193,6 +210,22 @@ export default function StudioStatusLine({
     // and may be taller/shorter than the previous measurement.
   }, [previewRef, parsed]);
 
+  /* ----- Words meter (#155) -----
+     Computes the live word count + the stage's target. Same algorithm the
+     length heuristic uses (`wordCount` is exported from health.ts) so the
+     modeline can never disagree with the Health rubric on what a word is.
+     The target is derived from `wordsTarget(stage)` — 475 for junior, 950
+     for mid/senior — and the suffix reads `· N page(s)` off the same
+     `targetPages(stage)` mapping. Severity (`ok | warn | danger`) mirrors
+     the Fit chip's three-tier vocabulary. */
+  const words = useMemo(() => wordCount(markdown), [markdown]);
+  const wordsTargetCount = useMemo(() => wordsTarget(stage), [stage]);
+  const wordsPagesTarget = useMemo(() => targetPages(stage), [stage]);
+  const wordsSev = useMemo(
+    () => wordsSeverity(words, wordsTargetCount),
+    [words, wordsTargetCount],
+  );
+
   const worstRatio = Math.min(wcag.fgOnBg, wcag.accentOnBg);
   const level = wcagLevel(worstRatio);
 
@@ -257,6 +290,26 @@ export default function StudioStatusLine({
             Fit
           </span>
           <span className="studio__statusline-value">{compactPagesLabel(pages)}</span>
+        </span>
+      )}
+
+      {parsed && (
+        <span
+          className={`studio__statusline-seg studio__statusline-seg--words ${wordsSeverityClass(wordsSev)}`}
+        >
+          <span className="studio__statusline-kicker" aria-hidden="true">
+            Words
+          </span>
+          <span
+            className="studio__statusline-value"
+            aria-label={`${words} of ${wordsTargetCount} target words for a ${wordsPagesTarget} page resume`}
+          >
+            {words} / {wordsTargetCount}
+            <span className="studio__statusline-words-suffix" aria-hidden="true">
+              {' · '}
+              {wordsPagesTarget} {wordsPagesTarget === 1 ? 'page' : 'pages'}
+            </span>
+          </span>
         </span>
       )}
 

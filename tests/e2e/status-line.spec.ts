@@ -85,6 +85,23 @@ test('the Fit segment renders a compact pages label (desktop only)', async ({
   await expect(line.locator('.studio__statusline-seg--fit')).toContainText(/—|\d+\.\d+p/);
 });
 
+test('the WORDS segment renders a ratio and page-target suffix (desktop only)', async ({
+  page,
+}, testInfo) => {
+  test.skip(isMobileProject(testInfo), 'words segment is hidden on mobile (#155)');
+  await loadSampleResume(page);
+  const line = await statusLine(page);
+  // Shape only: a numerator / denominator pair, then ` · N page(s)` suffix.
+  // The exact word count depends on the bundled sample so we don't pin it.
+  const words = line.locator('.studio__statusline-seg--words');
+  await expect(words).toBeVisible();
+  await expect(words).toContainText(/\d+\s+\/\s+\d+\s+·\s+\d+\s+pages?/);
+  // The segment carries one of the three severity modifiers (`ok | warn |
+  // danger`). The Fit chip rubric is mirrored, so this lock-in keeps the
+  // two readouts honest about staying in sync.
+  await expect(words).toHaveClass(/studio__statusline-seg--words-(ok|warn|danger)/);
+});
+
 test('the WCAG segment shows the active theme conformance level (desktop only)', async ({
   page,
 }, testInfo) => {

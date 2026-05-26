@@ -1382,6 +1382,32 @@ body[data-app-phase='hero'] .app-header {
   top: -0.05em;
 }
 
+/* WORDS meter (#155) — three-tier severity mirrors the Fit pill. The
+   colour rides the value span so the kicker stays in the muted tone the
+   rest of the modeline uses; only the numeric ratio + suffix carry the
+   severity. Hues match `.page-fit--*` for cross-chrome consistency. */
+.studio__statusline-seg--words-ok .studio__statusline-value {
+  color: var(--ui-fg);
+  font-weight: 500;
+}
+
+.studio__statusline-seg--words-warn .studio__statusline-value {
+  color: #b45309; /* amber-700 — matches .page-fit--warn */
+  font-weight: 600;
+}
+
+.studio__statusline-seg--words-danger .studio__statusline-value {
+  color: #b91c1c; /* red-700 — matches .page-fit--danger */
+  font-weight: 600;
+}
+
+/* The trailing `· N page` suffix on the WORDS segment reads softer than
+   the numerator/denominator so the ratio is the eye-catch. */
+.studio__statusline-words-suffix {
+  color: var(--ui-fg-muted);
+  font-weight: 400;
+}
+
 /* WCAG tone — same three-tier mapping as the preview-pane badge so the
    reviewer sees the same green / amber / red regardless of which surface
    they're looking at. */
@@ -1407,6 +1433,7 @@ body[data-app-phase='hero'] .app-header {
   .studio__statusline-seg--cursor,
   .studio__statusline-seg--lines,
   .studio__statusline-seg--fit,
+  .studio__statusline-seg--words,
   .studio__statusline-seg--wcag {
     display: none;
   }
