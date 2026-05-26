@@ -3398,13 +3398,17 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .format-docs {
+  /* #175: narrower card (640px) centers the reference content and gives
+     the frontmatter table room to breathe; asymmetric padding (vertical
+     space-5, horizontal space-6) widens the gutters on desktop without
+     bloating the modal height. */
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  width: min(46rem, 100%);
+  width: min(40rem, 100%);
   max-height: 100%;
   overflow-y: auto;
-  padding: var(--space-5);
+  padding: var(--space-5) var(--space-6);
   background: var(--ui-bg-elevated);
   border: 1px solid var(--ui-border-strong);
   border-radius: var(--radius-lg);
@@ -3484,11 +3488,22 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .format-docs__fm-row {
+  /* #175: row padding 0.65rem 0 + space-4 column gap gives the frontmatter
+     table the breathing room the cramped space-2 / space-3 sketch lacked.
+     The key chip claims the left column (6rem so `links[]` doesn't
+     overflow); the description sits to its right, and the example chip
+     flows under the description as a second row spanning the same
+     column. The pre-#175 layout tried to cram all three into one row;
+     at the narrower 640px modal width that squashed `links[]`'s
+     multi-line YAML chip against the description and broke prose into
+     a four-line column. Stacking example-under-description is the
+     readable shape at this width. */
   display: grid;
-  grid-template-columns: 6rem 1fr auto;
-  gap: var(--space-3);
+  grid-template-columns: 6rem 1fr;
+  column-gap: var(--space-4);
+  row-gap: var(--space-2);
   align-items: baseline;
-  padding: var(--space-2) 0;
+  padding: 0.65rem 0;
   border-bottom: 1px solid var(--ui-border);
 }
 
@@ -3497,9 +3512,13 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .format-docs__fm-key {
+  /* #175: tabular-nums keeps the chips visually aligned when a key contains
+     digits (none today, but `links[]` reads as a token and the numeric
+     variant locks digit widths if any field gains a number later). */
   font-family: var(--font-mono);
   font-size: 0.78rem;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
   padding: 0.1rem 0.4rem;
   background: var(--ui-panel);
   border: 1px solid var(--ui-border-strong);
@@ -3509,12 +3528,23 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .format-docs__fm-desc {
-  font-size: 0.8rem;
+  /* #175: serif body to match the editorial-stationery voice (#163-#165) —
+     the description column reads as prose, not chrome, and the 1.55
+     line-height keeps the two-line descriptions readable inside the
+     0.65rem-padded row. */
+  font-family: var(--font-serif);
+  font-size: 0.86rem;
   line-height: 1.55;
   color: var(--ui-fg);
 }
 
 .format-docs__fm-example {
+  /* #175: occupies the second row of the description column (the row
+     stacks: key | desc, then a full-width example below desc). justify-
+     self: start keeps the chip width-to-content so a 12-char `Avery
+     Quinn` doesn't stretch to fill the column. */
+  grid-column: 2;
+  justify-self: start;
   font-family: var(--font-mono);
   font-size: 0.76rem;
   padding: 0.15rem 0.4rem;
@@ -3527,11 +3557,19 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 @media (max-width: 640px) {
+  /* On narrow viewports the rows stack — collapse the column gap and pull
+     the row padding back so the stacked key/desc/example trio reads as a
+     single block, not three loosely-spaced lines (#175). */
+  .format-docs {
+    padding: var(--space-4);
+  }
   .format-docs__fm-row {
     grid-template-columns: 1fr;
-    gap: var(--space-1);
+    row-gap: var(--space-1);
+    padding: var(--space-3) 0;
   }
   .format-docs__fm-example {
+    grid-column: auto;
     justify-self: start;
   }
 }
