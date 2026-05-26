@@ -1,7 +1,8 @@
 /**
  * AppHero — empty-state hero shown above the workbench when no resume is
- * loaded yet (#127). Brand title, kbd-chip tagline, and a stat counter row
- * (THEMES · LAYOUTS · TEMPLATES · OFFLINE-READY) sourced from in-tree data.
+ * loaded yet (#127). Brand title, kbd-chip tagline, a "How it works" 3-step
+ * list (#173), and a stat counter row (THEMES · LAYOUTS · TEMPLATES ·
+ * OFFLINE-READY) sourced from in-tree data.
  *
  * Mount animation (#140): the three numeric stats tick up from 0 to their
  * final values via rAF (ease-out, ~500 ms), staggered Themes / +100 ms /
@@ -14,7 +15,9 @@
  * `textContent`; class toggles govern fade/shimmer.
  *
  * Trust: every value rendered is either a static literal or a number
- * derived from in-tree data — no user-controlled strings.
+ * derived from in-tree data — no user-controlled strings. The "Pick a
+ * theme — N to choose from" line reads `themeCount` from the same prop
+ * the stats row consumes (THEMES.length at the call-site).
  */
 import { useEffect, useRef } from 'react';
 import Icon from './Icon';
@@ -135,6 +138,26 @@ export default function AppHero({ themeCount, layoutCount, templateCount }: AppH
         <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, <kbd>/</kbd> to search,{' '}
         <kbd>r</kbd> for random.
       </p>
+
+      {/* "How it works" — three-step microcopy (#173). Lives inside the
+          hero (which is itself conditional on !hasResume in ResumeStudio),
+          so it disappears the moment a resume lands. The theme count is
+          the same `themeCount` the stats row consumes — sourced from
+          `THEMES.length` at the call-site, never hardcoded. */}
+      <ol className="app-hero__steps" aria-label="How it works">
+        <li className="app-hero__step">
+          <span className="app-hero__step-num" aria-hidden="true">1.</span>
+          <span>Write or paste your resume in Markdown.</span>
+        </li>
+        <li className="app-hero__step">
+          <span className="app-hero__step-num" aria-hidden="true">2.</span>
+          <span>Pick a theme — {themeCount} to choose from.</span>
+        </li>
+        <li className="app-hero__step">
+          <span className="app-hero__step-num" aria-hidden="true">3.</span>
+          <span>Save as PDF. It never leaves your browser.</span>
+        </li>
+      </ol>
 
       <div className="app-hero__stats" role="list" aria-label="At a glance">
         <HeroStat value={themeCount} label="Themes" delayMs={0} />

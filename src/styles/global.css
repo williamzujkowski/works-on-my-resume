@@ -436,6 +436,46 @@ a {
   color: var(--ui-fg);
 }
 
+/* "How it works" 3-step microcopy (#173). Sits between the tagline and
+   the stat row inside the hero — which is itself conditional on the
+   no-resume state in ResumeStudio.tsx, so the list disappears the moment
+   a resume lands. Caption-size serif body in muted ink; the numeral
+   ("1." / "2." / "3.") is the only ochre touch — mono so the digits
+   tabulate like a printer's recipe card. */
+.app-hero__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-width: 60ch;
+}
+
+.app-hero__step {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  /* Caption size, matches .app-header__tagline. Serif body keeps the
+     register editorial — the kicker numeral is the only mono note. */
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--ui-fg-muted);
+}
+
+.app-hero__step-num {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ui-accent);
+  font-variant-numeric: tabular-nums lining-nums;
+  /* Fixed width keeps "1." / "2." / "3." aligned across rows even when
+     the renderer chooses a proportional digit pair. */
+  min-width: 1.4em;
+  flex-shrink: 0;
+}
+
 /* Stat counter row: Themes 465 · Layouts 4 · Templates 4 · Offline-ready.
    The number is the eye-catch (serif, heavy, ochre); the label is the
    small-caps kicker (mono). The em-style separators read as printed
