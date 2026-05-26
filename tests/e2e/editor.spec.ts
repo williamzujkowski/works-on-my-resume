@@ -46,17 +46,12 @@ test('Insert section appends an Experience entry skeleton', async ({ page }) => 
   // Focus so the caret position is `0`.
   await textarea.click();
 
-  /* Experience is one of the always-visible quick-insert buttons on wide
-     viewports (#70), but on narrow viewports the row collapses and it's
-     reachable through the popover instead. Pick whichever entry point is
-     actually visible — the inserted snippet is identical either way. */
-  const quickExperience = page.getByRole('button', { name: /^insert experience entry$/i });
-  if (await quickExperience.isVisible()) {
-    await quickExperience.click();
-  } else {
-    await page.getByRole('button', { name: /^insert section$/i }).click();
-    await page.getByRole('menuitem', { name: /experience entry/i }).click();
-  }
+  /* Post-#154 the editor exposes a single unified Insert-section popover —
+     the prior always-visible quick-insert row was retired in favor of one
+     menu, with entries grouped and document-ordered. Every snippet now
+     lives behind the same trigger. */
+  await page.getByRole('button', { name: /^insert section$/i }).click();
+  await page.getByRole('menuitem', { name: /experience entry/i }).click();
 
   const value = await textarea.inputValue();
   // The snippet must include the canonical placeholder heading and a bullet.
@@ -66,6 +61,30 @@ test('Insert section appends an Experience entry skeleton', async ({ page }) => 
   expect(value).toMatch(/###\s+Job Title/);
 });
 
+test('Insert section menu is keyboard-reachable (#154)', async ({ page }) => {
+  // The unified menu must be reachable + actionable via the keyboard. We
+  // drive the trigger with Enter rather than a click to prove the path.
+  const textarea = page.getByLabel(/markdown source/i);
+  await textarea.fill('');
+  await textarea.click();
+
+  const trigger = page.getByRole('button', { name: /^insert section$/i });
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+
+  // With the menu open the first entry must be a real menuitem.
+  const menu = page.getByRole('menu', { name: /insert a resume section/i });
+  await expect(menu).toBeVisible();
+
+  // Tab into the menu and pick Education with Enter — verifies that
+  // every item is reachable through the standard Tab order.
+  await page.getByRole('menuitem', { name: /education entry/i }).focus();
+  await page.keyboard.press('Enter');
+
+  const value = await textarea.inputValue();
+  expect(value).toContain('Degree, Field of Study');
+});
+
 test('picking any snippet on an empty editor auto-prepends frontmatter (#97)', async ({ page }) => {
   // Start from an empty document — the auto-prepend trigger is "value is empty
   // AND no existing frontmatter". With no value at all both conditions hold.
@@ -73,15 +92,9 @@ test('picking any snippet on an empty editor auto-prepends frontmatter (#97)', a
   await textarea.fill('');
   await textarea.click();
 
-  // Pick a non-frontmatter snippet. Experience is reachable either via the
-  // quick-insert button (wide viewports) or the popover (narrow viewports).
-  const quickExperience = page.getByRole('button', { name: /^insert experience entry$/i });
-  if (await quickExperience.isVisible()) {
-    await quickExperience.click();
-  } else {
-    await page.getByRole('button', { name: /^insert section$/i }).click();
-    await page.getByRole('menuitem', { name: /experience entry/i }).click();
-  }
+  // Pick a non-frontmatter snippet through the unified menu (#154).
+  await page.getByRole('button', { name: /^insert section$/i }).click();
+  await page.getByRole('menuitem', { name: /experience entry/i }).click();
 
   const value = await textarea.inputValue();
   // Frontmatter must lead the document, with the canonical identity keys,
@@ -115,17 +128,12 @@ test('snippets do not prepend frontmatter when content already exists (#97)', as
   const textarea = page.getByLabel(/markdown source/i);
   await textarea.fill('# Existing heading\n\nSome body text.\n');
   // On mobile the editor accordion (#100) collapses once content is present;
-  // expand it so the textarea + quick-insert affordances stay reachable.
+  // expand it so the textarea + Insert-section affordance stay reachable.
   await expandMobileEditor(page);
   await textarea.click();
 
-  const quickExperience = page.getByRole('button', { name: /^insert experience entry$/i });
-  if (await quickExperience.isVisible()) {
-    await quickExperience.click();
-  } else {
-    await page.getByRole('button', { name: /^insert section$/i }).click();
-    await page.getByRole('menuitem', { name: /experience entry/i }).click();
-  }
+  await page.getByRole('button', { name: /^insert section$/i }).click();
+  await page.getByRole('menuitem', { name: /experience entry/i }).click();
 
   const value = await textarea.inputValue();
   // No frontmatter was injected — the document still opens with the heading.
