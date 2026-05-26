@@ -153,3 +153,45 @@ test('#140 stat counters skip the entrance under prefers-reduced-motion: reduce'
     expect(Number.isInteger(n) && n > 0).toBe(true);
   }
 });
+
+/**
+ * #169 — pre-hydration no-flash invariant.
+ *
+ * The static AppHeader is default-hidden in CSS (`display: none` on
+ * `.app-header`) and only revealed when the React island lands and flips
+ * `body[data-app-phase='workbench']` (#165). This test locks in that
+ * contract by delaying the ResumeStudio bundle briefly: during the
+ * pre-hydration window the header MUST NOT flash visible, and the empty
+ * landing surface (with the Load-sample CTA) MUST keep it hidden after
+ * hydration completes. Only when a resume actually loads does the strip
+ * reveal.
+ *
+ * Route pattern matches the production chunk shape
+ * `ResumeStudio.<hash>.js` emitted by Astro's React island build.
+ */
+test('app-header stays hidden during the hydration window', async ({ page }) => {
+  // Block the React JS bundle briefly so we can observe pre-hydration state.
+  // The delay only fires once — subsequent requests (HMR, retries) pass
+  // straight through, which keeps the spec from sagging on the rest of the
+  // run.
+  let delayed = false;
+  await page.route(/ResumeStudio.*\.js$/, async (route) => {
+    if (!delayed) {
+      delayed = true;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    return route.continue();
+  });
+  await page.goto('');
+  // In the pre-hydration window, the app-header should NOT be visible.
+  // The static markup ships with `display: none` on `.app-header`; this
+  // assertion would fail if anyone ever flipped that default.
+  await expect(page.locator('.app-header')).toBeHidden();
+  // After hydration completes, on the landing surface, it stays hidden —
+  // the Load-sample CTA is the signal that the hero has fully mounted.
+  await expect(page.getByRole('button', { name: /load sample/i })).toBeVisible();
+  await expect(page.locator('.app-header')).toBeHidden();
+  // Once a resume loads, the strip reveals (workbench phase).
+  await page.getByRole('button', { name: /load sample/i }).click();
+  await expect(page.locator('.app-header')).toBeVisible();
+});
