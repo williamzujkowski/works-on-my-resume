@@ -53,6 +53,7 @@ import LayoutSelector from './LayoutSelector';
 import ExportPanel from './ExportPanel';
 import KeyboardHelp, { getStoredShortcutsEnabled, setStoredShortcutsEnabled } from './KeyboardHelp';
 import ExampleDialog from './ExampleDialog';
+import FormatDocsDialog from './FormatDocsDialog';
 import PageFitIndicator from './PageFitIndicator';
 import TailorForRole from './TailorForRole';
 import AppHero from './AppHero';
@@ -199,6 +200,14 @@ export default function ResumeStudio() {
      legend). Opens from the gear icon at the rightmost toolbar slot. */
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsTriggerRef = useRef<HTMLButtonElement>(null);
+
+  /* ----- Markdown format reference dialog (#157) -----
+     Static "what shape does this app expect" reference: frontmatter contract,
+     canonical sections, an LLM-handoff prompt with a copy-to-clipboard
+     affordance, and the privacy reminder. Opened from the Settings drawer's
+     Help group (the drawer closes itself first so the modal lands on a
+     clean stage; same handoff the keyboard-shortcuts dialog uses). */
+  const [formatDocsOpen, setFormatDocsOpen] = useState(false);
 
   /* ----- "Open an example" dialog (#120) -----
      When the Resume Health panel asks to open an example for a section the
@@ -779,12 +788,14 @@ export default function ResumeStudio() {
         return;
       }
 
-      // The help overlay and settings drawer trap focus and handle their
-      // own keys — let them own the keyboard while open. Escape inside the
-      // drawer is handled by the drawer itself (which calls onClose); the
-      // global Escape handler above short-circuits before this guard.
+      // The help overlay, settings drawer, and format-docs dialog trap focus
+      // and handle their own keys — let them own the keyboard while open.
+      // Escape inside any of them is handled by the modal itself (which
+      // calls onClose); the global Escape handler above short-circuits
+      // before this guard.
       if (helpOpen) return;
       if (settingsOpen) return;
+      if (formatDocsOpen) return;
 
       // Never hijack typing, and never fight browser/OS chords.
       if (isEditableTarget(event.target)) return;
@@ -838,6 +849,7 @@ export default function ResumeStudio() {
     themePickerOpen,
     helpOpen,
     settingsOpen,
+    formatDocsOpen,
     hasResume,
     shortcutsEnabled,
     stepTheme,
@@ -923,6 +935,17 @@ export default function ResumeStudio() {
     window.setTimeout(() => {
       const target = helpTriggerRef.current ?? settingsTriggerRef.current;
       target?.focus();
+    }, 0);
+  }, []);
+
+  /* Close the Markdown-format reference dialog (#157) and return focus to
+     the Settings gear — that's the only trigger that opens it (the drawer
+     closes itself first, so the gear is the natural landing spot for
+     keyboard users). */
+  const closeFormatDocs = useCallback(() => {
+    setFormatDocsOpen(false);
+    window.setTimeout(() => {
+      settingsTriggerRef.current?.focus();
     }, 0);
   }, []);
 
@@ -1679,11 +1702,20 @@ export default function ResumeStudio() {
           onDeleteSnapshot={handleDeleteSnapshot}
           shortcutsEnabled={shortcutsEnabled}
           onOpenKeyboardHelp={() => setHelpOpen(true)}
+          onOpenFormatDocs={() => setFormatDocsOpen(true)}
           onPreviousTheme={() => stepTheme(-1)}
           onNextTheme={() => stepTheme(1)}
           onRandomTheme={randomTheme}
         />
       )}
+
+      {/* ----- Markdown format reference dialog (#157) -----
+           Opens from the Settings drawer's Help group. Mounted only when
+           open; the drawer closes itself first so this lands on a clean
+           stage. Close affordances (Esc, click outside, explicit button)
+           all route through `closeFormatDocs`, which restores focus to
+           the Settings gear. ----- */}
+      {formatDocsOpen && <FormatDocsDialog onClose={closeFormatDocs} />}
 
       {/* ----- Resume Health → Open-an-example dialog (#120) -----
            Mounted only when the Health panel asks for an example AND the
