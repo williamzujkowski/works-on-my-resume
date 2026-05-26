@@ -48,6 +48,64 @@ test('the hero is rendered on Phase 1 with title, kbd-chip tagline, and stat cou
   await expect(page.locator('.app-header')).toBeHidden();
 });
 
+test('#173 the hero carries a 3-step "How it works" list with the dynamic theme count', async ({
+  page,
+}) => {
+  const hero = page.locator('.app-hero');
+  await expect(hero).toBeVisible();
+
+  // Three numbered steps, each with a "1." / "2." / "3." ochre numeral.
+  const steps = hero.locator('.app-hero__step');
+  await expect(steps).toHaveCount(3);
+
+  const nums = hero.locator('.app-hero__step-num');
+  await expect(nums.nth(0)).toHaveText('1.');
+  await expect(nums.nth(1)).toHaveText('2.');
+  await expect(nums.nth(2)).toHaveText('3.');
+
+  // Body copy. The middle step embeds the live theme count — read it
+  // from the Themes stat counter so the assertion stays in lockstep
+  // with whatever THEMES.length resolves to at runtime (post-tick-up,
+  // when the lazy dataset has fully landed).
+  await expect(steps.nth(0)).toContainText('Write or paste your resume in Markdown.');
+  await expect(steps.nth(2)).toContainText('Save as PDF. It never leaves your browser.');
+
+  // The middle step's "N to choose from" must agree with the same
+  // `themeCount` prop the Themes stat reads. Both surfaces consume the
+  // same source, so once the lazy ~465-theme dataset lands they must
+  // converge. Poll the pair until they match — this avoids two
+  // independent reads racing against the lazy-load resolve and the
+  // mount tick-up animation.
+  const themesValue = hero
+    .locator('.app-hero__stat')
+    .filter({ has: page.locator('.app-hero__stat-label', { hasText: /^themes$/i }) })
+    .locator('.app-hero__stat-value');
+  await expect.poll(
+    async () => {
+      const counter = Number((await themesValue.textContent()) ?? '0');
+      const stepText = (await steps.nth(1).textContent()) ?? '';
+      const match = stepText.match(/Pick a theme — (\d+) to choose from\./);
+      const stepCount = match ? Number(match[1]) : NaN;
+      return counter > 0 && counter === stepCount;
+    },
+    {
+      timeout: 5000,
+      message: 'Themes counter and step copy should converge on the same count',
+    },
+  ).toBe(true);
+});
+
+test('#173 the 3-step list disappears once a resume is loaded', async ({ page }) => {
+  // Baseline: the steps are present in the empty state.
+  await expect(page.locator('.app-hero__steps')).toHaveCount(1);
+
+  // Load the bundled sample → workbench phase.
+  await loadSampleResume(page);
+
+  // Hero (and its steps list) is gone.
+  await expect(page.locator('.app-hero__steps')).toHaveCount(0);
+});
+
 test('loading a resume collapses the hero — the static AppHeader returns', async ({ page }) => {
   // Baseline: hero present.
   await expect(page.locator('.app-hero')).toHaveCount(1);
