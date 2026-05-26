@@ -4099,7 +4099,11 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Five worked-or-empty templates (#156). Auto-fit lets the grid hold
+     all five in a row at wide widths and gracefully step down to 2 and
+     then 1 column at narrower breakpoints. The 12rem minimum keeps the
+     card title and description legible at every step. */
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: var(--space-3);
 }
 
@@ -4156,6 +4160,26 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
      separate it from the description. */
   align-self: stretch;
   margin-top: var(--space-2);
+}
+
+/* Scaffold-only secondary action row (#156): "Copy to LLM" button +
+   transient "Copied" pip. Sits below the primary "Use this template"
+   action on the Scaffold card. The button itself reuses
+   `.template-picker__card-action` for the stretch + margin rhythm; this
+   wrapper just gives the confirmation pip somewhere stable to sit. */
+.template-picker__card-secondary {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+}
+
+.template-picker__copied {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--ui-success);
 }
 
 /* ------------------------------------------------------------------ */
