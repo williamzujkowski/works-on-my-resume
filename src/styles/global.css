@@ -2110,8 +2110,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .editor__snippet-trigger,
-.editor__wrap-toggle,
-.editor__quick-insert-btn {
+.editor__wrap-toggle {
   padding: 0.32rem 0.5rem;
   font-size: 0.74rem;
 }
@@ -2123,40 +2122,18 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   background: var(--ui-panel);
 }
 
-/* ----- Always-visible quick-insert buttons (#70) -----
-   A small group of toolbar buttons for the section snippets an empty
-   resume most needs (Experience + Education). They share the compact
-   ghost-button look with the soft-wrap toggle. Below 640px the row is
-   hidden and these entries reappear inside the popover instead. */
-.editor__quick-insert {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-/* ----- Insert-section menu ----- */
+/* ----- Insert-section menu (#154) -----
+   One popover for every snippet, grouped by Frontmatter / Always /
+   Optional and ordered by document position within each group. The
+   pre-#154 always-visible "quick-insert" row was removed in favor of
+   this single affordance — two paths to insert the same section was
+   adding more confusion than it removed. */
 .editor__snippet {
   position: relative;
 }
 
-/* Popover list items default to visible; the --quick modifier marks rows
-   whose snippet is duplicated by an always-visible toolbar button. On
-   wide viewports CSS hides those rows so the popover only carries the
-   long-tail entries; on narrow viewports they reappear (see @media below). */
 .editor__snippet-li {
   display: block;
-}
-
-@media (min-width: 641px) {
-  .editor__snippet-li--quick {
-    display: none;
-  }
-}
-
-@media (max-width: 640px) {
-  .editor__quick-insert {
-    display: none;
-  }
 }
 
 .editor__snippet-menu {
@@ -2191,6 +2168,36 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 .editor__snippet-item:hover,
 .editor__snippet-item:focus-visible {
   background: var(--ui-panel-hover);
+}
+
+/* Group heading inside the snippet popover (#154). Each group reads as a
+   short, muted, all-caps label above its entries. The list nested under
+   the heading drops list semantics from the outer menu — `role="group"`
+   wraps the entries so the heading is announced as a section divider,
+   not as a focusable menu item. */
+.editor__snippet-group {
+  display: block;
+}
+
+.editor__snippet-group + .editor__snippet-group {
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--ui-border);
+}
+
+.editor__snippet-group-label {
+  padding: 0.2rem var(--space-2) 0.15rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-fg-muted);
+}
+
+.editor__snippet-group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 /* ----- Editing surface: gutter + textarea, scroll-synced ----- */

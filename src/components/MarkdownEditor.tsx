@@ -10,8 +10,9 @@
  *  - Soft-wrap toggle: switches the textarea's `wrap` attribute (and the
  *    matching `white-space`) between wrapped and off; remembered for the
  *    session via sessionStorage.
- *  - Section snippets: an "insert section" menu offering a few resume
- *    section skeletons inserted at the caret.
+ *  - Section snippets: a single "Insert section" menu offering resume
+ *    section skeletons inserted at the caret, ordered by where each
+ *    section appears in the canonical document layout (#154).
  *
  * Every keystroke is still emitted up to ResumeStudio, which debounces
  * re-parsing. The editor holds no parsing logic.
@@ -148,15 +149,40 @@ interface Snippet {
   id: string;
   /** Label used inside the popover menu. */
   label: string;
-  /** Shorter label used on the always-visible toolbar button (#70). */
-  quickLabel?: string;
   /** Markdown inserted at the caret. */
   body: string;
 }
 
-const SNIPPETS: Snippet[] = [
+/* The snippet list is split into two groups in the popover — ALWAYS sections
+   that every resume should carry, and OPTIONAL ones that strong candidates
+   often add. Within each group the entries follow the canonical document
+   order shared by `public/sample-resume.md` and the four `public/templates/*`
+   files. The frontmatter entry sits on its own at the top because it is the
+   identity header rather than a body section. (#154)
+
+   Document order (per #154):
+     1. Summary           (always)
+     2. Selected Impact   (optional, mid/senior)
+     3. Experience        (always)
+     4. Selected Projects (optional, mid/senior — covered by "Project entry")
+     5. Skills            (always)
+     6. Education         (always)
+     7. Selected Writing  (optional)
+
+   We only ship snippet bodies for the section shapes the prior popover
+   already covered. The reorder is the part that matters for #154; adding
+   new snippet bodies (Selected Impact, Selected Writing) is out of scope. */
+type SnippetGroup = 'frontmatter' | 'always' | 'optional';
+
+interface SnippetEntry extends Snippet {
+  /** Which heading the entry sits under inside the popover. */
+  group: SnippetGroup;
+}
+
+const SNIPPETS: SnippetEntry[] = [
   {
     id: 'frontmatter',
+    group: 'frontmatter',
     label: 'Frontmatter (identity header)',
     body: `---
 name: Your Name
@@ -173,9 +199,18 @@ links:
 `,
   },
   {
+    id: 'summary',
+    group: 'always',
+    label: 'Summary section',
+    body: `## Summary
+
+One or two sentences describing who you are and what you do.
+`,
+  },
+  {
     id: 'experience',
+    group: 'always',
     label: 'Experience entry',
-    quickLabel: 'Experience',
     body: `### Job Title — Company Name
 *City, ST · Mon YYYY – Present*
 
@@ -184,17 +219,19 @@ links:
 `,
   },
   {
-    id: 'education',
-    label: 'Education entry',
-    quickLabel: 'Education',
-    body: `### Degree, Field of Study
-*School Name · City, ST · YYYY*
+    id: 'project',
+    group: 'optional',
+    label: 'Project entry',
+    body: `### Project Name
+*Role · YYYY · [link](https://example.com)*
 
-- Honors, relevant coursework, or activities.
+- What it does and the problem it solves.
+- Notable result, scale, or technology.
 `,
   },
   {
     id: 'skills',
+    group: 'always',
     label: 'Skills section',
     body: `## Skills
 
@@ -204,31 +241,27 @@ links:
 `,
   },
   {
-    id: 'summary',
-    label: 'Summary section',
-    body: `## Summary
+    id: 'education',
+    group: 'always',
+    label: 'Education entry',
+    body: `### Degree, Field of Study
+*School Name · City, ST · YYYY*
 
-One or two sentences describing who you are and what you do.
-`,
-  },
-  {
-    id: 'project',
-    label: 'Project entry',
-    body: `### Project Name
-*Role · YYYY · [link](https://example.com)*
-
-- What it does and the problem it solves.
-- Notable result, scale, or technology.
+- Honors, relevant coursework, or activities.
 `,
   },
 ];
 
-/* The two snippets an empty resume most needs are promoted to always-visible
-   toolbar buttons (#70 — alt UX proposed by @theshantanujoshi in PR #65).
-   The remaining three stay in the popover. On narrow viewports the
-   always-visible row collapses via CSS @media; the popover continues to
-   list all five so nothing is unreachable. */
-const QUICK_SNIPPETS: Snippet[] = SNIPPETS.filter((s) => s.quickLabel !== undefined);
+/* Group headings rendered above their entries inside the popover. The order
+   here drives the visual order of the groups; entry order within each group
+   is preserved from `SNIPPETS` (already document-ordered). Frontmatter is
+   given its own group rather than being lumped with body sections — it's
+   the identity header, not a section. */
+const SNIPPET_GROUPS: { id: SnippetGroup; label: string }[] = [
+  { id: 'frontmatter', label: 'Frontmatter' },
+  { id: 'always', label: 'Always' },
+  { id: 'optional', label: 'Optional' },
+];
 
 export default function MarkdownEditor({
   value,
@@ -541,7 +574,7 @@ export default function MarkdownEditor({
    * partial / hand-edited block) we leave it alone.
    */
   const insertSnippet = useCallback(
-    (snippet: Snippet) => {
+    (snippet: SnippetEntry) => {
       const textarea = textareaRef.current;
       const start = textarea ? textarea.selectionStart : value.length;
       const end = textarea ? textarea.selectionEnd : value.length;
@@ -860,28 +893,18 @@ export default function MarkdownEditor({
         </label>
 
         <div className="editor__bar-controls">
-          {/* ----- Always-visible quick-insert buttons (#70) -----
-              Toolbar buttons — NOT menu items. They sit outside the
-              popover's role="menu" container so they get the normal
-              toolbar focus ring and tab order. On narrow viewports
-              (<640px) they're hidden by CSS; the popover below still
-              lists every snippet so nothing is unreachable. */}
-          <div className="editor__quick-insert" role="group" aria-label="Insert section">
-            {QUICK_SNIPPETS.map((snippet) => (
-              <button
-                key={snippet.id}
-                type="button"
-                className="btn btn--ghost editor__quick-insert-btn"
-                onClick={() => insertSnippet(snippet)}
-                aria-label={`Insert ${snippet.label}`}
-              >
-                <Icon name="plus" size={13} />
-                {snippet.quickLabel}
-              </button>
-            ))}
-          </div>
-
-          {/* ----- Insert section popover (the long tail) ----- */}
+          {/* ----- Unified Insert-section menu (#154) -----
+              Before #154 the editor exposed TWO insert affordances: an
+              always-visible row of "quick-insert" toolbar buttons (#70)
+              for Experience + Education, plus a popover for the long
+              tail. The split confused writers — two paths to insert one
+              section. We collapsed both into a single popover here,
+              grouped into "Frontmatter", "Always" and "Optional"
+              headings, with entries ordered by where each section
+              appears in the canonical document layout. The popover
+              continues to use the `role="menu"` shape; group headings
+              wrap their items in `role="group"` so the labels are
+              announced as section dividers, not focusable menu items. */}
           <div className="editor__snippet" ref={snippetWrapRef}>
             <button
               type="button"
@@ -908,31 +931,43 @@ export default function MarkdownEditor({
                   }
                 }}
               >
-                {SNIPPETS.map((snippet) => (
-                  /* Snippets duplicated on the always-visible row carry
-                     the --quick modifier; CSS hides them above 640px so
-                     the popover shows only the long-tail entries on
-                     wide viewports, but stays fully populated when the
-                     quick row collapses on narrow ones. */
-                  <li
-                    key={snippet.id}
-                    role="none"
-                    className={
-                      snippet.quickLabel
-                        ? 'editor__snippet-li editor__snippet-li--quick'
-                        : 'editor__snippet-li'
-                    }
-                  >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="editor__snippet-item"
-                      onClick={() => insertSnippet(snippet)}
+                {SNIPPET_GROUPS.map((group) => {
+                  const entries = SNIPPETS.filter((s) => s.group === group.id);
+                  if (entries.length === 0) return null;
+                  return (
+                    <li
+                      key={group.id}
+                      role="none"
+                      className="editor__snippet-group"
                     >
-                      {snippet.label}
-                    </button>
-                  </li>
-                ))}
+                      <div
+                        id={`${snippetMenuId}-${group.id}`}
+                        className="editor__snippet-group-label"
+                        aria-hidden="true"
+                      >
+                        {group.label}
+                      </div>
+                      <ul
+                        role="group"
+                        aria-labelledby={`${snippetMenuId}-${group.id}`}
+                        className="editor__snippet-group-list"
+                      >
+                        {entries.map((snippet) => (
+                          <li key={snippet.id} role="none" className="editor__snippet-li">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="editor__snippet-item"
+                              onClick={() => insertSnippet(snippet)}
+                            >
+                              {snippet.label}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
