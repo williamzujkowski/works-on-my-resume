@@ -308,8 +308,12 @@ a {
    (mono, on purpose) — the chrome's file-tab vocabulary still belongs
    there. */
 
+/* Hidden by default (#165 path 1) — see the workbench rule below. The
+   strip is workbench chrome only; the landing AppHero carries the brand
+   row instead. Mounting hidden avoids a pre-hydration flash of a stale
+   header surface against the new cream body. */
 .app-header {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3) var(--space-4);
@@ -511,11 +515,12 @@ a {
   }
 }
 
-/* When the hero is showing, the static AppHeader chrome above it would
-   duplicate the brand row. Hide it in that state — driven by a body-level
-   data attribute the React island sets on mount (#127). */
-body[data-app-phase='hero'] .app-header {
-  display: none;
+/* The static AppHeader strip is workbench chrome — it carries the
+   filename tab when a resume is open. Default-hidden (see the .app-header
+   rule above) and only revealed once the React island flips <body> to
+   `data-app-phase='workbench'`. Path 1 of #165. */
+body[data-app-phase='workbench'] .app-header {
+  display: flex;
 }
 
 /* ----- Privacy notice (#163) -----
@@ -676,11 +681,17 @@ body[data-app-phase='hero'] .app-header {
   color: var(--ui-fg-muted);
 }
 
+/* The text-input primitive used by several inputs that take free-text
+   prose values (snapshot names, JD bodies, search queries). Mono used
+   to be the default; the #165 mono sweep flips it to serif because
+   prose belongs in serif. The two call-sites that take literal strings
+   (gist URL, gist filename select) opt back into mono in their own
+   rules below. */
 .text-input {
   width: 100%;
   padding: 0.45rem 0.6rem;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
   color: var(--ui-fg);
   background: var(--ui-bg);
   border: 1px solid var(--ui-border-strong);
@@ -1042,8 +1053,9 @@ body[data-app-phase='hero'] .app-header {
   align-items: center;
   gap: 0.3rem;
   padding: 0.32rem 0.7rem;
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
+  /* Button label, not a literal — serif now (#165 mono sweep). */
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--ui-accent);
   background: var(--ui-panel);
@@ -1172,14 +1184,17 @@ body[data-app-phase='hero'] .app-header {
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* The pane-header meta cluster: theme name + WCAG badge. */
+/* The pane-header meta cluster: theme name + WCAG badge.
+   The wrapper carries serif (the theme name inside is a NAME, not a
+   literal — #165 mono sweep). The WCAG badge below opts back into mono
+   because it's a literal grading readout (AAA/AA/Fails). */
 .studio__pane-meta {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   margin-left: var(--space-2);
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
   color: var(--ui-fg-muted);
 }
 
@@ -1463,8 +1478,9 @@ body[data-app-phase='hero'] .app-header {
   align-items: center;
   gap: 0.3rem;
   padding: 0.22rem 0.55rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+  /* Trigger label, not a literal — serif (#165). */
+  font-family: var(--font-serif);
+  font-size: 0.76rem;
   color: var(--ui-fg-muted);
   background: var(--ui-panel);
   border: 1px solid var(--ui-border-strong);
@@ -1647,8 +1663,9 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 
 .uploader__gist-summary {
   padding: var(--space-2) var(--space-3);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
+  /* Disclosure label "Import from a public Gist" — prose, serif (#165). */
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
   color: var(--ui-fg-muted);
   cursor: pointer;
   user-select: none;
@@ -1685,6 +1702,10 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 .uploader__gist-input {
   flex: 1;
   min-width: 14rem;
+  /* The gist input takes a literal URL — opt back into mono (#165) even
+     though the shared `.text-input` primitive now defaults to serif. */
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
 }
 
 .uploader__gist-disclosure {
@@ -1735,9 +1756,12 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .uploader__gist-preview-title {
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  font-weight: 700;
+  /* Card title — prose, serif (#165). The filename chip and body opt
+     back into mono in their own rules; this is the human-readable
+     "Preview" / "Review before importing" headline. */
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
+  font-weight: 600;
   color: var(--ui-fg);
   margin: 0;
 }
@@ -2397,7 +2421,10 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   gap: 0.18rem;
   width: 100%;
   padding: 0.5rem var(--space-2);
-  font-family: var(--font-mono);
+  /* The wrapper carries serif so the pattern-name LABEL reads as prose;
+     the preview line opts back into mono in its own rule because the
+     preview IS the Markdown bullet the user will paste in (#165). */
+  font-family: var(--font-serif);
   text-align: left;
   color: var(--ui-fg);
   background: transparent;
@@ -2418,10 +2445,12 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   color: var(--ui-fg);
 }
 
-/* The preview line of the rewritten bullet. Monospace by inheritance,
-   muted, and clipped to a single line so a very long bullet doesn't
-   blow out the tray's width. */
+/* The preview line of the rewritten bullet. The wrapper carries serif
+   (so the pattern-name label reads as prose), so this rule opts the
+   preview row back into mono — the preview IS the literal Markdown
+   bullet text. Muted and clipped to a single line. */
 .editor__rewrite-item-preview {
+  font-family: var(--font-mono);
   font-size: 0.74rem;
   color: var(--ui-fg-muted);
   overflow: hidden;
@@ -2738,12 +2767,14 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .theme-picker__tag {
-  /* Reset the platform <button> look so chips read as small pills. */
+  /* Reset the platform <button> look so chips read as small pills.
+     The chip text is a short categorical NAME (Dark / Warm / High-contrast)
+     — serif (#165), not mono. */
   display: inline-flex;
   align-items: center;
   padding: 0.18rem 0.55rem;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
   font-weight: 500;
   color: var(--ui-fg-muted);
   background: var(--ui-bg);
@@ -3165,8 +3196,9 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   align-items: center;
   gap: var(--space-2);
   cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
+  /* Toggle label "ATS preview" — prose-ish trigger name, serif (#165). */
+  font-family: var(--font-serif);
+  font-size: 0.84rem;
   color: var(--ui-fg);
 }
 
@@ -3270,9 +3302,11 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .kbd-help__title {
+  /* Dialog title at "lead" weight (#165). */
   font-family: var(--font-serif);
-  font-size: 1.18rem;
-  font-weight: 700;
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
   color: var(--ui-fg);
 }
 
@@ -3408,9 +3442,11 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .health-example-dialog__title {
+  /* Dialog title at "lead" weight (#165). */
   font-family: var(--font-serif);
-  font-size: 1.18rem;
-  font-weight: 700;
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
   color: var(--ui-fg);
   margin: 0;
 }
@@ -3493,9 +3529,13 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .format-docs__title {
+  /* Dialog title at "lead" weight (#165). Source Serif 4 reads as a
+     proper editorial section head at 500 against the cream surface —
+     the bolder 700 was leaning toward a workbench KICKER mood. */
   font-family: var(--font-serif);
-  font-size: 1.18rem;
-  font-weight: 700;
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
   color: var(--ui-fg);
   margin: 0;
 }
@@ -3824,8 +3864,9 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   align-items: center;
   justify-content: center;
   padding: 0.28rem 0.7rem;
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
+  /* Segmented button label (Draft / Tighten / Polish) — names, serif (#165). */
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
   color: var(--ui-fg-muted);
   background: transparent;
   border: 1px solid transparent;
@@ -3926,8 +3967,10 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 .health__item-jump {
   flex-shrink: 0;
   padding: 0.15rem 0.5rem;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
+  /* "Jump to line N" — button label (#165). The line number is part of
+     the label but the label as a whole reads as prose, not a literal. */
+  font-family: var(--font-serif);
+  font-size: 0.76rem;
   color: var(--ui-accent);
   background: transparent;
   border: 1px solid var(--ui-border);
@@ -3973,8 +4016,9 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 .health__item-example {
   flex-shrink: 0;
   padding: 0.15rem 0.5rem;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
+  /* "Suggest a fix" / "Open an example" — button labels, serif (#165). */
+  font-family: var(--font-serif);
+  font-size: 0.76rem;
   background: transparent;
   border: 1px solid var(--ui-border);
   border-radius: var(--radius-sm);
@@ -4052,8 +4096,10 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .health__item-tray-label {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+  /* Pattern NAME (Aggressive / Conservative rewrite) — serif (#165).
+     The preview row beneath keeps mono because it's literal Markdown. */
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--ui-fg);
 }
@@ -4120,8 +4166,11 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
+  /* "What's working" findings are prose (#165). The ✓ glyph is in
+     `.resume-health__celebrate-glyph` and stays aligned via the rule
+     below — the font shift only affects the message body. */
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
   line-height: 1.5;
   color: var(--ui-fg);
 }
@@ -4196,8 +4245,10 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   border: 1px solid var(--ui-border);
   border-left: 3px solid var(--ui-accent);
   border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
+  /* "Next step" CTA — button label, serif (#165). The ▸ glyph keeps the
+     leading literal punctuation; the text after it is prose. */
+  font-family: var(--font-serif);
+  font-size: 0.84rem;
   line-height: 1.45;
   color: var(--ui-fg);
   cursor: pointer;
@@ -4268,9 +4319,11 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .template-picker__title {
+  /* Dialog title at "lead" weight (#165). */
   font-family: var(--font-serif);
   font-size: 1.2rem;
-  font-weight: 700;
+  font-weight: 500;
+  letter-spacing: -0.005em;
   color: var(--ui-fg);
 }
 
@@ -4650,6 +4703,11 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .snapshots-menu__item-time {
+  /* Timestamps are tabular numerals — keep mono (#165). The sibling
+     `.snapshots-menu__item-name` inherits the popover's serif body
+     so a snapshot NAME reads as a name, not a literal. */
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
   color: var(--ui-fg-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -5272,8 +5330,12 @@ details.studio__pane--editor {
   min-height: 6.5rem;
   max-height: 16rem;
   resize: vertical;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
+  /* Pasted job-description prose — serif (#165). The textarea also
+     inherits the `.text-input` primitive which is now serif by default;
+     this rule is explicit because the textarea overrides font-size /
+     line-height locally for the multi-line surface. */
+  font-family: var(--font-serif);
+  font-size: 0.88rem;
   line-height: 1.55;
 }
 
@@ -5403,15 +5465,29 @@ details.studio__pane--editor {
 }
 
 /* Per-category breakdown chip (#116). Compact `Tech 5/12 · Soft 3/8`
-   text under the disclosure's main hit-rate chip; the same monospaced
-   typography as the summary chip but without the colored pill so it
-   reads as supplementary metadata, not a primary metric. */
+   text under the disclosure's main hit-rate chip. #165 mono sweep
+   splits the chip into name + count spans: the category NAME (Tech,
+   Soft, Domain) is a serif label; the matched/total READOUT keeps mono
+   tabular numerals so the counts align vertically across rows. */
 .tailor__category-chip {
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.74rem;
   letter-spacing: 0.02em;
   color: var(--ui-fg-muted);
+}
+
+.tailor__category-chip-sep {
+  color: var(--ui-fg-subtle);
+}
+
+.tailor__category-chip-label {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  color: var(--ui-fg);
+}
+
+.tailor__category-chip-count {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
