@@ -1,13 +1,15 @@
 /*
  * global.css — Works on My Resume design system.
  *
- * A small, terminal/editor-inspired UI design system for the app chrome,
- * plus sensible default values for the `--resume-*` semantic variables so
- * the resume document renders legibly before the React island hydrates and
- * applies a theme.
+ * An editorial-stationery design system for the app chrome (#163): warm
+ * paper surface, ink-tone text, Source Serif 4 for prose, JetBrains Mono
+ * reserved for technical/numeric/literal labels, a single restrained
+ * ochre accent. The resume document is a sibling system — its `--resume-*`
+ * tokens are untouched here and overridden by the theme engine at runtime.
  *
- * Terminal cues are used sparingly: monospace path labels, command-like
- * buttons, a faux prompt glyph. No CRT effects, scanlines, or cursors.
+ * Dark mode is a re-skin via `@media (prefers-color-scheme: dark)`: warm
+ * graphite, not slate-cool. There is no JS toggle — the chrome quietly
+ * tracks the OS preference.
  */
 
 @import './fonts.css';
@@ -15,42 +17,47 @@
 @import './print.css';
 
 /* ------------------------------------------------------------------ */
-/* Design tokens — app chrome                                          */
+/* Design tokens — app chrome (editorial-stationery, #163)             */
 /* ------------------------------------------------------------------ */
 
 :root {
   color-scheme: light dark;
 
-  /* App chrome surfaces — a calm, slightly cool editor palette.
-     The luminance steps are deliberately wider than before so layered
-     depth (shadow + inset highlight) actually reads on a panel. */
-  --ui-bg: #0c0e12;
-  --ui-bg-elevated: #14171e;
-  --ui-panel: #1c212b;
-  --ui-panel-hover: #252b37;
-  --ui-border: #2c333f;
-  --ui-border-strong: #3c4554;
+  /* App chrome surfaces — warm paper. Each step is OKLCH-derived so the
+     light/dark pair lives in the same perceptual space. The chrome reads
+     as cream stationery with ink and a single ochre stamp. */
+  --ui-bg: #fbf8f3;             /* paper           — oklch(0.985 0.008 85) */
+  --ui-bg-elevated: #f6f1e8;    /* card body       — oklch(0.972 0.010 85) */
+  --ui-panel: #ece5d7;          /* toolbar pill bed — oklch(0.945 0.013 85) */
+  --ui-panel-hover: #e2d9c5;    /* hover wash      — derived */
+  --ui-border: #d4cab4;         /* hairline        — oklch(0.88 0.012 80) */
+  --ui-border-strong: #b9ad92;  /* heavier rule    — derived */
 
-  --ui-fg: #e7eaf0;
-  --ui-fg-muted: #9aa4b2;
-  --ui-fg-subtle: #717b8b;
+  --ui-fg: #2a241c;             /* warm near-black ink — oklch(0.22 0.020 70) */
+  --ui-fg-muted: #6b6253;       /* kickers, captions   — oklch(0.46 0.014 70) */
+  --ui-fg-subtle: #8a8170;      /* subtler tint        — derived */
 
-  --ui-accent: #5b9bff;
-  --ui-accent-hover: #82b3ff;
-  --ui-accent-contrast: #0a0c10;
-  --ui-success: #4ec98a;
-  --ui-warning: #e0b341;
-  --ui-danger: #ef6f6f;
+  --ui-accent: #9b5d28;         /* ochre ink-stamp — oklch(0.50 0.105 55) */
+  --ui-accent-hover: #b16f33;   /* lighter ochre   — derived */
+  --ui-accent-contrast: #fbf8f3;/* on-accent text — paper */
+  --ui-success: #4d6b3a;        /* olive — restrained success */
+  --ui-warning: #b46a1f;        /* sienna — sits next to ochre without clashing */
+  --ui-danger: #a23a2a;         /* terracotta */
 
-  --ui-focus-ring: #82b3ff;
+  --ui-focus-ring: #9b5d28;
 
-  /* A subtle top highlight applied as an inset shadow on raised surfaces —
-     the way real editor panels catch light along their top edge. */
-  --ui-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  /* No top highlight on paper — printing presses don't catch light. The
+     inset-highlight token remains as a near-no-op so call-sites that
+     reference it don't need to be retired wholesale. */
+  --ui-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 
-  /* Typography. The chrome is typeset entirely in JetBrains Mono — the
-     editor identity. --font-sans is a system fallback kept only for any
-     surface that genuinely needs proportional text. */
+  /* Typography.
+     - --font-serif: display + body (titles, taglines, prose).
+     - --font-mono: technical-only — file paths, code, kbd, numeric readouts,
+       toolbar KICKER labels.
+     - --font-sans: fallback for surfaces that genuinely need proportional
+       sans (none today; kept for future use). */
+  --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
@@ -65,9 +72,10 @@
   --space-4: 1rem;
   --space-5: 1.5rem;
   --space-6: 2rem;
-  /* Layered shadows — a tight contact shadow plus a soft ambient cast. */
-  --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px -6px rgba(0, 0, 0, 0.45);
-  --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.55), 0 16px 40px -10px rgba(0, 0, 0, 0.6);
+  /* Layered shadows — a quiet contact shadow plus a soft ambient cast.
+     Tuned for paper (the previous dark-mode values blew out on cream). */
+  --shadow-panel: 0 1px 2px rgba(58, 38, 12, 0.06), 0 6px 18px -8px rgba(58, 38, 12, 0.1);
+  --shadow-pop: 0 2px 4px rgba(58, 38, 12, 0.08), 0 14px 32px -12px rgba(58, 38, 12, 0.18);
 
   /* App chrome layout. */
   --app-max-width: 1480px;
@@ -85,6 +93,48 @@
   --resume-border: #d6dbe1;
   --resume-card: #f6f8fa;
   --resume-code-bg: #f0f2f5;
+}
+
+/* ------------------------------------------------------------------ */
+/* Dark mode (#163) — warm graphite, NOT slate-cool.                   */
+/*                                                                     */
+/* The OS preference drives the switch; there is no in-app toggle. Each */
+/* `--ui-*` token shifts in the same OKLCH chroma direction so the      */
+/* editorial register reads on either side. The `--resume-*` tokens are */
+/* intentionally NOT re-mapped here — the theme engine owns those, and  */
+/* the user's chosen resume theme is independent of the chrome's mood.  */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ui-bg: #181410;             /* warm ink — oklch(0.18 0.012 60) */
+    --ui-bg-elevated: #221d18;    /* card body — oklch(0.23 0.014 60) */
+    --ui-panel: #2d2620;          /* toolbar pill bed */
+    --ui-panel-hover: #3a3128;
+    --ui-border: #3b322a;
+    --ui-border-strong: #574a3e;
+
+    --ui-fg: #efe6d6;             /* warm paper text — oklch(0.92 0.012 85) */
+    --ui-fg-muted: #b8ab93;
+    --ui-fg-subtle: #8a7f6a;
+
+    --ui-accent: #d18a4f;         /* lifted ochre so it carries on dark paper */
+    --ui-accent-hover: #e09c63;
+    --ui-accent-contrast: #1a1410;
+    --ui-success: #94a872;
+    --ui-warning: #d9a463;
+    --ui-danger: #d97862;
+
+    --ui-focus-ring: #d18a4f;
+
+    /* Very faint top highlight reads as candlelight on dark paper. */
+    --ui-inset-highlight: inset 0 1px 0 rgba(255, 240, 210, 0.04);
+
+    /* Shadows on dark paper sit closer to the underlying tone — they
+       read as recessed panels rather than floating cards. */
+    --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px -8px rgba(0, 0, 0, 0.55);
+    --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.6), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -108,14 +158,19 @@ html {
 
 body {
   min-height: 100vh;
-  font-family: var(--font-mono);
+  /* Editorial-stationery (#163): body is set in Source Serif 4 for prose;
+     mono survives only on technical surfaces (code, kbd, status-line
+     readouts, toolbar KICKER labels, the editor textarea). */
+  font-family: var(--font-serif);
   font-size: 15px;
   line-height: 1.55;
   color: var(--ui-fg);
   background: var(--ui-bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  font-feature-settings: 'calt' 0;
+  /* Serif text profits from default contextual alternates; the mono-`calt 0`
+     override is no longer the body default (the editor textarea keeps its
+     own `font-feature-settings` in its rule). */
 }
 
 img,
@@ -246,7 +301,12 @@ a {
   }
 }
 
-/* ----- App header ----- */
+/* ----- App header (#163) -----
+   A flat paper banner. No gradient, no dots, no prompt. The wordmark sets
+   in Source Serif 4 at a heavier weight; the tagline sits in the same
+   serif at caption tone. The right-side path chip keeps the file metaphor
+   (mono, on purpose) — the chrome's file-tab vocabulary still belongs
+   there. */
 
 .app-header {
   display: flex;
@@ -254,10 +314,9 @@ a {
   align-items: center;
   gap: var(--space-3) var(--space-4);
   padding: var(--space-3) var(--space-4);
-  background: linear-gradient(180deg, var(--ui-panel) 0%, var(--ui-bg-elevated) 100%);
+  background: var(--ui-bg-elevated);
   border: 1px solid var(--ui-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--ui-inset-highlight);
 }
 
 .app-header__brand {
@@ -265,53 +324,22 @@ a {
   align-items: baseline;
   gap: var(--space-3);
   min-width: 0;
-}
-
-/* Faux window-control dots — a quiet editor cue. */
-.app-header__dots {
-  display: flex;
-  align-self: center;
-  gap: 0.4rem;
-}
-
-.app-header__dot {
-  width: 0.66rem;
-  height: 0.66rem;
-  border-radius: 50%;
-  background: var(--ui-border-strong);
-}
-
-.app-header__dot:nth-child(1) {
-  background: #e0655f;
-}
-.app-header__dot:nth-child(2) {
-  background: #e0b341;
-}
-.app-header__dot:nth-child(3) {
-  background: #4ec98a;
-}
-
-.app-header__prompt {
-  align-self: center;
-  font-family: var(--font-mono);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--ui-accent);
-  user-select: none;
+  flex-wrap: wrap;
 }
 
 .app-header__name {
-  font-family: var(--font-mono);
+  font-family: var(--font-serif);
   font-size: 1.32rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.005em;
   color: var(--ui-fg);
 }
 
 .app-header__tagline {
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
   color: var(--ui-fg-muted);
+  font-style: italic;
 }
 
 /* The path chip reads like an open-file tab clipped to the titlebar. */
@@ -342,13 +370,15 @@ a {
 }
 
 /* ------------------------------------------------------------------ */
-/* App hero — empty-state landing block (#127)                         */
+/* App hero — empty-state landing block (#127, restyled #163)          */
 /*                                                                     */
 /* Rendered only when no resume is loaded yet. The static AppHeader     */
-/* astro chrome is hidden in that state, and this block is the loud     */
-/* landing presence — title, kbd-chip tagline, stat counter row. Once   */
-/* a resume loads, ResumeStudio collapses to the static AppHeader and   */
-/* the hero is not rendered (no double-render).                         */
+/* astro chrome is hidden in that state; this block is the loud landing */
+/* presence — serif title, prose tagline, stat counter row.             */
+/*                                                                     */
+/* #163 swap: no gradient backdrop, no traffic-light dots, no `›_`      */
+/* prompt, no title shimmer. The hero reads as the opening spread of    */
+/* a printed catalogue — paper bed, serif display, mono kickers.        */
 /* ------------------------------------------------------------------ */
 
 .app-hero {
@@ -356,119 +386,41 @@ a {
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-6) var(--space-5);
-  /* A subtle radial backdrop keeps the hero feeling like a stage rather
-     than another panel — the same dot-grid mood that lives in the empty
-     preview frame, but quieter so it doesn't compete with the dropzone
-     below. */
-  background:
-    radial-gradient(120% 80% at 50% 0%, var(--ui-panel) 0%, var(--ui-bg-elevated) 70%),
-    var(--ui-bg-elevated);
+  background: var(--ui-bg-elevated);
   border: 1px solid var(--ui-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--ui-inset-highlight), var(--shadow-panel);
   text-align: left;
 }
 
 .app-hero__brand {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--space-3);
   min-width: 0;
   flex-wrap: wrap;
 }
 
-.app-hero__dots {
-  display: inline-flex;
-  align-self: center;
-  gap: 0.45rem;
-}
-
-.app-hero__dot {
-  width: 0.72rem;
-  height: 0.72rem;
-  border-radius: 50%;
-  background: var(--ui-border-strong);
-}
-
-.app-hero__dot:nth-child(1) {
-  background: #e0655f;
-}
-.app-hero__dot:nth-child(2) {
-  background: #e0b341;
-}
-.app-hero__dot:nth-child(3) {
-  background: #4ec98a;
-}
-
-.app-hero__prompt {
-  font-family: var(--font-mono);
-  font-size: 1.8rem;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--ui-accent);
-  user-select: none;
-}
-
 .app-hero__title {
-  font-family: var(--font-mono);
+  font-family: var(--font-serif);
   /* clamp() keeps the title legible without an explicit media query — it
-     grows from ~1.9rem on narrow viewports up to ~2.6rem on wide ones. */
-  font-size: clamp(1.9rem, 4.5vw, 2.6rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
+     grows from ~2rem on narrow viewports up to ~3rem on wide ones. */
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.012em;
   color: var(--ui-fg);
   line-height: 1.05;
-  /* Title shimmer (#140 bonus): a diagonal scanline sweeps the wordmark
-     once on mount so the empty hero feels staged rather than static. The
-     effect is layered via ::after so the underlying text node stays
-     untouched (no transform on the glyphs themselves — print and a11y
-     trees see the plain text). Disabled under prefers-reduced-motion via
-     the global block in `@media (prefers-reduced-motion: reduce)`. */
-  position: relative;
-  overflow: hidden;
-}
-
-/* The shimmer overlay only mounts under no-preference. Under reduced
-   motion the pseudo-element is suppressed entirely so the title is plain
-   text with no decorative sweep. */
-@media (prefers-reduced-motion: no-preference) {
-  .app-hero__title::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(
-      115deg,
-      transparent 30%,
-      color-mix(in oklch, var(--ui-accent) 35%, transparent) 50%,
-      transparent 70%
-    );
-    transform: translateX(-110%);
-    /* ~200 ms sweep at +80 ms (#140 bonus). The shimmer runs once —
-       `both` fill keeps the post-state hidden (transform: translateX(110%)). */
-    animation: app-hero-shimmer 220ms cubic-bezier(0.22, 1, 0.36, 1) 80ms 1 both;
-  }
-
-  @keyframes app-hero-shimmer {
-    from {
-      transform: translateX(-110%);
-    }
-    to {
-      transform: translateX(110%);
-    }
-  }
 }
 
 .app-hero__tagline {
-  font-family: var(--font-mono);
-  font-size: clamp(0.88rem, 1.4vw, 1rem);
-  line-height: 1.6;
+  font-family: var(--font-serif);
+  font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+  line-height: 1.55;
   color: var(--ui-fg-muted);
-  max-width: 68ch;
+  max-width: 60ch;
 }
 
-/* The keyboard chips inside the tagline match the rest of the app's <kbd>
-   tone — same border, same mono face. */
+/* Keyboard chips stay mono — they're literal keys. Recoloured to sit on
+   paper without shouting. */
 .app-hero__tagline kbd {
   font-family: var(--font-mono);
   font-size: 0.78rem;
@@ -480,13 +432,16 @@ a {
   color: var(--ui-fg);
 }
 
-/* Stat counter row: THEMES ~465 · LAYOUTS 4 · TEMPLATES 4 · OFFLINE-READY. */
+/* Stat counter row: Themes 465 · Layouts 4 · Templates 4 · Offline-ready.
+   The number is the eye-catch (serif, heavy, ochre); the label is the
+   small-caps kicker (mono). The em-style separators read as printed
+   ornament rather than terminal punctuation. */
 .app-hero__stats {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-2) var(--space-3);
-  margin-top: var(--space-1);
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-2);
 }
 
 .app-hero__stat {
@@ -496,25 +451,26 @@ a {
 }
 
 .app-hero__stat-value {
-  font-family: var(--font-mono);
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-family: var(--font-serif);
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
   color: var(--ui-accent);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
   line-height: 1;
 }
 
 .app-hero__stat-value--icon {
   display: inline-flex;
   align-items: center;
-  color: var(--ui-success);
+  color: var(--ui-accent);
 }
 
 .app-hero__stat-label {
-  /* Extends .section-kicker — same tone, no extra rules needed. The default
-     muted color reads as the small-caps caption next to the loud number. */
-  color: var(--ui-fg-subtle);
+  /* Extends .section-kicker — the muted small-caps mono caption next to
+     the loud serif number. The mono face is kept here on purpose — the
+     numbers/labels pair reads as a printer's spec sheet rhythm. */
+  color: var(--ui-fg-muted);
 }
 
 .app-hero__stat-sep {
@@ -551,7 +507,7 @@ a {
   }
 
   .app-hero__stat-value {
-    font-size: 1.1rem;
+    font-size: 1.25rem;
   }
 }
 
@@ -562,31 +518,40 @@ body[data-app-phase='hero'] .app-header {
   display: none;
 }
 
-/* ----- Privacy notice ----- */
+/* ----- Privacy notice (#163) -----
+   No more card surface and green left-rail — both read as alert chrome
+   and clash with the editorial register. The notice is now a soft
+   serif caption beneath a single thin hairline rule (ochre at 35% mix
+   with the border token, so it reads as "stamped on paper"). */
 
 .privacy-notice {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  margin-top: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--ui-bg-elevated);
-  border: 1px solid var(--ui-border);
-  border-left: 3px solid var(--ui-success);
-  border-radius: var(--radius-md);
-  box-shadow: var(--ui-inset-highlight);
-  font-size: 0.84rem;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding: var(--space-3) 0 0;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid color-mix(in oklch, var(--ui-accent) 35%, var(--ui-border));
+  border-radius: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.9rem;
+  line-height: 1.55;
   color: var(--ui-fg-muted);
 }
 
 .privacy-notice__icon {
   flex-shrink: 0;
-  color: var(--ui-success);
+  color: var(--ui-accent);
+  /* Pull the shield down a hair so it sits next to the italic baseline. */
+  transform: translateY(0.15rem);
 }
 
 .privacy-notice strong {
   color: var(--ui-fg);
   font-weight: 600;
+  font-style: normal;
 }
 
 /* ------------------------------------------------------------------ */
@@ -598,9 +563,14 @@ body[data-app-phase='hero'] .app-header {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: 0.46rem 0.8rem;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
+  padding: 0.46rem 0.85rem;
+  /* Editorial-shift (#163): button labels are prose ("Save as PDF",
+     "Export", "Replace file"), so the base primitive is serif. Surfaces
+     that genuinely want mono (the export-panel format glyphs, the
+     editor's snippet trigger, the rewrite tray, the file-tab strip)
+     opt back into `var(--font-mono)` explicitly in their own rules. */
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--ui-fg);
   background: var(--ui-panel);
@@ -1922,13 +1892,13 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .uploader__error {
-  background: rgba(239, 111, 111, 0.1);
+  background: color-mix(in oklch, var(--ui-danger) 10%, var(--ui-bg-elevated));
   border: 1px solid var(--ui-danger);
   color: var(--ui-danger);
 }
 
 .uploader__notice {
-  background: rgba(224, 179, 65, 0.1);
+  background: color-mix(in oklch, var(--ui-warning) 10%, var(--ui-bg-elevated));
   border: 1px solid var(--ui-warning);
   color: var(--ui-warning);
 }
@@ -2517,7 +2487,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 .preview-warnings {
   margin-bottom: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  background: rgba(224, 179, 65, 0.1);
+  background: color-mix(in oklch, var(--ui-warning) 10%, var(--ui-bg-elevated));
   border: 1px solid var(--ui-warning);
   border-radius: var(--radius-sm);
   font-size: 0.8rem;
@@ -2548,16 +2518,16 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 /* Collapsed: the single trigger button showing the current theme.
-   Reworked for #135: the outline + panel-fill are dropped so the
-   trigger reads as a kicker + value pair (THEME · GitHub Light Default ▾)
-   rather than a chrome'd pill. The button still receives a focus-visible
-   ring (inherited from the global :focus-visible rule) for keyboard a11y. */
+   Reworked for #135 (text-with-affordance rhythm) and #163 (editorial
+   shift): the trigger reads as a mono kicker + serif theme name. The
+   kicker (`THEME`) stays mono via `.section-kicker`; the name itself is
+   the prose-shift surface. */
 .theme-picker__trigger {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   padding: 0.25rem 0.3rem 0.25rem 0.2rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-serif);
   color: var(--ui-fg);
   background: transparent;
   border: 1px solid transparent;
@@ -2593,7 +2563,8 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .theme-picker__trigger-name {
-  font-size: 0.84rem;
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
   font-weight: 600;
   color: var(--ui-fg);
   overflow: hidden;
@@ -2976,9 +2947,9 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .export-panel__title {
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 
 .export-panel__group,
@@ -3121,9 +3092,12 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.28rem 0.6rem;
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
+  padding: 0.28rem 0.7rem;
+  /* Editorial-shift (#163): segment labels are short prose tokens
+     (Classic / Modern / Compact) — serif suits them. The legend kicker
+     beside the segments keeps the mono via .section-kicker. */
+  font-family: var(--font-serif);
+  font-size: 0.86rem;
   color: var(--ui-fg-muted);
   border-radius: 4px;
   cursor: pointer;
@@ -3259,7 +3233,9 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
-  background: rgba(4, 6, 10, 0.66);
+  /* Warm-paper-friendly scrim — a slate-cool dim looked harsh against
+     the new cream surface. */
+  background: rgba(38, 26, 14, 0.42);
   animation: kbd-help-fade 140ms ease-out;
 }
 
@@ -3294,8 +3270,8 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .kbd-help__title {
-  font-family: var(--font-mono);
-  font-size: 1.02rem;
+  font-family: var(--font-serif);
+  font-size: 1.18rem;
   font-weight: 700;
   color: var(--ui-fg);
 }
@@ -3406,7 +3382,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
-  background: rgba(4, 6, 10, 0.66);
+  background: rgba(38, 26, 14, 0.42);
   animation: kbd-help-fade 140ms ease-out;
 }
 
@@ -3432,8 +3408,8 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .health-example-dialog__title {
-  font-family: var(--font-mono);
-  font-size: 1.02rem;
+  font-family: var(--font-serif);
+  font-size: 1.18rem;
   font-weight: 700;
   color: var(--ui-fg);
   margin: 0;
@@ -3491,7 +3467,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
-  background: rgba(4, 6, 10, 0.66);
+  background: rgba(38, 26, 14, 0.42);
   animation: kbd-help-fade 140ms ease-out;
 }
 
@@ -3517,8 +3493,8 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .format-docs__title {
-  font-family: var(--font-mono);
-  font-size: 1.02rem;
+  font-family: var(--font-serif);
+  font-size: 1.18rem;
   font-weight: 700;
   color: var(--ui-fg);
   margin: 0;
@@ -4266,7 +4242,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
-  background: rgba(4, 6, 10, 0.66);
+  background: rgba(38, 26, 14, 0.42);
   animation: kbd-help-fade 140ms ease-out;
 }
 
@@ -4292,8 +4268,8 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .template-picker__title {
-  font-family: var(--font-mono);
-  font-size: 1.05rem;
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--ui-fg);
 }
@@ -4363,8 +4339,8 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 
 .template-picker__card-title {
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: 0.92rem;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--ui-fg);
 }
@@ -5550,7 +5526,7 @@ details.studio__pane--editor {
   z-index: 100;
   display: flex;
   justify-content: flex-end;
-  background: rgba(4, 6, 10, 0.66);
+  background: rgba(38, 26, 14, 0.42);
   animation: kbd-help-fade 140ms ease-out;
 }
 
@@ -5593,8 +5569,11 @@ details.studio__pane--editor {
 }
 
 .settings-drawer__title {
-  font-family: var(--font-mono);
-  font-size: 1.02rem;
+  /* Editorial-shift (#163): the drawer's H2 is prose, so it reads in
+     the serif display register. Group titles below stay mono via the
+     `.section-kicker` mixin — those are categorical labels. */
+  font-family: var(--font-serif);
+  font-size: 1.18rem;
   font-weight: 700;
   color: var(--ui-fg);
 }

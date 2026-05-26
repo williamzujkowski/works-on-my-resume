@@ -126,21 +126,14 @@ export default function AppHero({ themeCount, layoutCount, templateCount }: AppH
   return (
     <section className="app-hero" aria-label="Welcome to Works on My Resume">
       <div className="app-hero__brand">
-        <span className="app-hero__dots" aria-hidden="true">
-          <span className="app-hero__dot" />
-          <span className="app-hero__dot" />
-          <span className="app-hero__dot" />
-        </span>
-        <span className="app-hero__prompt" aria-hidden="true">
-          &rsaquo;_
-        </span>
         <h1 className="app-hero__title">Works on My Resume</h1>
       </div>
 
       <p className="app-hero__tagline">
-        A static, local-first Markdown resume renderer. {themeCount} themes, {layoutCount} layouts,
-        hash-CSP private. Swap themes with <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, <kbd>/</kbd> to
-        search, <kbd>r</kbd> for random.
+        A Markdown resume renderer for the browser. Type, pick a theme,
+        export a PDF — your file stays on your device. Swap themes with{' '}
+        <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, <kbd>/</kbd> to search,{' '}
+        <kbd>r</kbd> for random.
       </p>
 
       <div className="app-hero__stats" role="list" aria-label="At a glance">

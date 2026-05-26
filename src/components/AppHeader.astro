@@ -1,23 +1,17 @@
 ---
 /**
- * AppHeader — the static site header, styled like a real editor titlebar.
+ * AppHeader — the static site header.
  *
- * Left: a faux window-control dot cluster and a heavy JetBrains Mono
- * wordmark with a shell-prompt glyph. Right: a `~/resume.md` chip that reads
- * like an open-file tab. A couple of editor cues, no gimmickry.
+ * Editorial-stationery register (#163): a serif wordmark + a short serif
+ * tagline on the left; the current-file chip (mono, file metaphor kept on
+ * purpose) on the right.
  */
 ---
 
 <header class="app-header">
   <div class="app-header__brand">
-    <span class="app-header__dots" aria-hidden="true">
-      <span class="app-header__dot"></span>
-      <span class="app-header__dot"></span>
-      <span class="app-header__dot"></span>
-    </span>
-    <span class="app-header__prompt" aria-hidden="true">&rsaquo;_</span>
     <h1 class="app-header__name">Works&nbsp;on&nbsp;My&nbsp;Resume</h1>
-    <p class="app-header__tagline">Markdown in. Resume out. No servers harmed.</p>
+    <p class="app-header__tagline">Markdown in. Resume out.</p>
   </div>
   <span class="app-header__tab" aria-hidden="true">
     <svg
@@ -33,6 +27,6 @@
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
       <path d="M14 2v6h6"></path>
     </svg>
-    <code class="app-header__tab-name">~/resume.md</code>
+    <code class="app-header__tab-name">resume.md</code>
   </span>
 </header>
