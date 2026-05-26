@@ -96,3 +96,107 @@ test('click-outside the drawer dismisses it', async ({ page }, testInfo) => {
   await page.locator('.settings-drawer__overlay').click({ position: { x: 10, y: 200 } });
   await expect(drawer).toHaveCount(0);
 });
+
+/* ----------------------------------------------------------------------- *
+ * Markdown format reference dialog (#157)                                  *
+ *                                                                          *
+ * The drawer's Help section gains a "Markdown format" button that opens    *
+ * a small modal documenting the frontmatter contract, canonical sections,  *
+ * an LLM-handoff prompt with a copy-to-clipboard button, and the privacy   *
+ * one-liner. The handoff mirrors the keyboard-shortcuts button: clicking   *
+ * closes the drawer first and opens the dialog on a clean stage, so the    *
+ * two modals never overlap.                                                *
+ * ----------------------------------------------------------------------- */
+test('Help → Markdown format opens the format reference dialog', async ({ page }) => {
+  await openSettingsDrawer(page);
+  const drawer = page.getByRole('dialog', { name: /^settings$/i });
+  await expect(drawer).toBeVisible();
+
+  // The "Markdown format" button sits in the Help section, beside the
+  // existing "Open the full shortcuts dialog" button. Click it and the
+  // drawer must close before the modal lands (the handoff pattern).
+  await page.getByRole('button', { name: /markdown format/i }).click();
+  await expect(drawer).toHaveCount(0);
+
+  const dialog = page.getByRole('dialog', { name: /^markdown format$/i });
+  await expect(dialog).toBeVisible();
+
+  // Every documented section is reachable inside the dialog.
+  await expect(dialog.getByRole('heading', { name: /^frontmatter$/i })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: /^sections$/i })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: /^llm handoff$/i })).toBeVisible();
+
+  // The four canonical Resume Health sections are listed by name.
+  await expect(dialog.getByText('Summary', { exact: false }).first()).toBeVisible();
+  await expect(dialog.getByText('Experience', { exact: false }).first()).toBeVisible();
+  await expect(dialog.getByText('Education', { exact: false }).first()).toBeVisible();
+  await expect(dialog.getByText('Skills', { exact: false }).first()).toBeVisible();
+
+  // The LLM-handoff prompt sits in a <pre> and is the literal string the
+  // user will paste. We assert on the unique prefix rather than the full
+  // body — the body contains a YAML scaffold and a [paste your resume
+  // here] placeholder, but the prefix is the contract that matters.
+  const prompt = dialog.getByLabel('LLM handoff prompt');
+  await expect(prompt).toContainText(
+    /^Here's my resume in Works on My Resume markdown format\./,
+  );
+  await expect(prompt).toContainText(/\[paste your resume here\]/);
+
+  // The privacy reminder is the closing one-liner.
+  await expect(
+    dialog.getByText(/all processing happens locally\./i),
+  ).toBeVisible();
+
+  // Click the close button to dismiss the dialog.
+  await dialog.getByRole('button', { name: /close/i }).click();
+  await expect(dialog).toHaveCount(0);
+});
+
+test('the Copy to clipboard button writes the prompt prefix', async ({
+  page,
+  browserName,
+}, testInfo) => {
+  // Webkit's headless permission model treats clipboard-write as origin-
+  // restricted in a way Playwright can't easily grant — the writer falls
+  // back to window.prompt(). The clipboard-write assertion is the
+  // valuable signal here, so we run it on chromium-class projects.
+  test.skip(
+    browserName !== 'chromium',
+    'clipboard-write permission is chromium-only in Playwright',
+  );
+
+  // Grant clipboard permissions for the active origin so writeText resolves
+  // instead of taking the prompt fallback path.
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], {
+    origin: new URL(page.url() || 'http://localhost').origin,
+  });
+
+  await openSettingsDrawer(page);
+  const drawer = page.getByRole('dialog', { name: /^settings$/i });
+  await page.getByRole('button', { name: /markdown format/i }).click();
+  const dialog = page.getByRole('dialog', { name: /^markdown format$/i });
+  await expect(dialog).toBeVisible();
+
+  // Click the copy button and assert the clipboard contains the prompt
+  // prefix. The full body is long; the prefix is the strongest signal
+  // that the right string was written (and the visible "Copied"
+  // confirmation reinforces it from the UI side).
+  await dialog.getByRole('button', { name: /copy to clipboard/i }).click();
+
+  // The confirmation pip flips to "Copied" for ~2 seconds. We assert on
+  // the user-visible string rather than waiting on a class toggle —
+  // matches the contract a screen reader sees via aria-live.
+  await expect(dialog.getByRole('button', { name: /^copied$/i })).toBeVisible();
+
+  // Pull the clipboard contents through the runtime so we don't depend
+  // on a Playwright-specific clipboard API. testInfo.project.name keeps
+  // the assertion legible in failure traces.
+  const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+  expect(
+    clipboardText.startsWith(
+      "Here's my resume in Works on My Resume markdown format. Refine the language while keeping the structure exact:",
+    ),
+    `clipboard text on ${testInfo.project.name} did not start with the expected prefix`,
+  ).toBe(true);
+  expect(clipboardText).toContain('[paste your resume here]');
+});

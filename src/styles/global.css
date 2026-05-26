@@ -3471,6 +3471,226 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 /* ------------------------------------------------------------------ */
+/* Markdown format reference dialog (#157)                             */
+/*                                                                     */
+/* Mirrors KeyboardHelp / ExampleDialog modal contract: dimmed overlay,*/
+/* centered card, focus-trapped, dismissable via Esc / click-outside / */
+/* close button. The body packs four sections (intro paragraph,        */
+/* frontmatter key table, section vocabulary, LLM-handoff <pre>) plus  */
+/* a privacy footer. Styling lives behind `.format-docs*` so the rules */
+/* never bleed into other modals or the in-pane preview.               */
+/* ------------------------------------------------------------------ */
+
+.format-docs__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(4, 6, 10, 0.66);
+  animation: kbd-help-fade 140ms ease-out;
+}
+
+.format-docs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(46rem, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--space-5);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+}
+
+.format-docs__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.format-docs__title {
+  font-family: var(--font-mono);
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--ui-fg);
+  margin: 0;
+}
+
+.format-docs__intro {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: var(--ui-fg);
+}
+
+.format-docs__intro code,
+.format-docs__section-intro code,
+.format-docs__section-list code,
+.format-docs__hint code {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  padding: 0.05rem 0.32rem;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg);
+}
+
+.format-docs__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+}
+
+.format-docs__section-title {
+  margin: 0;
+}
+
+.format-docs__section-intro {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--ui-fg-muted);
+}
+
+/* Frontmatter rows — a key column, a description, an example. The example
+   may include `\n` (links[] is multi-line); preserve whitespace so the YAML
+   indentation reads correctly. */
+.format-docs__fm-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.format-docs__fm-row {
+  display: grid;
+  grid-template-columns: 6rem 1fr auto;
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.format-docs__fm-row:last-child {
+  border-bottom: 0;
+}
+
+.format-docs__fm-key {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg);
+  justify-self: start;
+}
+
+.format-docs__fm-desc {
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--ui-fg);
+}
+
+.format-docs__fm-example {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  padding: 0.15rem 0.4rem;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg-muted);
+  white-space: pre;
+  text-align: left;
+}
+
+@media (max-width: 640px) {
+  .format-docs__fm-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+  .format-docs__fm-example {
+    justify-self: start;
+  }
+}
+
+.format-docs__section-list {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: var(--ui-fg);
+}
+
+.format-docs__section-list strong {
+  color: var(--ui-fg);
+}
+
+.format-docs__hint {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: var(--ui-fg-subtle);
+}
+
+/* The LLM-handoff prompt. Reads as code (it IS code, in a sense — a literal
+   string the writer will paste verbatim into a model). Wide enough to show
+   the YAML keys without horizontal scroll on desktop; on narrow viewports
+   it scrolls. */
+.format-docs__prompt {
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  line-height: 1.55;
+  color: var(--ui-fg);
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.format-docs__prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.format-docs__prompt-status {
+  font-size: 0.76rem;
+  color: var(--ui-fg-muted);
+}
+
+.format-docs__privacy {
+  margin: 0;
+  padding: var(--space-3);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--ui-fg-muted);
+  background: var(--ui-panel);
+  border: 1px dashed var(--ui-border);
+  border-radius: var(--radius-sm);
+}
+
+/* ------------------------------------------------------------------ */
 /* Overwrite toast (#77) — visual companion to the aria-live notice    */
 /* ------------------------------------------------------------------ */
 

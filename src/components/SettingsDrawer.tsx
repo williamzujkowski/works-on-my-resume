@@ -76,6 +76,8 @@ interface SettingsDrawerProps {
   shortcutsEnabled: boolean;
   /** Open the full keyboard-shortcuts dialog (KeyboardHelp). */
   onOpenKeyboardHelp: () => void;
+  /** Open the Markdown-format reference dialog (FormatDocsDialog, #157). */
+  onOpenFormatDocs: () => void;
 
   /* Theme nav group --------------------------------------------- */
   onPreviousTheme: () => void;
@@ -122,6 +124,7 @@ export default function SettingsDrawer({
   onDeleteSnapshot,
   shortcutsEnabled,
   onOpenKeyboardHelp,
+  onOpenFormatDocs,
   onPreviousTheme,
   onNextTheme,
   onRandomTheme,
@@ -382,6 +385,23 @@ export default function SettingsDrawer({
               >
                 <Icon name="help" size={14} />
                 Open the full shortcuts dialog
+              </button>
+              {/* Markdown format reference (#157) — opens the FormatDocsDialog
+                  with the frontmatter contract, section vocabulary, and the
+                  LLM-handoff prompt. Mirrors the keyboard-help handoff: close
+                  the drawer first so the modal lands on a clean stage and
+                  focus restore goes back to the gear button when the modal
+                  closes. */}
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  onClose();
+                  onOpenFormatDocs();
+                }}
+              >
+                <Icon name="file" size={14} />
+                Markdown format
               </button>
               <p className="settings-drawer__about">
                 <span className="section-kicker">About</span>
