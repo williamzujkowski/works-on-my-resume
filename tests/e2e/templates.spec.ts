@@ -20,9 +20,18 @@
 import { test, expect } from '@playwright/test';
 import { clearAppStorage } from './helpers';
 
-/** The four template slugs, kept in lockstep with TemplatePicker.tsx. */
-const TEMPLATE_SLUGS = ['junior', 'mid', 'senior', 'em'] as const;
-type TemplateSlug = (typeof TEMPLATE_SLUGS)[number];
+/** The five template slugs, kept in lockstep with TemplatePicker.tsx.
+ *  `scaffold` (#156) is the placeholder-only skeleton — it is included in
+ *  the file-sanity sweep below but is exercised separately for selection
+ *  and Health (it is designed to score LOW, not high, so it sits outside
+ *  the Group 2 / Group 2b loops). */
+const TEMPLATE_SLUGS = ['junior', 'mid', 'senior', 'em', 'scaffold'] as const;
+
+/** Slugs that should ace the Resume Health rubric (worked examples). The
+ *  scaffold is excluded because its bullets are placeholder strings, not
+ *  numeric claims — Health will (correctly) score it low until filled. */
+const WORKED_SLUGS = ['junior', 'mid', 'senior', 'em'] as const;
+type WorkedSlug = (typeof WORKED_SLUGS)[number];
 
 /* ------------------------------------------------------------------ */
 /* Group 1 — modal open/close. Gated on integration. ------------------ */
@@ -72,17 +81,19 @@ test.describe('Start from template — selection loads the resume', () => {
     await page.goto('');
   });
 
-  /* Expected identity heading per template — taken from the frontmatter
-     `name` field. The renderer surfaces this as the largest line of the
-     identity header at the top of the rendered article. */
-  const EXPECTED_NAME: Record<TemplateSlug, string> = {
+  /* Expected identity heading per worked-example template — taken from the
+     frontmatter `name` field. The renderer surfaces this as the largest
+     line of the identity header at the top of the rendered article. The
+     scaffold is exercised separately (its `name` is the literal
+     `<<your full name>>` placeholder; we assert that further down). */
+  const EXPECTED_NAME: Record<WorkedSlug, string> = {
     junior: 'Riley Okonkwo',
     mid: 'Priya Salgado',
     senior: 'Marcus Halberg',
     em: 'Dani Velasquez',
   };
 
-  for (const slug of TEMPLATE_SLUGS) {
+  for (const slug of WORKED_SLUGS) {
     test(`selecting "${slug}" loads its resume into the preview`, async ({ page }) => {
       // TODO(integration): the integration agent wires the trigger and the
       // card buttons through MarkdownUploader. This test asserts the
@@ -95,7 +106,7 @@ test.describe('Start from template — selection loads the resume', () => {
 
       // Each card carries a "Use this template" button; pick the one whose
       // nearest heading matches the slug's human label.
-      const cardLabels: Record<TemplateSlug, RegExp> = {
+      const cardLabels: Record<WorkedSlug, RegExp> = {
         junior: /junior ic/i,
         mid: /mid ic/i,
         senior: /senior ic/i,
@@ -111,6 +122,47 @@ test.describe('Start from template — selection loads the resume', () => {
       await expect(article.getByText(EXPECTED_NAME[slug])).toBeVisible();
     });
   }
+
+  /* Scaffold (#156) is the placeholder-only fifth template. The contract
+     for the worked examples is "the frontmatter name renders in the
+     article" — but the scaffold's `name` is the literal `<<your full
+     name>>` placeholder, which is the value we care about for the LLM
+     hand-off workflow. Assert it lands in the EDITOR textarea (where a
+     user fills it in) rather than in the rendered article (where it
+     would look like a stray angle-bracketed string).
+
+     This also pins the contract that the scaffold card is wired into
+     the same selection path as the worked examples — selecting it
+     populates the editor with the scaffold body. */
+  test('selecting "scaffold" loads the placeholder skeleton into the editor', async ({ page }) => {
+    await page.getByRole('button', { name: /start from (a )?template/i }).click();
+
+    const dialog = page.getByRole('dialog', { name: /start from a template/i });
+    await expect(dialog).toBeVisible();
+
+    const card = dialog
+      .locator('li', { has: page.getByRole('heading', { name: /^scaffold$/i }) })
+      .first();
+    await card.getByRole('button', { name: /use this template/i }).click();
+
+    // The editor textarea uses an accessible label of "Markdown source"
+    // (see MarkdownEditor.tsx). After selection it should contain the
+    // scaffold's frontmatter placeholder verbatim. We poll the value
+    // rather than asserting visibility because on mobile-narrow viewports
+    // the editor pane is layout-hidden by default — but the textarea is
+    // still in the DOM and carries the loaded source.
+    const editor = page.getByLabel(/markdown source/i);
+    await expect(editor).toHaveCount(1, { timeout: 10_000 });
+    await expect
+      .poll(async () => editor.inputValue(), { timeout: 10_000 })
+      .toContain('<<your full name>>');
+    const value = await editor.inputValue();
+    // Spot-check the canonical section ordering survived the round-trip.
+    expect(value).toContain('## Summary');
+    expect(value).toContain('## Experience');
+    expect(value).toContain('## Skills');
+    expect(value).toContain('## Education');
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -141,7 +193,7 @@ test.describe('Start from template — selection loads the resume', () => {
 
 test.describe('Template Resume Health validation (#104)', () => {
   /** Card label used to pick a card in the picker grid. */
-  const CARD_LABELS: Record<TemplateSlug, RegExp> = {
+  const CARD_LABELS: Record<WorkedSlug, RegExp> = {
     junior: /junior ic/i,
     mid: /mid ic/i,
     senior: /senior ic/i,
@@ -149,7 +201,7 @@ test.describe('Template Resume Health validation (#104)', () => {
   };
 
   /** Which Health-tab career stage best matches each template. */
-  const STAGE_FOR: Record<TemplateSlug, 'Junior' | 'Mid' | 'Senior'> = {
+  const STAGE_FOR: Record<WorkedSlug, 'Junior' | 'Mid' | 'Senior'> = {
     junior: 'Junior',
     mid: 'Mid',
     senior: 'Senior',
@@ -158,7 +210,7 @@ test.describe('Template Resume Health validation (#104)', () => {
 
   /** Frontmatter `name` for each template — used to confirm the resume
    *  actually loaded before we read the score. */
-  const EXPECTED_NAME: Record<TemplateSlug, string> = {
+  const EXPECTED_NAME: Record<WorkedSlug, string> = {
     junior: 'Riley Okonkwo',
     mid: 'Priya Salgado',
     senior: 'Marcus Halberg',
@@ -170,7 +222,7 @@ test.describe('Template Resume Health validation (#104)', () => {
     await page.goto('');
   });
 
-  for (const slug of TEMPLATE_SLUGS) {
+  for (const slug of WORKED_SLUGS) {
     test(`${slug} template scores >= 85 at the ${STAGE_FOR[slug]} stage`, async ({ page }) => {
       /* Open the picker and select the matching card. Mirrors the wiring
          contract that Group 2 establishes (`Use this template` per card). */

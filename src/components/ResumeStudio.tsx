@@ -65,10 +65,10 @@ import { wcagLevel } from '../utils/wcag';
  * Number of starter templates shipped under `public/templates/*.md`. Used by
  * the empty-state hero (#127) to render the TEMPLATES stat counter. Kept as
  * a literal because Astro's static build inlines the public/ tree and the
- * count is small + stable; if a fifth template lands the value moves here
- * in one place.
+ * count is small + stable. Bumped to 5 in #156 when the placeholder-only
+ * Scaffold template was added.
  */
-const STARTER_TEMPLATE_COUNT = 4;
+const STARTER_TEMPLATE_COUNT = 5;
 
 /** sessionStorage key for the ATS preview mode (#31). */
 const ATS_MODE_SESSION_KEY = 'womr:ats-mode';

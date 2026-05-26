@@ -1,6 +1,6 @@
 /**
  * TemplatePicker — modal dialog that lets the user start a new resume
- * from one of four pre-built stage-specific templates (#86).
+ * from one of five pre-built starting points (#86, #156).
  *
  * Behaviour mirrors `KeyboardHelp.tsx`:
  *  - `role="dialog"` + `aria-modal="true"`, labelled by its heading.
@@ -11,17 +11,24 @@
  *    inside the dialog.
  *
  * The component is purely presentational with respect to the template
- * content: it knows the four slugs and their human-readable framing,
+ * content: it knows the five slugs and their human-readable framing,
  * but it does NOT fetch any Markdown. Selection is reported upstream via
  * `onSelect(slug)`; the integration agent wires that callback through
  * `MarkdownUploader` so the picked template flows through the same fetch
  * path as "Load sample".
+ *
+ * The fifth template — `scaffold` — is a placeholder-only skeleton meant
+ * for hand-fill OR LLM hand-off (#156). Its card carries a secondary
+ * "Copy to LLM" action that fetches the raw scaffold markdown and copies
+ * a prompt-ready paste (intro prompt + the scaffold body) to the
+ * clipboard. That's the only card with the secondary action; the four
+ * worked-example templates are self-contained.
  */
-import { useCallback, useEffect, useId, useRef } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import Icon from './Icon';
 
 /** Stable slug identifying which template the user picked. */
-export type TemplateSlug = 'junior' | 'mid' | 'senior' | 'em';
+export type TemplateSlug = 'junior' | 'mid' | 'senior' | 'em' | 'scaffold';
 
 /** A single card in the picker grid. */
 interface TemplateOption {
@@ -57,7 +64,19 @@ const TEMPLATES: TemplateOption[] = [
     description:
       'For people-leaders. Includes a Leadership Highlights section and a Teams Built / Operating Model breakdown.',
   },
+  {
+    slug: 'scaffold',
+    title: 'Scaffold',
+    description: 'Empty skeleton with placeholders — fill it in or feed to an LLM.',
+  },
 ];
+
+/** The slug whose card surfaces the secondary "Copy to LLM" action (#156). */
+const LLM_COPY_SLUG: TemplateSlug = 'scaffold';
+
+/** Prompt prepended to the scaffold body when "Copy to LLM" is clicked. */
+const LLM_COPY_PROMPT =
+  'Fill this resume scaffold from the information below. Keep the structure exact (do not change frontmatter keys or section headings). Replace every <<...>> placeholder with my information:';
 
 /** Selector matching every focusable element for the focus trap. */
 const FOCUSABLE =
@@ -77,6 +96,61 @@ export default function TemplatePicker({ open, onClose, onSelect }: TemplatePick
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const headingId = useId();
   const descId = useId();
+
+  /* "Copy to LLM" confirmation pip — same UX as the Export panel's
+     "Copy theme link" affordance: a transient `Copied` indicator that
+     auto-clears after 2 s. Scoped to a single card so we only need one
+     boolean here. The timer ref lets us clear on unmount and on rapid
+     re-clicks. */
+  const [llmCopied, setLlmCopied] = useState(false);
+  const llmCopyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (llmCopyTimer.current) clearTimeout(llmCopyTimer.current);
+    };
+  }, []);
+
+  /* When the dialog closes, drop any lingering "Copied" confirmation so
+     the next open doesn't flash a stale pip. */
+  useEffect(() => {
+    if (open) return;
+    setLlmCopied(false);
+    if (llmCopyTimer.current) {
+      clearTimeout(llmCopyTimer.current);
+      llmCopyTimer.current = null;
+    }
+  }, [open]);
+
+  /* Fetch the scaffold markdown, prepend the LLM-prompt intro, and copy
+     the result to the clipboard. Same fetch path as `handleTemplateSelect`
+     in MarkdownUploader so the BASE_URL handling stays consistent. */
+  const copyScaffoldToClipboard = useCallback(async () => {
+    try {
+      const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+      const response = await fetch(`${base}templates/scaffold.md`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const body = await response.text();
+      const payload = `${LLM_COPY_PROMPT}\n\n${body}`;
+      await navigator.clipboard.writeText(payload);
+      setLlmCopied(true);
+      if (llmCopyTimer.current) clearTimeout(llmCopyTimer.current);
+      llmCopyTimer.current = setTimeout(() => setLlmCopied(false), 2000);
+    } catch {
+      /* Clipboard or fetch failed — fall back to a prompt so a user with
+         a denied clipboard permission can still copy by hand. Mirrors the
+         degraded path in ExportPanel.copyThemeLink. */
+      try {
+        const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+        const response = await fetch(`${base}templates/scaffold.md`);
+        const body = response.ok ? await response.text() : '';
+        window.prompt('Copy this prompt + scaffold:', `${LLM_COPY_PROMPT}\n\n${body}`);
+      } catch {
+        /* Nothing more to do — the picker stays open so the user can
+           still pick "Use this template" and copy from the editor. */
+      }
+    }
+  }, []);
 
   /* On open: move focus to the Close button so keyboard users land inside
      the dialog (matching the KeyboardHelp pattern). */
@@ -163,6 +237,22 @@ export default function TemplatePicker({ open, onClose, onSelect }: TemplatePick
               >
                 Use this template
               </button>
+              {template.slug === LLM_COPY_SLUG && (
+                <div className="template-picker__card-secondary">
+                  <button
+                    type="button"
+                    className="btn template-picker__card-action"
+                    onClick={copyScaffoldToClipboard}
+                  >
+                    Copy to LLM
+                  </button>
+                  {llmCopied && (
+                    <span className="template-picker__copied" role="status">
+                      <Icon name="check" size={13} /> Copied
+                    </span>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>
