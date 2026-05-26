@@ -126,8 +126,68 @@ export interface StageProgress {
 /* Constants — thresholds and word lists                               */
 /* ------------------------------------------------------------------ */
 
-/** Rough words-per-page estimate. ~475 is industry shorthand. */
-const WORDS_PER_PAGE = 475;
+/**
+ * Rough words-per-page estimate. ~475 is industry shorthand.
+ *
+ * Exported so the modeline's WORDS meter (#155) shares the same anchor the
+ * length heuristic uses — there is exactly one source of truth for "how
+ * many words is a page".
+ */
+export const WORDS_PER_PAGE = 475;
+
+/**
+ * Target page count by stage, mirroring `STAGE_LIMITS` (#155).
+ *
+ * The WORDS meter renders the denominator as `WORDS_PER_PAGE * targetPages`
+ * and the trailing `· N page(s)` suffix off the same value. The mapping is
+ * intentionally aligned with the length rubric:
+ *
+ *   - junior → 1 page (`STAGE_LIMITS.junior.warn = 1.0`)
+ *   - mid    → 2 pages (`STAGE_LIMITS.mid.warn = 1.9`, rounds up)
+ *   - senior → 2 pages (`STAGE_LIMITS.senior.warn = 1.9`)
+ *
+ * Keeping this beside `STAGE_LIMITS` ensures any future calibration of the
+ * length envelope sweeps both the analyzer and the modeline in lockstep.
+ */
+export function targetPages(stage: CareerStage): number {
+  switch (stage) {
+    case 'junior':
+      return 1;
+    case 'mid':
+    case 'senior':
+      return 2;
+  }
+}
+
+/**
+ * Target word count for a stage = `WORDS_PER_PAGE * targetPages(stage)` (#155).
+ *
+ * Used by the modeline's WORDS segment as the denominator and as the
+ * threshold for ok / warn / danger colouring.
+ */
+export function wordsTarget(stage: CareerStage): number {
+  return WORDS_PER_PAGE * targetPages(stage);
+}
+
+/**
+ * Severity for the WORDS meter (#155).
+ *
+ *   - `ok`     — at or under the stage's target word count
+ *   - `warn`   — 10–25% over the target
+ *   - `danger` — more than 25% over the target
+ *
+ * Mirrors the Fit chip's three-tier vocabulary so the two readouts agree
+ * on what "too long" looks like. `total === 0` short-circuits to `ok`
+ * (an empty buffer has nothing to flag).
+ */
+export type WordsSeverity = 'ok' | 'warn' | 'danger';
+export function wordsSeverity(total: number, target: number): WordsSeverity {
+  if (target <= 0 || total <= target) return 'ok';
+  const ratio = total / target;
+  if (ratio > 1.25) return 'danger';
+  if (ratio > 1.1) return 'warn';
+  return 'ok';
+}
 
 /** Required frontmatter fields. `links` is "at least one entry". */
 const REQUIRED_FRONTMATTER_KEYS = ['name', 'role', 'email'] as const;
@@ -266,8 +326,15 @@ function findHeadings(lines: LineInfo[]): Heading[] {
   return out;
 }
 
-/** Count words via the same simple split the spec calls for. */
-function wordCount(markdown: string): number {
+/**
+ * Count words via the same simple split the spec calls for.
+ *
+ * Exported so the modeline's WORDS meter (#155) shares the same algorithm
+ * the length heuristic uses — the two readouts can never drift on what
+ * "a word" is. The frontmatter strip mirrors `markdown.ts`'s
+ * `FRONTMATTER_RE` so a long YAML header isn't double-counted as prose.
+ */
+export function wordCount(markdown: string): number {
   // Strip the frontmatter block before counting so a long YAML header isn't
   // double-counted as resume prose. Matches the FRONTMATTER_RE in markdown.ts.
   const body = markdown.replace(/^\uFEFF?---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/, '');
