@@ -9,6 +9,8 @@
 name: E2E tests
 
 on:
+  # Manual rerun via the Actions UI or `gh workflow run` — added in #182.
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
