@@ -1514,12 +1514,29 @@ export default function ResumeStudio() {
                     Remember this resume on this device
                   </span>
                   <span className="studio__draft-toggle-hint">
-                    Saves your Markdown to this browser's local storage so it survives a reload. Off
-                    by default — nothing is saved unless you turn this on, and turning it off
-                    deletes the saved copy immediately.
+                    Off by default — saves to local storage only.
                   </span>
                 </span>
               </label>
+              {/* #176: Collapse the long explanation behind a native <details>.
+                  Default closed. The summary is the small "What does that
+                  mean?" caption with a chevron; the body holds the full
+                  privacy phrasing. <details> gives keyboard + a11y for free. */}
+              <details className="studio__draft-toggle-details">
+                <summary className="studio__draft-toggle-details-summary">
+                  <span>What does that mean?</span>
+                  <Icon
+                    name="chevron-down"
+                    size={12}
+                    className="studio__draft-toggle-details-caret"
+                  />
+                </summary>
+                <p className="studio__draft-toggle-details-body">
+                  Saves your Markdown to this browser's local storage so it survives a reload. Off
+                  by default — nothing is saved unless you turn this on, and turning it off
+                  deletes the saved copy immediately.
+                </p>
+              </details>
             </div>
             <MarkdownEditor
               value={markdown}

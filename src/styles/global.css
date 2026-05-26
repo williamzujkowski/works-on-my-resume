@@ -1789,6 +1789,59 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   color: var(--ui-fg-muted);
 }
 
+/* #176: collapsed/expanded detail under the draft-toggle card. Matches
+   the tailor__summary disclosure pattern — small caption + chevron, no
+   default marker, chevron rotates on [open]. Sits one indent in from
+   the toggle label so it reads as a child of the hint, not a peer of
+   the checkbox. */
+.studio__draft-toggle-details {
+  margin-top: 0.35rem;
+  /* Align with the hint text, not the checkbox: checkbox is ~0.9rem +
+     gap (var(--space-2)) ≈ 1.4rem of inset. Keep it pragmatic. */
+  padding-left: calc(0.9rem + var(--space-2));
+  font-size: 0.7rem;
+}
+
+.studio__draft-toggle-details-summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  user-select: none;
+  color: var(--ui-fg-muted);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+}
+
+.studio__draft-toggle-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.studio__draft-toggle-details-summary:hover {
+  color: var(--ui-fg);
+}
+
+.studio__draft-toggle-details-summary:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.studio__draft-toggle-details-caret {
+  transition: transform 0.18s ease;
+}
+
+.studio__draft-toggle-details[open] .studio__draft-toggle-details-caret {
+  transform: rotate(180deg);
+}
+
+.studio__draft-toggle-details-body {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--ui-fg-muted);
+}
+
 .uploader__error,
 .uploader__notice {
   display: flex;
