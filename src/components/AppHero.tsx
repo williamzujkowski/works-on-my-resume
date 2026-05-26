@@ -20,7 +20,10 @@ import { useEffect, useRef } from 'react';
 import Icon from './Icon';
 
 interface AppHeroProps {
-  /** Total number of themes available — usually ~545 once the dataset loads. */
+  /** Total number of themes available — usually ~465 once the dataset loads
+      (every theme in the dataset is resume-safe — body text clears 7:1 — so
+      the unsafe slice was dropped in #153 along with the picker's redundant
+      toggle). */
   themeCount: number;
   /** Number of layout templates — sourced from RESUME_TEMPLATES. */
   layoutCount: number;

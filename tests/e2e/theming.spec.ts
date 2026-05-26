@@ -4,10 +4,13 @@
  * Covers:
  *  - Opening the picker via the trigger.
  *  - The search field filters the option list.
- *  - The "Resume-safe themes only" checkbox filters.
  *  - Selecting a theme writes `?theme=<slug>` and changes the rendered
  *    preview (proven by the committed theme name showing in the trigger).
  *  - Closing the popover without selecting reverts a hover preview.
+ *
+ * Note: the "Resume-safe themes only" toggle spec went away in #153 — every
+ * theme in the dataset clears the resume-safe 7:1 threshold by construction
+ * now, so the toggle and its UI plumbing were removed.
  */
 import { test, expect } from '@playwright/test';
 import {
@@ -75,27 +78,29 @@ async function readPickerTotal(page: import('@playwright/test').Page): Promise<n
     .count();
 }
 
-test('the resume-safe-only toggle removes low-contrast themes from the list', async ({ page }) => {
+// The "resume-safe-only toggle removes low-contrast themes" spec was
+// deleted in #153. The dataset was filtered down to the 465 themes that
+// clear the 7:1 body-text threshold, the picker's toggle was removed, and
+// `.badge--unsafe` no longer renders — so the assertion had no remaining
+// surface to test.
+
+test('every rendered option is resume-safe — no low-contrast badge survives (#153)', async ({
+  page,
+}) => {
+  // The negative invariant the dropped toggle test used to enforce IS still
+  // worth pinning down: after #153 no option row should carry the unsafe
+  // badge, because every theme in the shipped dataset clears the 7:1
+  // resume-safe body-text threshold. If this regresses (e.g. someone
+  // re-adds an unsafe theme to the dataset), the badge would appear and
+  // this would catch it.
   await openThemePickerReady(page);
-
   const list = page.getByRole('listbox', { name: /themes/i });
-  /* The picker now renders every match (no cap). readPickerTotal stays as a
-     stable seam in case we re-introduce some aggregation footer later. */
-  const totalBefore = await readPickerTotal(page);
-  const unsafeBefore = await list.locator('.badge--unsafe').count();
-  expect(totalBefore).toBeGreaterThan(0);
-
-  // Only assert filtering when low-contrast themes actually exist — otherwise
-  // the toggle has nothing to remove and the test would be vacuous.
-  test.skip(unsafeBefore === 0, 'no low-contrast themes visible to filter out');
-
-  await page.getByRole('checkbox', { name: /resume-safe themes only/i }).check();
-
-  // After filtering, no rendered option carries the unsafe badge, and the
-  // picker's reported total has dropped.
+  // The list should be populated (defense in depth on top of openThemePickerReady).
+  expect(await readPickerTotal(page)).toBeGreaterThan(1);
   await expect(list.locator('.badge--unsafe')).toHaveCount(0);
-  const totalAfter = await readPickerTotal(page);
-  expect(totalAfter).toBeLessThan(totalBefore);
+  // And the toggle itself must be gone — no checkbox with that label
+  // should remain in the popover.
+  await expect(page.getByRole('checkbox', { name: /resume-safe themes only/i })).toHaveCount(0);
 });
 
 test('selecting a theme writes ?theme=slug and updates the trigger label', async ({ page }) => {
@@ -136,9 +141,9 @@ test('selecting a theme writes ?theme=slug and updates the trigger label', async
 });
 
 test('a tag chip narrows the list and the live count', async ({ page }) => {
-  // The chip filter is composable with the search query and the resume-safe
-  // toggle (#87). This case checks the simplest path: pressing `light` should
-  // both shrink the visible list and update the live "X of Y themes" readout.
+  // The chip filter is composable with the search query (#87). This case
+  // checks the simplest path: pressing `light` should both shrink the
+  // visible list and update the live "X of Y themes" readout.
   await openThemePickerReady(page);
 
   const dialog = page.getByRole('dialog', { name: /choose a theme/i });

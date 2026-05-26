@@ -9,7 +9,7 @@
  *  - Provide simple search/filter helpers for the theme picker UI.
  *
  * The resume renderer consumes ONLY the eight semantic tokens in
- * `ResumeThemeTokens` — never raw terminal slots — so any of the ~545
+ * `ResumeThemeTokens` — never raw terminal slots — so any of the ~465
  * terminal themes can drive any resume layout.
  *
  * All DOM/browser access is SSR-safe: every `window`/`document`/`localStorage`
@@ -66,7 +66,7 @@ import { getStoredThemeSlug } from './storage';
  *
  * Relative luminance feeds the WCAG 2.x contrast formula. The math is the
  * standard Björn Ottosson OKLab matrices; validated against the dataset's
- * own `fgOnBg` figures (agreement within ~0.04 across all 545 themes).
+ * own `fgOnBg` figures (agreement within ~0.04 across all 465 themes).
  */
 
 /** A parsed OKLCH color: L in [0,1], C ≥ 0, H in degrees. */
@@ -628,7 +628,7 @@ function deriveSurfaces(bgStr: string, fgStr: string, isDark: boolean): SurfaceT
  * its search row: `dark`, `light`, `high-contrast`, `vibrant`, `muted`.
  *
  * Each tag is derived purely from data already on the `RawTheme` so we
- * never duplicate hand-curated metadata for 545 themes:
+ * never duplicate hand-curated metadata for ~465 themes:
  *
  *  - `dark` / `light` mirror `RawTheme.isDark`.
  *  - `high-contrast` fires when body text clears 10:1 on the background —
@@ -795,14 +795,14 @@ let loadPromise: Promise<ResumeTheme[]> | null = null;
 
 /**
  * True once the full dataset has been loaded and normalized into the cache.
- * Drives the picker's "Loading 545 themes…" UX hint.
+ * Drives the picker's "Loading themes…" UX hint.
  */
 export function themesLoaded(): boolean {
   return normalizedCache !== null;
 }
 
 /**
- * Lazily load the full ~545-theme dataset and normalize every entry.
+ * Lazily load the full ~465-theme dataset and normalize every entry.
  *
  * Returns the cached array on every subsequent call, so it is safe to invoke
  * repeatedly from React mount effects. The dynamic `import()` triggers Vite
@@ -817,7 +817,7 @@ export async function loadAllThemesAsync(): Promise<ResumeTheme[]> {
     // Dynamic import: Vite emits this JSON as its own asset chunk; the
     // network round-trip happens once, cached by the browser thereafter.
     const mod = await import('../data/themes.json');
-    // The dataset is a ~545-entry literal. A direct `as RawTheme[]` would
+    // The dataset is a ~465-entry literal. A direct `as RawTheme[]` would
     // force TypeScript into a slow deep structural check of the whole
     // literal, so we route through `unknown` — the shape is guaranteed by
     // how it was vendored.
@@ -925,7 +925,7 @@ function passesContrastChecks(theme: ResumeTheme): boolean {
  *  - Before the dynamic import resolves: a single-element array holding
  *    `HARDCODED_FALLBACK`, so any consumer that iterates over the array
  *    still has a usable theme to display.
- *  - After `loadAllThemesAsync()` resolves: the full ~545 normalized themes.
+ *  - After `loadAllThemesAsync()` resolves: the full ~465 normalized themes.
  *
  * Callers that genuinely need the full dataset should call
  * `loadAllThemesAsync()` (and gate UX on `themesLoaded()`).
@@ -1088,20 +1088,21 @@ export function themeCssVariables(theme: ResumeTheme): string {
 }
 
 /**
- * Filter a list of themes by a free-text query, the resume-safe toggle, and
- * an optional set of facet tags (#87).
+ * Filter a list of themes by a free-text query and an optional set of facet
+ * tags (#87).
  *
- * Composition rules (all ANDed together so the user can stack constraints
+ * Composition rules (ANDed together so the user can stack constraints
  * without the picker quietly losing one of them):
- *  - `query`          : case-insensitive substring match against `name` and
- *                       `slug`. Empty / whitespace-only matches everything.
- *  - `resumeSafeOnly` : when true, drops themes whose body text does not
- *                       clear `RESUME_SAFE_MIN_CONTRAST`.
- *  - `tags`           : when provided AND non-empty, every listed tag must be
- *                       present on the theme's `tags` array. Passing
- *                       `undefined` (or an empty array) means "no tag
- *                       filter" — today's behavior for the existing toggle
- *                       and search-only callers.
+ *  - `query` : case-insensitive substring match against `name` and `slug`.
+ *              Empty / whitespace-only matches everything.
+ *  - `tags`  : when provided AND non-empty, every listed tag must be present
+ *              on the theme's `tags` array. Passing `undefined` (or an empty
+ *              array) means "no tag filter".
+ *
+ * Note: the "resume-safe only" toggle was retired in #153. Every theme in
+ * the dataset now clears `RESUME_SAFE_MIN_CONTRAST` by construction (the 80
+ * unsafe themes were dropped from `src/data/themes.json`), so the parameter
+ * had nothing left to filter and was removed from the signature.
  *
  * Pure and stable: the returned array preserves the input order, so the
  * picker's existing keyboard-navigation and index-based UI keep working.
@@ -1109,16 +1110,14 @@ export function themeCssVariables(theme: ResumeTheme): string {
 export function filterThemes(
   themes: ResumeTheme[],
   query: string,
-  resumeSafeOnly = false,
   tags?: readonly string[],
 ): ResumeTheme[] {
   const needle = query.trim().toLowerCase();
-  // Normalize: an undefined or empty list disables the tag filter entirely,
-  // matching the spec's "today's behavior" carve-out. We don't bother
-  // dropping duplicates — `every` on a duplicated tag is still correct.
+  // Normalize: an undefined or empty list disables the tag filter entirely.
+  // We don't bother dropping duplicates — `every` on a duplicated tag is
+  // still correct.
   const requiredTags = tags && tags.length > 0 ? tags : null;
   return themes.filter((theme) => {
-    if (resumeSafeOnly && !theme.resumeSafe) return false;
     if (requiredTags) {
       const themeTags: readonly string[] = theme.tags;
       for (const tag of requiredTags) {

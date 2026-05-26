@@ -132,18 +132,23 @@ export default function ResumeStudio() {
   const [cursorColumn, setCursorColumn] = useState<number | null>(null);
 
   /* ----- Theme state -----
-     The ~600 kB theme dataset is code-split (#78): it loads asynchronously
-     via a dynamic import on mount. `themes` starts with whatever
-     `getAllThemes()` returns synchronously (just `HARDCODED_FALLBACK` until
-     the dataset is here) and is replaced with the full ~545 entries once
+     The theme dataset is code-split (#78): it loads asynchronously via a
+     dynamic import on mount. `themes` starts with whatever `getAllThemes()`
+     returns synchronously (just `HARDCODED_FALLBACK` until the dataset is
+     here) and is replaced with the full ~465 entries once
      `loadAllThemesAsync()` resolves. `themesReady` toggles when the load
-     finishes — the picker reads it to show a brief loading state. */
+     finishes — the picker reads it to show a brief loading state.
+
+     #153 dropped the 80 themes whose body-text contrast fell below the
+     resume-safe 7:1 threshold; the picker's matching "Resume-safe themes
+     only" toggle went with them (every remaining theme is safe by
+     construction, so the toggle was a permanent no-op), which is why
+     there is no `resumeSafeOnly` state in this hook block. */
   const [themes, setThemes] = useState<ResumeTheme[]>(() => getAllThemes());
   const [themesReady, setThemesReady] = useState<boolean>(() => themesLoaded());
   const [theme, setTheme] = useState<ResumeTheme | null>(null);
   const [themeQuery, setThemeQuery] = useState('');
   const [themePickerOpen, setThemePickerOpen] = useState(false);
-  const [resumeSafeOnly, setResumeSafeOnly] = useState(false);
 
   /* ----- UI state ----- */
   const [exportOpen, setExportOpen] = useState(false);
@@ -1234,8 +1239,6 @@ export default function ResumeStudio() {
               current={theme}
               query={themeQuery}
               onQueryChange={setThemeQuery}
-              resumeSafeOnly={resumeSafeOnly}
-              onResumeSafeOnlyChange={setResumeSafeOnly}
               onSelect={changeTheme}
               searchInputId={themeSearchInputId}
               open={themePickerOpen}

@@ -71,7 +71,7 @@ export async function loadSampleResume(page: Page): Promise<void> {
 }
 
 /**
- * Wait until the lazy-loaded ~545-theme dataset (#78, #80) is in place.
+ * Wait until the lazy-loaded ~465-theme dataset (#78, #80, #153) is in place.
  *
  * After #80 the dataset is no longer eagerly imported on ResumeStudio mount —
  * it loads on `requestIdleCallback` (or when the picker first opens). Any
@@ -121,13 +121,13 @@ export async function expandMobileEditor(page: Page): Promise<void> {
 }
 
 /**
- * Open the theme picker and wait for the lazy-loaded ~545-theme dataset
+ * Open the theme picker and wait for the lazy-loaded ~465-theme dataset
  * (#78) to be in place before returning. Tests that count or filter the
  * option list MUST call this rather than clicking the trigger directly,
  * otherwise they race the dynamic import and may run against just the
  * boot-fallback theme.
  *
- * The "Loading 545 themes…" indicator inside the popover disappears once
+ * The "Loading themes…" indicator inside the popover disappears once
  * `loadAllThemesAsync()` resolves; we wait for that signal AND for the
  * option list to actually carry more than one option (the boot state has
  * exactly one). This gives the chunk a deterministic ready-point even on
@@ -140,7 +140,7 @@ export async function openThemePickerReady(page: Page): Promise<void> {
   // The loading status line is only mounted while themesLoading is true.
   // Wait for it to disappear before counting options — its absence is the
   // signal that the full dataset has been normalized into the cache.
-  await expect(dialog.getByText(/loading 545 themes/i)).toHaveCount(0, { timeout: 10_000 });
+  await expect(dialog.getByText(/loading themes/i)).toHaveCount(0, { timeout: 10_000 });
   // Defense-in-depth: only proceed once the list actually carries more than
   // the boot-fallback option, so an unusually fast loading-flash doesn't
   // sneak the test past the gate.

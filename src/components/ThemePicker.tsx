@@ -12,12 +12,15 @@
  * carries a stable `id`. Arrow-key moves are announced via a polite live
  * region so screen-reader users hear the highlighted theme.
  *
- * The full dataset is ~545 themes; the option list mounts all filtered matches
- * directly (no render cap, no "refine your search" hint), so users browsing for
- * "Tomorrow Night" or "Zenwritten Light" actually see them in the list.
+ * The full dataset is ~465 themes (#153 dropped the 80 themes whose body
+ * text fell below the resume-safe 7:1 threshold; every remaining theme is
+ * legible, so the picker's "Resume-safe themes only" toggle went away with
+ * them). The option list mounts all filtered matches directly (no render cap,
+ * no "refine your search" hint), so users browsing for "Tomorrow Night" or
+ * "Zenwritten Light" actually see them in the list.
  *
  * Preview-on-hover (#60): hovering or keyboard-focusing an option live-applies
- * that theme to the document so browsing 545 themes is visual, not blind. The
+ * that theme to the document so browsing 465 themes is visual, not blind. The
  * preview writes ONLY to the document (`applyThemeToDocument`) — never to the
  * committed state, the URL, or localStorage. Those are touched only by a real
  * selection (`onSelect`). If the popover closes without a selection, the theme
@@ -29,6 +32,15 @@ import { RESUME_THEME_TAGS } from '../types';
 import { applyThemeToDocument, filterThemes, loadAllThemesAsync } from '../utils/themes';
 import { wcagLevel } from '../utils/wcag';
 import Icon from './Icon';
+
+/* ----------------------------------------------------------------------------
+ * Note: the "Resume-safe themes only" toggle was removed in #153.
+ * Every theme in the dataset now clears the resume-safe 7:1 body-text
+ * threshold by construction (80 unsafe themes were dropped from
+ * `src/data/themes.json` in the same change), so the toggle had nothing left
+ * to filter. The unsafe-badge / low-contrast trigger glyph / below-threshold
+ * footer warning all went with it for the same reason.
+ * -------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------------
  * CSP-friendly swatch primitives.
@@ -85,16 +97,16 @@ function AccentDot({ className, background }: AccentDotProps) {
 }
 
 // Note: an earlier MAX_RENDERED cap (60) was removed — it hid most of the
-// 545-theme dataset behind a "refine your search" hint, which read to users as
-// "the list stops at B". 545 simple option rows mount comfortably within the
-// click-to-popover interaction budget on a modern browser.
+// dataset behind a "refine your search" hint, which read to users as
+// "the list stops at B". A few hundred simple option rows mount comfortably
+// within the click-to-popover interaction budget on a modern browser.
 
 interface ThemePickerProps {
   /** All currently-available themes (just the boot fallback until the
-      ~545-theme dataset finishes loading; see #78). */
+      ~465-theme dataset finishes loading; see #78). */
   themes: ResumeTheme[];
   /** True while the dataset is still streaming in via dynamic import.
-      Drives the "Loading 545 themes…" line inside the popover so the user
+      Drives the "Loading themes…" line inside the popover so the user
       knows the option list will grow in a moment. */
   themesLoading: boolean;
   /** The currently applied theme. */
@@ -102,9 +114,6 @@ interface ThemePickerProps {
   /** Current search query (controlled by ResumeStudio). */
   query: string;
   onQueryChange: (query: string) => void;
-  /** "Resume-safe themes only" toggle state. */
-  resumeSafeOnly: boolean;
-  onResumeSafeOnlyChange: (value: boolean) => void;
   /** Called when a theme is chosen. */
   onSelect: (theme: ResumeTheme) => void;
   /** DOM id for the search input, so the `/` shortcut can focus it. */
@@ -120,8 +129,6 @@ export default function ThemePicker({
   current,
   query,
   onQueryChange,
-  resumeSafeOnly,
-  onResumeSafeOnlyChange,
   onSelect,
   searchInputId,
   open,
@@ -135,10 +142,9 @@ export default function ThemePicker({
 
   /* ----- Facet-tag chip filter (#87) -----
      Local to the picker because the chips are part of the picker's own UI
-     contract. Mirrors how `resumeSafeOnly` is owned by ResumeStudio: a
-     small UI preference whose value is irrelevant outside the popover.
-     Not persisted — matches `resumeSafeOnly`, which also resets each
-     session so the picker opens with a clean slate. */
+     contract. Not persisted — the picker opens with a clean slate each
+     session, which matches the older "Resume-safe themes only" toggle's
+     session-scoped lifetime before it was retired in #153. */
   const [activeTags, setActiveTags] = useState<readonly ResumeThemeTag[]>([]);
   const toggleTag = useCallback((tag: ResumeThemeTag) => {
     setActiveTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
@@ -166,8 +172,8 @@ export default function ThemePicker({
   const optionId = (slug: string) => `${idBase}-opt-${slug}`;
 
   const allMatches = useMemo(
-    () => filterThemes(themes, query, resumeSafeOnly, activeTags),
-    [themes, query, resumeSafeOnly, activeTags],
+    () => filterThemes(themes, query, activeTags),
+    [themes, query, activeTags],
   );
   // Render every match. `rendered` stays as the bound name used throughout
   // this component (active-index, onOpen snapshot, keyboard nav).
@@ -175,9 +181,9 @@ export default function ThemePicker({
 
   /* The denominator in the "X of Y themes" count (#87). `themes.length`
      reads as the *full set* of themes the picker has on hand — neither the
-     search query, the resume-safe toggle, nor the tag chips are subtracted
-     from it — so the count tells a coherent story as filters are applied
-     ("you are seeing X of all Y"). Cheap to compute; no memo needed. */
+     search query nor the tag chips are subtracted from it — so the count
+     tells a coherent story as filters are applied ("you are seeing X of all
+     Y"). Cheap to compute; no memo needed. */
   const totalThemes = themes.length;
 
   /* Keep the active index inside bounds as the filtered list changes. */
@@ -199,7 +205,7 @@ export default function ThemePicker({
      a preview never lingers as if it had been chosen. */
   useEffect(() => {
     if (!open) return;
-    // Lazy-load the ~545-theme dataset (#80): the dynamic import is the
+    // Lazy-load the ~465-theme dataset (#80): the dynamic import is the
     // primary trigger here, so a user who never opens the picker pays
     // nothing for the chunk. `loadAllThemesAsync` memoizes the in-flight /
     // completed promise, so reopening the popover is a no-op — and the
@@ -330,14 +336,9 @@ export default function ThemePicker({
   const activeTheme = rendered[activeIndex];
   const activeDescId = activeTheme ? optionId(activeTheme.slug) : undefined;
 
-  /* Honest, non-blocking signal on the always-visible trigger: when the
-     committed theme's body text falls below the resume-safe threshold, show
-     an alert glyph beside the name. The icon + aria-label carry the meaning,
-     so the warning is never conveyed by colour alone. */
-  const lowContrast = !current.resumeSafe;
-  const triggerContrastLabel = `Body text contrast ${current.contrastRatio.toFixed(
-    1,
-  )}:1 — WCAG ${wcagLevel(current.contrastRatio)}, below the resume-safe threshold`;
+  /* Note: the trigger's low-contrast alert glyph was removed in #153.
+     Every theme in the dataset now clears the resume-safe threshold by
+     construction, so the warning glyph could never fire. */
 
   return (
     <div className="theme-picker" ref={rootRef}>
@@ -358,16 +359,6 @@ export default function ThemePicker({
           <span className="theme-picker__trigger-kicker section-kicker">Theme</span>
           <span className="theme-picker__trigger-name">{current.name}</span>
         </span>
-        {lowContrast && (
-          <span
-            className="theme-picker__trigger-warning"
-            title={triggerContrastLabel}
-            aria-label={triggerContrastLabel}
-            role="img"
-          >
-            <Icon name="alert" size={14} />
-          </span>
-        )}
         <Icon name="chevron-down" className="theme-picker__trigger-caret" />
       </button>
 
@@ -390,14 +381,14 @@ export default function ThemePicker({
               aria-controls={listId}
               aria-autocomplete="list"
               aria-activedescendant={activeDescId}
-              placeholder="Search 545 themes…"
+              placeholder="Search themes…"
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
               onKeyDown={handleSearchKeyDown}
             />
           </div>
 
-          {/* Lazy-load indicator (#78). The ~545-theme dataset code-splits;
+          {/* Lazy-load indicator (#78). The theme dataset code-splits;
               while it streams in, the option list is just the boot fallback.
               The status line tells users (sighted and SR alike) that the
               full picker is on its way — `role="status"` announces politely.
@@ -405,7 +396,7 @@ export default function ThemePicker({
               this fits the popover without needing new CSS. */}
           {themesLoading && (
             <p className="theme-picker__refine" role="status">
-              Loading 545 themes…
+              Loading themes…
             </p>
           )}
 
@@ -446,16 +437,11 @@ export default function ThemePicker({
             )}
           </div>
 
-          <label className="theme-picker__checkbox">
-            <input
-              type="checkbox"
-              checked={resumeSafeOnly}
-              onChange={(event) => onResumeSafeOnlyChange(event.target.checked)}
-            />
-            Resume-safe themes only
-          </label>
+          {/* The "Resume-safe themes only" toggle that sat here was removed
+              in #153 — every theme in the dataset is resume-safe by
+              construction now, so the toggle was a permanent no-op. */}
 
-          {/* Live match count (#87). Sits between the chip row / toggle and
+          {/* Live match count (#87). Sits between the chip row and
               the listbox so the user can see — and AT users can hear — the
               effect of every filter change in one place. Polite + atomic so
               screen readers re-announce the whole short sentence rather
@@ -512,21 +498,10 @@ export default function ThemePicker({
                         accent adj.
                       </span>
                     )}
-                    {!theme.resumeSafe && (
-                      <span
-                        className="badge badge--unsafe"
-                        title={`Body text contrast ${theme.contrastRatio.toFixed(
-                          1,
-                        )}:1 — WCAG ${wcagLevel(theme.contrastRatio)}, below the resume-safe threshold`}
-                        role="img"
-                        aria-label={`Low body-text contrast, ${theme.contrastRatio.toFixed(
-                          1,
-                        )} to 1`}
-                      >
-                        <Icon name="alert" size={11} />
-                        low contrast
-                      </span>
-                    )}
+                    {/* The per-option "low contrast" badge was removed in
+                        #153: every theme in the dataset clears the
+                        resume-safe threshold, so the badge could never
+                        fire on a real option row. */}
                     <span className={theme.isDark ? 'badge badge--dark' : 'badge badge--light'}>
                       {theme.isDark ? 'dark' : 'light'}
                     </span>
@@ -547,7 +522,11 @@ export default function ThemePicker({
 
           {/* Legibility readout for the committed theme — body text and
               accent contrast, each labelled with its WCAG level so the bare
-              ratio is self-explanatory. Mirrors the ThemeControls badges. */}
+              ratio is self-explanatory. Mirrors the ThemeControls badges.
+
+              #153 simplified this: every theme is resume-safe now, so the
+              "below resume-safe" warning state was removed. The check glyph
+              is fixed-on; only the numbers vary. */}
           <div className="theme-picker__contrast">
             <p
               className="theme-picker__contrast-row"
@@ -556,18 +535,13 @@ export default function ThemePicker({
               )}:1 — WCAG ${wcagLevel(current.contrastRatio)}`}
             >
               <span
-                className={
-                  current.resumeSafe
-                    ? 'theme-picker__contrast-icon theme-picker__contrast-icon--ok'
-                    : 'theme-picker__contrast-icon theme-picker__contrast-icon--warn'
-                }
+                className="theme-picker__contrast-icon theme-picker__contrast-icon--ok"
                 aria-hidden="true"
               >
-                <Icon name={current.resumeSafe ? 'check' : 'alert'} size={13} />
+                <Icon name="check" size={13} />
               </span>
               Body text {current.contrastRatio.toFixed(1)}:1 — WCAG{' '}
               {wcagLevel(current.contrastRatio)}
-              {!current.resumeSafe && ', below resume-safe'}
             </p>
             <p
               className="theme-picker__contrast-row"
