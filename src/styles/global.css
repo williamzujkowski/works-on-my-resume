@@ -4171,47 +4171,73 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   min-width: 0;
 }
 
-/* Stage progress meter — a single row with label, mono bar, and hint. */
+/* Stage progress meter (#174) — mono kicker above a thin graphical bar,
+   right-aligned score caption, serif muted sub-caption below.
+
+   The bar is a 6px-tall rounded track painted in `--ui-bg` with a 1px
+   ink border. The fill is `--ui-accent` (ochre) and its width is set
+   dynamically through the CSSOM (see ProgressMeter in ResumeHealth.tsx) —
+   inline `style=` would be blocked by the project's hash-based CSP. The
+   width transition is ~400ms and is neutralized under the global
+   `prefers-reduced-motion: reduce` rule earlier in this file. */
 .resume-health__progress-row {
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+  flex-direction: column;
+  gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
   background: var(--ui-bg);
   border: 1px solid var(--ui-border);
   border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
 }
 
 .resume-health__progress-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
   font-weight: 700;
-  color: var(--ui-fg);
-  letter-spacing: 0.04em;
-  /* Reserve roughly the width of "SENIOR" so the meter cells start on a
-     consistent column across tiers. */
-  min-width: 4.5rem;
+  letter-spacing: 0.08em;
+  color: var(--ui-fg-muted);
+  text-transform: uppercase;
 }
 
-.resume-health__progress-meter {
-  color: var(--ui-accent);
+/* Bar + value caption sit side by side. The bar flexes to fill the row;
+   the caption is a fixed-content mono number to its right. */
+.resume-health__progress-track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.resume-health__progress-bar {
+  flex: 1;
+  position: relative;
+  height: 6px;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.resume-health__progress-fill {
+  display: block;
+  height: 100%;
+  width: 0; /* CSSOM writes the real width; this is the SSR floor. */
+  background: var(--ui-accent);
+  border-radius: 999px;
+  transition: width 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.resume-health__progress-value {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
+  color: var(--ui-fg);
   white-space: nowrap;
 }
 
 .resume-health__progress-hint {
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
   color: var(--ui-fg-muted);
-  font-size: 0.72rem;
-}
-
-.resume-health__progress-delta {
-  flex-basis: 100%;
-  margin-top: 2px;
-  padding-left: 5.0rem;
-  color: var(--ui-fg-subtle);
-  font-size: 0.7rem;
 }
 
 /* Next step CTA — full-width button with a leading ▸ glyph. Clicking it

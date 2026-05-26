@@ -348,22 +348,34 @@ test('coaching blocks render the celebrate strip, progress meter, and next-step 
   const positiveCount = await positiveItems.count();
   expect(positiveCount).toBeGreaterThanOrEqual(3);
 
-  // (b) Stage progress meter — carries the score and either the next-tier
-  // hint or the at-the-top affordance. The default stage is `mid` which
-  // advances to `senior`, so we assert on the score + the "advance to"
-  // language.
+  // (b) Stage progress meter (#174) — mono kicker, graphical bar with an
+  // ochre fill whose width is set via CSSOM, mono "<score> / <threshold>"
+  // caption to the right, and a serif sub-caption below. The default
+  // stage is `mid` so the kicker reads "MID".
   const progress = panel.locator('.resume-health__progress');
   await expect(progress).toBeVisible();
   await expect(progress.getByRole('heading', { name: /stage progress/i })).toBeVisible();
   const label = progress.locator('.resume-health__progress-label');
   await expect(label).toHaveText('MID');
-  // The meter is a row of █/░ glyphs — at minimum it should contain a fill cell.
-  const meter = progress.locator('.resume-health__progress-meter');
-  const meterText = (await meter.textContent()) ?? '';
-  expect(meterText).toMatch(/█/);
-  expect(meterText).toMatch(/^[█░]+$/);
-  // The hint reads "<score> → 90 to advance to SENIOR" at the mid tier.
-  await expect(progress.locator('.resume-health__progress-hint')).toContainText(/advance to SENIOR/);
+  // The graphical bar is a progressbar with aria-valuenow + aria-valuemax;
+  // the inner fill is a separate element whose width is painted through
+  // CSSOM (CSP — see ResumeHealth.tsx).
+  const bar = progress.locator('.resume-health__progress-bar');
+  await expect(bar).toBeVisible();
+  await expect(bar).toHaveAttribute('role', 'progressbar');
+  await expect(bar).toHaveAttribute('aria-valuemax', '100');
+  const valueAttr = await bar.getAttribute('aria-valuenow');
+  expect(Number(valueAttr)).toBeGreaterThan(0);
+  // The fill carries a CSSOM-painted width — at the mid tier with the
+  // sample resume's score the fill should be > 0%.
+  const fillWidth = await progress.locator('.resume-health__progress-fill').evaluate((el) => {
+    return (el as HTMLElement).style.width;
+  });
+  expect(fillWidth).toMatch(/^\d+%$/);
+  expect(parseInt(fillWidth, 10)).toBeGreaterThan(0);
+  // The mono value caption reads "<score> / <threshold>". For mid stage
+  // the threshold is the senior bar (100).
+  await expect(progress.locator('.resume-health__progress-value')).toContainText(/ \/ 100$/);
 });
 
 test('coaching: clicking the Next step CTA jumps the editor to the offender line', async ({
