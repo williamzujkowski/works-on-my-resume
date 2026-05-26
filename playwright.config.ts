@@ -13,7 +13,14 @@
  */
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 4321;
+/**
+ * Preview-server port. Defaults to 4321 (Astro's default + what every doc
+ * example assumes). Override via `E2E_PORT=4399 npm run test:e2e` when
+ * running parallel worktrees so each agent's preview lives on its own port
+ * instead of silently reusing a sibling worktree's via
+ * `reuseExistingServer: !process.env.CI` (#146).
+ */
+const PORT = Number(process.env.E2E_PORT) || 4321;
 const BASE_URL = `http://localhost:${PORT}/works-on-my-resume/`;
 
 export default defineConfig({
@@ -77,8 +84,11 @@ export default defineConfig({
   ],
   webServer: {
     /* `astro preview` serves dist/ on the configured base path. We
-       build once before tests so preview has something to serve. */
-    command: 'npm run build && npm run preview -- --port 4321 --host 127.0.0.1',
+       build once before tests so preview has something to serve. The port
+       is read from the same `PORT` constant the BASE_URL uses (env-
+       overridable via `E2E_PORT`, #146) so parallel-worktree runs can sit
+       on different ports without colliding. */
+    command: `npm run build && npm run preview -- --port ${PORT} --host 127.0.0.1`,
     url: BASE_URL,
     timeout: 180_000,
     reuseExistingServer: !process.env.CI,

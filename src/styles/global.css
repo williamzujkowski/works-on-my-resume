@@ -1341,10 +1341,12 @@ body[data-app-phase='hero'] .app-header {
   content: none;
 }
 
-/* Uppercase kicker (HEALTH, FIT, …). Local equivalent of `.section-kicker`
-   tuned for the modeline's tighter type scale — the global utility is
-   still undefined as of this writing, and inlining the contract here
-   keeps the modeline independent of that resolution. */
+/* Uppercase kicker (HEALTH, FIT, …). Sibling of the global `.section-kicker`
+   primitive defined near the top of this file, tuned for the modeline's
+   tighter type scale — the modeline runs at ~0.62rem vs the primitive's
+   0.7rem (the primitive's letter-spacing is also wider at 0.12em), so this
+   class can't just extend the primitive without overriding both, and the
+   override + extend pattern reads worse than a sibling rule. Keep both. */
 .studio__statusline-kicker {
   font-size: 0.62rem;
   letter-spacing: 0.08em;

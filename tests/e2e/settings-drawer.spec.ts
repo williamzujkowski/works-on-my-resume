@@ -172,7 +172,8 @@ test('the Copy to clipboard button writes the prompt prefix', async ({
   });
 
   await openSettingsDrawer(page);
-  const drawer = page.getByRole('dialog', { name: /^settings$/i });
+  // The drawer locator isn't needed after the click (which closes it) —
+  // the page-scoped button query handles the markdown-format trigger.
   await page.getByRole('button', { name: /markdown format/i }).click();
   const dialog = page.getByRole('dialog', { name: /^markdown format$/i });
   await expect(dialog).toBeVisible();
