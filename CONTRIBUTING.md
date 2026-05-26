@@ -90,3 +90,5 @@ friendly but thorough — not personal.
 MIT. By contributing you agree your work ships under the same license.
 
 Thanks again — small or large, the contribution is appreciated.
+
+<!-- ci-ping: 2026-05-26 -->
