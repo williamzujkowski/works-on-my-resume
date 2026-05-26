@@ -6,7 +6,7 @@
  * monospace strip so a reviewer can scan the whole rig at a glance instead of
  * grazing four different toolbar islands:
  *
- *   ~/resume.md  │  L42:18  │  117 lines  │  HEALTH 98 MID  │  FIT 1.4p  │  ●draft  │  AAA 7.9:1
+ *   resume.md  │  L42:18  │  117 lines  │  HEALTH 98 MID  │  FIT 1.4p  │  ●draft  │  AAA 7.9:1
  *
  * Design contract
  * ---------------
@@ -249,7 +249,7 @@ export default function StudioStatusLine({
     >
       <span className="studio__statusline-seg studio__statusline-seg--filename">
         <span className="studio__statusline-value" title={sourceName}>
-          ~/{sourceName}
+          {sourceName}
         </span>
       </span>
 

@@ -55,9 +55,9 @@ test('the status line mounts when a resume is loaded and shows the filename + li
   await loadSampleResume(page);
 
   const line = await statusLine(page);
-  // Filename segment: the sample resume's source name. The label is
-  // wrapped in `~/` to honour the vim-modeline shape.
-  await expect(line.locator('.studio__statusline-seg--filename')).toContainText(/~\//);
+  // Filename segment: the sample resume's source name renders bare in the
+  // editorial-stationery chrome (#163) — no `~/` shell-prompt prefix.
+  await expect(line.locator('.studio__statusline-seg--filename')).toContainText(/\.md$/);
 
   // Health segment is always-on once a parse is in hand.
   await expect(line.locator('.studio__statusline-seg--health')).toBeVisible();
