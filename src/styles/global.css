@@ -559,6 +559,101 @@ body[data-app-phase='workbench'] .app-header {
   font-style: normal;
 }
 
+/* ----- App footer (#172) -----
+   A colophon-style closing line beneath the studio: credits, GitHub
+   link, the privacy reassurance restated in plain language, and the
+   shipped version + month. Single thin top-rule (`--ui-border`),
+   caption-size italic serif at `--ui-fg-muted`, centered to read as
+   editorial colophon rather than navigation. Hidden on print via
+   `data-print-hide` (print.css already wires that in). */
+
+.app-footer {
+  /* Stretch across the viewport but constrain inner content to the same
+     app rhythm as the shell. The top-rule reads as the page's quiet
+     closing thread. */
+  width: 100%;
+  max-width: var(--app-max-width);
+  margin: var(--space-5) auto 0;
+  padding: var(--space-3) var(--space-5) var(--space-5);
+  border-top: 1px solid var(--ui-border);
+}
+
+.app-footer__line {
+  /* Wrap to two/three lines on narrow viewports; flex-wrap keeps the
+     separators sitting alongside their phrases without orphaning a "·"
+     on its own line. */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ui-fg-muted);
+  text-align: center;
+}
+
+.app-footer__item {
+  /* Keep each phrase as a single visual unit so the line wraps between
+     phrases rather than mid-phrase. */
+  white-space: nowrap;
+}
+
+.app-footer__sep {
+  color: var(--ui-border-strong);
+  /* The middot is decoration only — `aria-hidden` strips it from the AT
+     tree; this rule just nudges the optical weight. */
+  font-style: normal;
+}
+
+.app-footer__link {
+  color: var(--ui-fg-muted);
+  /* A 1px dotted rule under the link reads as a quiet citation rather
+     than the loud underline a primary CTA would warrant. */
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--ui-border-strong);
+  text-underline-offset: 0.18em;
+  transition:
+    color 110ms ease,
+    text-decoration-color 110ms ease;
+}
+
+.app-footer__link:hover,
+.app-footer__link:focus-visible {
+  color: var(--ui-accent);
+  text-decoration-color: var(--ui-accent);
+}
+
+.app-footer__version {
+  /* The version reads as a literal — tabular-nums so `v0.1.0` stays
+     even-rhythm, and the italic-serif treatment is kept; switching to
+     mono here would break the colophon voice. */
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+@media (max-width: 640px) {
+  .app-footer {
+    margin-top: var(--space-4);
+    padding: var(--space-3) var(--space-3) var(--space-4);
+  }
+
+  .app-footer__line {
+    /* Hide the inline separators on narrow viewports and let each phrase
+       take its own line — easier to read than three mid-dot-broken
+       phrases stacked at random wrap-points. */
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .app-footer__sep {
+    display: none;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Shared UI primitives                                                */
 /* ------------------------------------------------------------------ */

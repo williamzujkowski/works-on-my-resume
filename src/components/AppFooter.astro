@@ -1,0 +1,56 @@
+---
+/**
+ * AppFooter — a quiet editorial footer beneath the studio (#172).
+ *
+ * One caption-size serif line with three calm assertions:
+ *
+ *   Open source on GitHub.   No data leaves your browser.   v0.1.0 — May 2026.
+ *
+ * The version + month are read straight from `package.json` so the line
+ * can never drift from the shipped build. The repo link is the canonical
+ * homepage. The privacy phrase restates the local-first posture in plain
+ * language (no "hash-CSP private" dev-speak — that belongs in
+ * PrivacyNotice).
+ *
+ * Sits beneath a single thin top-rule in `--ui-border`, set in italic
+ * caption-size serif at `--ui-fg-muted` so it reads as colophon text
+ * rather than navigation. Hidden on print via `data-print-hide`
+ * (print.css already carries that contract).
+ */
+import pkg from '../../package.json';
+
+// Source the version + build month from package.json so the line stays
+// in lockstep with the shipped release. `package.json` has no build-date
+// field — the month label is derived from the workspace's "current month"
+// at build time. Production builds bake this into the static HTML, so the
+// string is whatever month the release ships in.
+const repoUrl = 'https://github.com/williamzujkowski/works-on-my-resume';
+const version = `v${pkg.version}`;
+const buildDate = new Date();
+const monthLabel = buildDate.toLocaleString('en-US', {
+  month: 'long',
+  year: 'numeric',
+});
+---
+
+<footer class="app-footer" role="contentinfo" data-print-hide>
+  <p class="app-footer__line">
+    <span class="app-footer__item">
+      <a
+        class="app-footer__link"
+        href={repoUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Open source on GitHub
+      </a>
+      .
+    </span>
+    <span class="app-footer__sep" aria-hidden="true">·</span>
+    <span class="app-footer__item">No data leaves your browser.</span>
+    <span class="app-footer__sep" aria-hidden="true">·</span>
+    <span class="app-footer__item app-footer__version">
+      {version} — {monthLabel}
+    </span>
+  </p>
+</footer>
