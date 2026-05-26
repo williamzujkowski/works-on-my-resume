@@ -9,6 +9,7 @@
  * no third-party scripts, and no network calls that carry resume content.
  */
 import '../styles/global.css';
+import AppFooter from '../components/AppFooter.astro';
 
 interface Props {
   title?: string;
@@ -67,5 +68,6 @@ const base = import.meta.env.BASE_URL;
   </head>
   <body>
     <slot />
+    <AppFooter />
   </body>
 </html>
