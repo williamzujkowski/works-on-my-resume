@@ -2902,6 +2902,93 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   font-variant-numeric: tabular-nums;
 }
 
+/* ----- Curated "Starting points" row (#183) -----
+   A small grid of eight hand-picked themes the writer can land on in one
+   click. Sits ABOVE the search input in the picker popover and hides the
+   moment the user filters (search text or any tag chip) — the count line
+   takes over the "what am I looking at" role in that state. Each tile is
+   a real <button> so keyboard / SR users reach it the same way as the
+   listbox rows; swatch colors are painted via CSSOM (see ThemeSwatch in
+   ThemePicker.tsx) to stay clean under our CSP. */
+.theme-picker__curated {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.theme-picker__curated-kicker {
+  margin: 0;
+}
+
+.theme-picker__curated-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+}
+
+.theme-picker__curated-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.35rem 0.45rem;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 110ms ease,
+    border-color 110ms ease,
+    transform 110ms ease,
+    box-shadow 110ms ease;
+}
+
+.theme-picker__curated-item:hover,
+.theme-picker__curated-item:focus-visible {
+  background: var(--ui-panel-hover);
+  border-color: var(--ui-accent);
+  /* Slightly-elevated hover state — the tiny lift + shadow signals the
+     row is clickable without the heavier feel of a primary button. */
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 0.08));
+}
+
+.theme-picker__curated-swatch {
+  /* Slightly larger than the listbox swatch so the curated row reads as
+     a distinct, more confident set of tiles than the dense option list. */
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.theme-picker__curated-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.05rem;
+}
+
+.theme-picker__curated-name {
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ui-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-picker__curated-caption {
+  font-family: var(--font-serif);
+  font-size: 0.7rem;
+  color: var(--ui-fg-muted);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ------------------------------------------------------------------ */
 /* Theme controls                                                      */
 /* ------------------------------------------------------------------ */

@@ -29,7 +29,13 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ResumeTheme, ResumeThemeTag } from '../types';
 import { RESUME_THEME_TAGS } from '../types';
-import { applyThemeToDocument, filterThemes, loadAllThemesAsync } from '../utils/themes';
+import {
+  applyThemeToDocument,
+  CURATED_STARTING_POINTS,
+  filterThemes,
+  findTheme,
+  loadAllThemesAsync,
+} from '../utils/themes';
 import { wcagLevel } from '../utils/wcag';
 import Icon from './Icon';
 
@@ -94,6 +100,45 @@ function AccentDot({ className, background }: AccentDotProps) {
     el.style.setProperty('background-color', background);
   }, [background]);
   return <span ref={ref} className={className} aria-hidden="true" />;
+}
+
+interface CuratedStartingPointProps {
+  /** The hydrated theme — already verified to exist in the dataset. */
+  theme: ResumeTheme;
+  /** Editorial caption shown below the theme name. */
+  caption: string;
+  /** Selection handler — same one the listbox `<li>` rows call. */
+  onSelect: (theme: ResumeTheme) => void;
+}
+
+/**
+ * One curated "Starting points" tile (#183).
+ *
+ * A small clickable row with a square swatch (painted via CSSOM to dodge
+ * `style-src 'unsafe-inline'`, per the CSP pattern used by `ThemeSwatch`
+ * above), the theme name in serif, and the editorial caption in muted serif.
+ * Click commits the theme + closes the picker through `onSelect` — the same
+ * handler the main listbox rows use.
+ */
+function CuratedStartingPoint({ theme, caption, onSelect }: CuratedStartingPointProps) {
+  return (
+    <button
+      type="button"
+      className="theme-picker__curated-item"
+      data-slug={theme.slug}
+      onClick={() => onSelect(theme)}
+    >
+      <ThemeSwatch
+        className="theme-picker__swatch theme-picker__curated-swatch"
+        background={theme.tokens.bg}
+        borderColor={theme.tokens.accent}
+      />
+      <span className="theme-picker__curated-text">
+        <span className="theme-picker__curated-name">{theme.name}</span>
+        <span className="theme-picker__curated-caption">{caption}</span>
+      </span>
+    </button>
+  );
 }
 
 // Note: an earlier MAX_RENDERED cap (60) was removed — it hid most of the
@@ -178,6 +223,30 @@ export default function ThemePicker({
   // Render every match. `rendered` stays as the bound name used throughout
   // this component (active-index, onOpen snapshot, keyboard nav).
   const rendered = allMatches;
+
+  /* ----- Curated "Starting points" row (#183) -----
+     "Filtered mode" means the user has narrowed the picker with the search
+     input or a tag chip; in that mode the curated row hides and the count
+     line takes over the role of telling the user what they're looking at.
+     `query.trim()` so a stray whitespace fill doesn't toggle modes. */
+  const isFiltered = query.trim().length > 0 || activeTags.length > 0;
+
+  /* Hydrate each curated slug against the loaded dataset. Slugs missing from
+     the dataset (typo in CURATED_STARTING_POINTS, or the boot-fallback state
+     before lazy-load resolves) are silently dropped — the row simply shrinks
+     rather than rendering a broken swatch. The boot fallback case fixes
+     itself once `loadAllThemesAsync()` resolves and the picker re-renders. */
+  const curatedEntries = useMemo(
+    () =>
+      CURATED_STARTING_POINTS.map((entry) => {
+        const theme = findTheme(entry.slug);
+        return theme ? { theme, caption: entry.caption } : null;
+      }).filter((entry): entry is { theme: ResumeTheme; caption: string } => entry !== null),
+    // `themes` is the cheapest signal that the lazy dataset finished
+    // loading — every theme hydrates once and stays hydrated for the session,
+    // so this memo re-runs at most twice: boot fallback, then the full set.
+    [themes],
+  );
 
   /* The denominator in the "X of Y themes" count (#87). `themes.length`
      reads as the *full set* of themes the picker has on hand — neither the
@@ -364,6 +433,33 @@ export default function ThemePicker({
 
       {open && (
         <div className="theme-picker__popover" role="dialog" aria-label="Choose a theme">
+          {/* Curated "Starting points" row (#183).
+              Eight hand-picked themes the writer can land on in one click. Hidden
+              when the user has narrowed the picker with a search query or any tag
+              chip — the existing count line takes over the role of "what am I
+              looking at" in that filtered state. Slugs missing from the dataset
+              are silently skipped so a typo in CURATED_STARTING_POINTS never
+              renders a broken swatch. */}
+          {!isFiltered && curatedEntries.length > 0 && (
+            <div
+              className="theme-picker__curated"
+              role="group"
+              aria-label="Starting points"
+            >
+              <p className="theme-picker__curated-kicker section-kicker">Starting points</p>
+              <div className="theme-picker__curated-grid">
+                {curatedEntries.map(({ theme, caption }) => (
+                  <CuratedStartingPoint
+                    key={theme.slug}
+                    theme={theme}
+                    caption={caption}
+                    onSelect={choose}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="theme-picker__search-row">
             <span className="theme-picker__search-icon" aria-hidden="true">
               <Icon name="search" />
@@ -446,10 +542,18 @@ export default function ThemePicker({
               effect of every filter change in one place. Polite + atomic so
               screen readers re-announce the whole short sentence rather
               than diffing a single number. Tabular-nums in CSS keeps the
-              count from jittering as digits change. */}
-          <p className="theme-picker__count" aria-live="polite" aria-atomic="true">
-            {rendered.length} of {totalThemes} themes
-          </p>
+              count from jittering as digits change.
+
+              #183: hidden in the unfiltered baseline — the curated "Starting
+              points" row above takes over the "what am I looking at" role
+              there. The line returns the moment the user types in the search
+              box or activates a tag chip, so the feedback loop is preserved
+              for every filter action. */}
+          {isFiltered && (
+            <p className="theme-picker__count" aria-live="polite" aria-atomic="true">
+              {rendered.length} of {totalThemes} themes
+            </p>
+          )}
 
           {/* Polite live region — announces the keyboard-highlighted theme. */}
           <p id={liveId} className="visually-hidden" aria-live="polite">
