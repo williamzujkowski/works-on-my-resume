@@ -32,6 +32,15 @@ export default defineConfig({
   // Import; it carries no auth and no resume content outbound. This is the
   // lone exception to the otherwise self-only connect-src and MUST be
   // preserved when changing this config.
+  //
+  // frame-src exception — `blob:` (#185):
+  // The in-app print preview modal renders the standalone HTML export into
+  // a sandboxed iframe loaded from a `URL.createObjectURL(Blob)`. blob: URLs
+  // are not covered by `frame-src 'self'`, so we explicitly extend the
+  // directive. data: URIs are deliberately NOT added — Blob URLs are the
+  // safer route (object URLs are revocable, garbage-collected, and never
+  // exposed to other origins). The iframe runs with
+  // `sandbox="allow-same-origin"` only — no scripts execute inside.
   security: {
     csp: {
       directives: [
@@ -39,6 +48,7 @@ export default defineConfig({
         "img-src 'self' data: blob:",
         "font-src 'self'",
         "connect-src 'self' https://api.github.com",
+        "frame-src 'self' blob:",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'none'",

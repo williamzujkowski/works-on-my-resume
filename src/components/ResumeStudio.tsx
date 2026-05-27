@@ -54,6 +54,7 @@ import ExportPanel from './ExportPanel';
 import KeyboardHelp, { getStoredShortcutsEnabled, setStoredShortcutsEnabled } from './KeyboardHelp';
 import ExampleDialog from './ExampleDialog';
 import FormatDocsDialog from './FormatDocsDialog';
+import PrintPreviewDialog from './PrintPreviewDialog';
 import PageFitIndicator from './PageFitIndicator';
 import TailorForRole from './TailorForRole';
 import AppHero from './AppHero';
@@ -155,6 +156,17 @@ export default function ResumeStudio() {
   const [exportOpen, setExportOpen] = useState(false);
   const [printMode, setPrintMode] = useState<PrintMode>('conservative');
   const [loadAnnouncement, setLoadAnnouncement] = useState('');
+
+  /* ----- Print preview modal (#185) -----
+     Additive to the existing toolbar Save-as-PDF shortcut. A separate
+     Preview button opens this modal; the modal embeds the standalone HTML
+     export in a sandboxed iframe, threads the same `printMode` state in via
+     a radio group (so the page-fit chip's mode dropdown and the modal stay
+     in lockstep — single source of truth), and offers Save-as-PDF as the
+     primary action inside the modal. Trigger ref lets focus return to the
+     Preview button on close. */
+  const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
+  const printPreviewTriggerRef = useRef<HTMLButtonElement>(null);
 
   /* ----- Overwrite toast (#77) — visible companion to the aria-live
      announcement for sighted users. `toast` is null when nothing is
@@ -788,14 +800,15 @@ export default function ResumeStudio() {
         return;
       }
 
-      // The help overlay, settings drawer, and format-docs dialog trap focus
-      // and handle their own keys — let them own the keyboard while open.
-      // Escape inside any of them is handled by the modal itself (which
-      // calls onClose); the global Escape handler above short-circuits
-      // before this guard.
+      // The help overlay, settings drawer, format-docs dialog, and the
+      // print-preview modal each trap focus and handle their own keys — let
+      // them own the keyboard while open. Escape inside any of them is
+      // handled by the modal itself (which calls onClose); the global
+      // Escape handler above short-circuits before this guard.
       if (helpOpen) return;
       if (settingsOpen) return;
       if (formatDocsOpen) return;
+      if (printPreviewOpen) return;
 
       // Never hijack typing, and never fight browser/OS chords.
       if (isEditableTarget(event.target)) return;
@@ -850,6 +863,7 @@ export default function ResumeStudio() {
     helpOpen,
     settingsOpen,
     formatDocsOpen,
+    printPreviewOpen,
     hasResume,
     shortcutsEnabled,
     stepTheme,
@@ -946,6 +960,15 @@ export default function ResumeStudio() {
     setFormatDocsOpen(false);
     window.setTimeout(() => {
       settingsTriggerRef.current?.focus();
+    }, 0);
+  }, []);
+
+  /* Close the print-preview modal (#185) and return focus to the Preview
+     button that opened it. Mirrors the other modal-close patterns above. */
+  const closePrintPreview = useCallback(() => {
+    setPrintPreviewOpen(false);
+    window.setTimeout(() => {
+      printPreviewTriggerRef.current?.focus();
     }, 0);
   }, []);
 
@@ -1342,6 +1365,35 @@ export default function ResumeStudio() {
               horizontal stretch (#131). */}
           <div className="studio__toolbar-spacer studio__toolbar-collapsible" />
 
+          {/* Preview — additive sibling of Save-as-PDF (#185). Opens the
+              print-preview modal: a sandboxed iframe loaded from the same
+              standalone HTML export the Download HTML affordance writes,
+              with the print-mode radio threaded through so the page-fit
+              chip's mode dropdown and the modal stay in lockstep. The
+              direct Save-as-PDF shortcut below is preserved so power users
+              keep their one-click path; Preview is for the writer who
+              wants to see what the PDF will look like before committing.
+
+              Wrapped in `studio__toolbar-collapsible` so the mobile More
+              drawer (#131) hides it inline and surfaces it inside the
+              drawer instead — keeps the closed mobile toolbar under the
+              100 px above-the-fold budget. ThemePicker + Save-as-PDF stay
+              inline on mobile as the documented exceptions. */}
+          <span className="studio__toolbar-collapsible">
+            <button
+              type="button"
+              ref={printPreviewTriggerRef}
+              className="btn"
+              aria-haspopup="dialog"
+              aria-expanded={printPreviewOpen}
+              onClick={() => setPrintPreviewOpen(true)}
+              disabled={!parsed}
+            >
+              <Icon name="eye" size={14} />
+              Preview
+            </button>
+          </span>
+
           {/* Save as PDF — primary toolbar action (#90). A direct,
               single-click path to the most common export. Lives as a peer
               to the Export popover trigger (not inside it) because the
@@ -1733,6 +1785,25 @@ export default function ResumeStudio() {
            all route through `closeFormatDocs`, which restores focus to
            the Settings gear. ----- */}
       {formatDocsOpen && <FormatDocsDialog onClose={closeFormatDocs} />}
+
+      {/* ----- Print preview modal (#185) -----
+           Opens from the toolbar Preview button next to Save-as-PDF. The
+           modal embeds the standalone HTML export in a sandboxed iframe so
+           the writer sees the exact document the Save-as-PDF path would
+           produce, with the print-mode radio threaded through so toggling
+           between Conservative and Themed updates both the iframe and the
+           page-fit chip's mode dropdown. Mounted only when a resume is
+           loaded and the dialog is open. */}
+      {printPreviewOpen && parsed && (
+        <PrintPreviewDialog
+          parsed={parsed}
+          theme={theme}
+          template={template}
+          printMode={printMode}
+          onPrintModeChange={setPrintMode}
+          onClose={closePrintPreview}
+        />
+      )}
 
       {/* ----- Resume Health → Open-an-example dialog (#120) -----
            Mounted only when the Health panel asks for an example AND the
