@@ -3825,6 +3825,167 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 /* ------------------------------------------------------------------ */
+/* Print preview modal (#185)                                          */
+/*                                                                     */
+/* Mirrors the ExampleDialog / FormatDocsDialog modal contract: dimmed */
+/* overlay, centered card, focus-trapped, dismissable via Esc /        */
+/* click-outside / close button. The body hosts an iframe loaded from  */
+/* a Blob URL containing the standalone HTML export, anchored at a     */
+/* US-Letter aspect ratio so multi-page resumes scroll inside it.      */
+/*                                                                     */
+/* The overlay carries `data-print-hide` from the JSX so the print     */
+/* stylesheet hides it when the user invokes window.print() — the      */
+/* iframe contains its own document and brings its own print CSS, so   */
+/* the parent page's modal must NOT leak ink onto the printed output.  */
+/* ------------------------------------------------------------------ */
+
+.print-preview-dialog__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(38, 26, 14, 0.42);
+  animation: kbd-help-fade 140ms ease-out;
+}
+
+/* The modal card. Wider than ExampleDialog because the iframe wants a
+   minimum readable width — at 8.5/11 aspect ratio a 720-px-wide page
+   gives a roughly natural-size view. The card itself caps at 960 px so
+   the preview reads as embedded, not as a full-bleed takeover. */
+.print-preview-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(60rem, 100%);
+  max-height: 100%;
+  overflow: hidden;
+  padding: var(--space-5);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+}
+
+.print-preview-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.print-preview-dialog__title {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--ui-fg);
+  margin: 0;
+}
+
+.print-preview-dialog__intro {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--ui-fg-muted);
+}
+
+/* Print-mode radio group. Shape mirrors `.export-panel__radio-group`
+   so the visual language of "print mode = a small pair of radios"
+   stays consistent between the Export panel and this modal — they're
+   driving the same state. Horizontal on desktop to keep the chrome
+   above the iframe compact; stacks on mobile. */
+.print-preview-dialog__modes {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  margin: 0;
+}
+
+.print-preview-dialog__mode {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-1);
+  font-size: 0.82rem;
+  cursor: pointer;
+  flex: 1 1 12rem;
+}
+
+.print-preview-dialog__mode-hint {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--ui-fg-subtle);
+}
+
+/* The iframe wrapper anchors the US-Letter aspect ratio AND clips the
+   inner iframe so the page corners read as a paper sheet, not a
+   default-stretched HTML viewport. */
+.print-preview-dialog__frame-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+}
+
+.print-preview-dialog__frame {
+  /* US-Letter portrait. Width is capped so the modal isn't dominated by
+     the frame on huge displays; multi-page resumes scroll inside the
+     iframe itself. */
+  width: min(100%, 38rem);
+  aspect-ratio: 8.5 / 11;
+  background: white;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-pop);
+  display: block;
+}
+
+/* Actions row sits at the bottom of the card. Cancel left, Save-as-PDF
+   right (primary). Matches the dialog conventions in the rest of the
+   app — primary actions trail in latin reading order. */
+.print-preview-dialog__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Mobile: the modal fills the viewport. The iframe stretches to fit the
+   wrap width; the aspect-ratio rule keeps the page proportions correct,
+   and the wrap's scroll handles the resulting height. */
+@media (max-width: 640px) {
+  .print-preview-dialog__overlay {
+    padding: 0;
+  }
+  .print-preview-dialog {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    padding: var(--space-4);
+  }
+  .print-preview-dialog__modes {
+    flex-direction: column;
+  }
+  .print-preview-dialog__frame {
+    width: 100%;
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Overwrite toast (#77) — visual companion to the aria-live notice    */
 /* ------------------------------------------------------------------ */
 
