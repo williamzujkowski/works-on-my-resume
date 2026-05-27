@@ -73,10 +73,18 @@
     0 24px 60px -24px rgba(15, 17, 21, 0.28);
 
   font-family: var(--resume-serif);
-  font-size: 16px;
-  /* Proposal 2 (#184): on-screen body line-height target is 1.6 (was already
-     at this value, so no change here). The matching print-mode bump
-     (1.45 → 1.55) lives in print.css alongside the rest of the print rules. */
+  /* Base body font size. 11pt matches the print stylesheet, so the
+     on-screen preview reads as a true rehearsal of the printed PDF rather
+     than a slightly-larger screen-mode. The shift summand (#186) is the
+     value of `--resume-body-size-shift`, set on `:root` by ResumeStudio
+     when the user clicks the A− / A+ buttons next to the Fit chip; clamped
+     to ±2pt at the source, default 0pt, no persistence. The fallback inside
+     `var(...)` keeps a bare standalone export (no app JS, no `:root` custom
+     property) legible at the default 11pt. */
+  font-size: calc(11pt + var(--resume-body-size-shift, 0pt));
+  /* Proposal 2 (#184): on-screen body line-height stays at 1.6. The matching
+     print-mode bump (1.45 → 1.55) lives in print.css alongside the rest of
+     the print rules. */
   line-height: 1.6;
   font-feature-settings:
     'kern' 1,
@@ -493,9 +501,12 @@
 /* --- Compact -------------------------------------------------------- */
 .resume-preview[data-template='compact'] {
   /* Tighter page geometry, smaller body, denser rhythm. The page itself is
-     still scoped — we only adjust *within* the sheet. */
+     still scoped — we only adjust *within* the sheet. The body-size shift
+     (#186) summand keeps the A− / A+ buttons effective in compact mode too;
+     the compact baseline is 9.5pt, so a +2pt shift reaches the default 11.5pt
+     and a −2pt shift bottoms out at 7.5pt. */
   padding: 2.25rem 2.5rem;
-  font-size: 14.5px;
+  font-size: calc(9.5pt + var(--resume-body-size-shift, 0pt));
   line-height: 1.45;
 }
 
