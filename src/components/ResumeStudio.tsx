@@ -16,7 +16,7 @@
  * to storage and never put in the URL. Only the theme slug is persisted (via
  * storage.ts) and reflected into `?theme=`.
  */
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ParsedResume, PreviewMode, PrintMode, ResumeTemplate, ResumeTheme } from '../types';
 import { DEFAULT_RESUME_TEMPLATE, RESUME_TEMPLATES, isResumeTemplate } from '../types';
 import { parseResume } from '../utils/markdown';
@@ -167,6 +167,15 @@ export default function ResumeStudio() {
      Preview button on close. */
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const printPreviewTriggerRef = useRef<HTMLButtonElement>(null);
+
+  /* ----- Per-session body-font shift (#186) -----
+     The A- / A+ controls next to the Fit chip nudge the resume body font
+     size by ±0.5pt against an 11pt baseline, clamped to ±2pt. Session-only
+     (no storage), consistent with the print-mode policy: a tweak made while
+     tuning a resume isn't a long-term setting. The value flows out to
+     `.resume-preview` via a CSS custom property — applied below in a
+     useLayoutEffect so the shift paints in the same frame the state lands. */
+  const [bodySizeShift, setBodySizeShift] = useState(0);
 
   /* ----- Overwrite toast (#77) — visible companion to the aria-live
      announcement for sighted users. `toast` is null when nothing is
@@ -549,6 +558,30 @@ export default function ResumeStudio() {
   useEffect(() => {
     document.body.dataset.printMode = printMode;
   }, [printMode]);
+
+  /* ---------------------------------------------------------------- *
+   * Reflect the body-font shift (#186) onto the document root via the *
+   * `--resume-body-size-shift` custom property. `resume.css` consumes  *
+   * the property in the base `.resume-preview` font-size rule (and in  *
+   * the compact template), so both the on-screen preview AND the       *
+   * printed PDF pick it up — the print stylesheet inherits the base    *
+   * rule because we no longer pin `font-size: 11pt` in `print.css`.    *
+   *                                                                    *
+   * CSP: the property is set via CSSOM on `documentElement.style` from *
+   * a `useLayoutEffect` — same pattern as ThemeSwatch / AccentDot. No  *
+   * JSX `style={...}` attribute, so `style-src 'unsafe-inline'` stays  *
+   * forbidden. The shift is cleared on unmount so a hot-reload during  *
+   * development doesn't leave a stale variable on the root.            *
+   * ---------------------------------------------------------------- */
+  useLayoutEffect(() => {
+    document.documentElement.style.setProperty(
+      '--resume-body-size-shift',
+      `${bodySizeShift}pt`,
+    );
+    return () => {
+      document.documentElement.style.removeProperty('--resume-body-size-shift');
+    };
+  }, [bodySizeShift]);
 
   /* ---------------------------------------------------------------- *
    * Reflect the empty-state hero / loaded-workbench phase onto <body> *
@@ -1349,6 +1382,8 @@ export default function ResumeStudio() {
               parsed={parsed}
               printMode={printMode}
               onPrintModeChange={setPrintMode}
+              bodySizeShift={bodySizeShift}
+              onBodySizeShiftChange={setBodySizeShift}
             />
           </span>
 

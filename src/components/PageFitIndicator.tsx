@@ -75,7 +75,25 @@ interface PageFitIndicatorProps {
   printMode: PrintMode;
   /** Setter for the print mode; mirrors the Export-panel radio. */
   onPrintModeChange: (mode: PrintMode) => void;
+  /**
+   * Per-session body-font shift in points (#186). Range [-2, 2] in 0.5pt
+   * steps; default 0. ResumeStudio owns the value and applies it via the
+   * `--resume-body-size-shift` custom property; this component only renders
+   * the +/- controls flanking the chip.
+   */
+  bodySizeShift: number;
+  /** Setter for the body-font shift; clamped at the callsite. */
+  onBodySizeShiftChange: (shift: number) => void;
 }
+
+/**
+ * Step size, clamp bounds, and default for the body-font shift (#186). Lives
+ * here as named constants so the buttons can disable at the boundary AND so
+ * the e2e test can assert the same numbers without re-deriving them.
+ */
+export const BODY_SIZE_SHIFT_STEP = 0.5;
+export const BODY_SIZE_SHIFT_MIN = -2;
+export const BODY_SIZE_SHIFT_MAX = 2;
 
 /* ---------------------------------------------------------------------------
  * RulerOverlay — CSSOM-painted page-break overlay.
@@ -143,6 +161,8 @@ export default function PageFitIndicator({
   parsed,
   printMode,
   onPrintModeChange,
+  bodySizeShift,
+  onBodySizeShiftChange,
 }: PageFitIndicatorProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -284,8 +304,36 @@ export default function PageFitIndicator({
   const modeAriaLabel =
     'Print mode — affects the Save as PDF output and the Fit-pages estimate';
 
+  /* Button-disabled state at the clamp boundary (#186). The boundary is a
+     half-pt past the last legal shift; using a small epsilon (1e-3) avoids
+     a floating-point mismatch where -2 + 0.5 + 0.5 + 0.5 + 0.5 = -0.000...001. */
+  const atMinShift = bodySizeShift <= BODY_SIZE_SHIFT_MIN + 1e-3;
+  const atMaxShift = bodySizeShift >= BODY_SIZE_SHIFT_MAX - 1e-3;
+
+  const decreaseShift = () => {
+    if (atMinShift) return;
+    const next = Math.max(BODY_SIZE_SHIFT_MIN, bodySizeShift - BODY_SIZE_SHIFT_STEP);
+    onBodySizeShiftChange(next);
+  };
+  const increaseShift = () => {
+    if (atMaxShift) return;
+    const next = Math.min(BODY_SIZE_SHIFT_MAX, bodySizeShift + BODY_SIZE_SHIFT_STEP);
+    onBodySizeShiftChange(next);
+  };
+
   return (
-    <>
+    <div className="page-fit__size-control" data-print-hide>
+      <button
+        type="button"
+        className="page-fit__size-btn"
+        aria-label="Decrease body font size"
+        onClick={decreaseShift}
+        disabled={atMinShift}
+      >
+        <span aria-hidden="true">
+          A<span className="page-fit__size-btn-op">−</span>
+        </span>
+      </button>
       <div className={chipClass} ref={rootRef} data-print-hide>
         <button
           type="button"
@@ -398,13 +446,24 @@ export default function PageFitIndicator({
           </div>
         )}
       </div>
+      <button
+        type="button"
+        className="page-fit__size-btn"
+        aria-label="Increase body font size"
+        onClick={increaseShift}
+        disabled={atMaxShift}
+      >
+        <span aria-hidden="true">
+          A<span className="page-fit__size-btn-op">+</span>
+        </span>
+      </button>
 
       {rulerOn && pane && article && rulerLineCount > 0 &&
         createPortal(
           <RulerOverlay parent={pane} article={article} lineCount={rulerLineCount} />,
           pane,
         )}
-    </>
+    </div>
   );
 }
 

@@ -5225,6 +5225,71 @@ details.studio__pane--editor {
 /* precision. See src/utils/pageFit.ts for the math; this is just CSS. */
 /* ------------------------------------------------------------------ */
 
+/* --------------------------------------------------------------------
+ * Body font-size control (#186): A− and A+ buttons flanking the Fit
+ * chip. Each click adjusts the resume body font-size by ±0.5pt within a
+ * ±2pt clamp around the 11pt default. Per-session, not persisted.
+ *
+ * Visual silhouette:
+ *   [A−] [ • 1.4p ]·[ CONSERVATIVE ▾ ] [A+]
+ *
+ * The buttons sit inside `.page-fit__size-control`, a flex row that wraps
+ * the existing chip. The buttons read as quiet utility chrome (muted
+ * glyph, no border), brightening to `--ui-fg` on hover; the disabled
+ * state at the clamp boundary drops the glyph to half-opacity. The
+ * current shift value isn't shown in the toolbar — the chip already
+ * shows the consequence (Fit X pages), which is the loaded signal here.
+ * ------------------------------------------------------------------ */
+.page-fit__size-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.page-fit__size-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ui-fg-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color 110ms ease,
+    background-color 110ms ease;
+}
+
+.page-fit__size-btn:hover:not(:disabled),
+.page-fit__size-btn:focus-visible:not(:disabled) {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+  outline: none;
+}
+
+.page-fit__size-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* Composite "A−" / "A+" glyph: the operator sits as a superscript next to
+   the A so the button reads as a typography control rather than a generic
+   plus/minus. Tabular alignment keeps both buttons the same visual width. */
+.page-fit__size-btn-op {
+  margin-left: 1px;
+  font-size: 0.7em;
+  font-weight: 700;
+  vertical-align: super;
+  line-height: 1;
+}
+
 /* Combined chip (#139): the Fit pill and the print-mode dropdown live
    inside ONE pill-shaped container so the user can see at a glance which
    colour profile the Fit estimate and Save-as-PDF will use. The container

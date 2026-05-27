@@ -161,6 +161,77 @@ test('selecting Themed in the chip flips body[data-print-mode] (#139)', async ({
   );
 });
 
+test('A− / A+ buttons shift the resume body font-size by ±0.5pt (#186)', async ({ page }) => {
+  // The body-font shift is a per-session ±2pt adjustment around the 11pt
+  // baseline, applied via `--resume-body-size-shift` on `:root`. A single
+  // A− click should decrement the computed font-size of `.resume-preview`
+  // by ~0.5pt. We assert in pixels (browsers report `font-size` in px)
+  // with a tolerance that absorbs sub-pixel rounding: 0.5pt = 0.667px,
+  // and the difference must be within 0.05px of that target.
+  await loadSampleResume(page);
+
+  // Reveal the chip on mobile (it lives behind the More drawer there); the
+  // A− / A+ buttons are siblings of the chip so the same reveal exposes
+  // them too.
+  await revealPageFitPill(page);
+
+  const article = page.locator('.resume-preview').first();
+  const getFontPx = () =>
+    article.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+
+  const before = await getFontPx();
+
+  const decreaseBtn = page.getByRole('button', { name: 'Decrease body font size' });
+  await expect(decreaseBtn).toBeVisible();
+  await decreaseBtn.click();
+
+  // 0.5pt = 0.5 * 96/72 = 0.6667px. Tolerance is generous (0.1px) so
+  // sub-pixel rounding in different browsers doesn't false-fail.
+  const after = await getFontPx();
+  const delta = before - after;
+  expect(
+    delta,
+    `font-size should drop by ~0.667px after A−; got ${delta.toFixed(3)}px (before=${before}, after=${after})`,
+  ).toBeGreaterThan(0.55);
+  expect(delta).toBeLessThan(0.78);
+
+  // The custom property is set on the document root via CSSOM.
+  const shift = await page.evaluate(() =>
+    document.documentElement.style.getPropertyValue('--resume-body-size-shift'),
+  );
+  expect(shift).toBe('-0.5pt');
+});
+
+test('A+ / A− clamp at ±2pt and disable at the boundary (#186)', async ({ page }) => {
+  // Four A+ clicks reach the +2pt ceiling; the fifth should be impossible
+  // because the button is disabled. Symmetric check on A−.
+  await loadSampleResume(page);
+  await revealPageFitPill(page);
+
+  const decreaseBtn = page.getByRole('button', { name: 'Decrease body font size' });
+  const increaseBtn = page.getByRole('button', { name: 'Increase body font size' });
+
+  // Walk to the +2 ceiling.
+  for (let i = 0; i < 4; i++) {
+    await increaseBtn.click();
+  }
+  await expect(increaseBtn).toBeDisabled();
+  const upperShift = await page.evaluate(() =>
+    document.documentElement.style.getPropertyValue('--resume-body-size-shift'),
+  );
+  expect(upperShift).toBe('2pt');
+
+  // Walk back through zero down to the -2 floor (8 clicks total).
+  for (let i = 0; i < 8; i++) {
+    await decreaseBtn.click();
+  }
+  await expect(decreaseBtn).toBeDisabled();
+  const lowerShift = await page.evaluate(() =>
+    document.documentElement.style.getPropertyValue('--resume-body-size-shift'),
+  );
+  expect(lowerShift).toBe('-2pt');
+});
+
 test('pressing Escape closes the popover and returns focus to the pill', async ({ page }) => {
   await loadSampleResume(page);
 

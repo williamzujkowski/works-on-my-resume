@@ -164,7 +164,10 @@
     box-shadow: none !important;
     /* Pin the document typeface so printed / exported PDFs are faithful. */
     font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif;
-    font-size: 11pt;
+    /* Print font-size is driven by resume.css's `calc(11pt + var(...))` rule
+       so the A−/A+ shift (#186) flows through to the printed PDF and to the
+       standalone-HTML export. We previously hard-pinned `font-size: 11pt`
+       here, which won the cascade and silently ignored the shift. */
     /* Proposal 2 (#184): 1.45 → 1.55. One notch more breathing room in
        print, closer to a premium document's body setting. Screen body
        line-height stays at 1.6 (already at the target — see resume.css).
