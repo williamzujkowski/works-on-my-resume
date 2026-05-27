@@ -888,9 +888,9 @@ const HARDCODED_FALLBACK: ResumeTheme = {
  * engine guarantees, but we assert anyway as a defense-in-depth check).
  */
 const CURATED_LIGHT_SLUGS = [
-  'github-light-default', // fgOnBg ≈ 15.8 — measured best-in-class light
+  'flexoki-light', //        fgOnBg ≈ 17.5 — warm paper, restrained ink (#183)
+  'github-light-default', // fgOnBg ≈ 15.8 — recognizable, recruiter-neutral
   'atom-one-light', //       fgOnBg ≈ 13.2
-  'github', //               fgOnBg ≈ 9.7  — recognizable, safe
   'gruvbox-light', //        fgOnBg ≈ 10.2
 ] as const;
 
@@ -900,6 +900,34 @@ const CURATED_DARK_SLUGS = [
   'catppuccin-mocha', //     fgOnBg ≈ 11.3
   'tokyonight', //           fgOnBg ≈ 10.6 — recognizable
 ] as const;
+
+/**
+ * Curated "Starting points" — eight hand-picked themes the writer can land
+ * on in one click from the top of the theme picker (#183).
+ *
+ * Order is editorial, not algorithmic: flexoki-light leads (it is the app's
+ * default), then a near-white, then warm light variants, then a crisp slate,
+ * then accessibility-first pure white, then the recruiter-neutral GitHub
+ * light, and finally a single dark companion. The dark item is intentional —
+ * we do NOT apply a light-only filter to this row.
+ *
+ * Each slug here is verified to exist in `src/data/themes.json`. If a slug
+ * is missing at runtime, the picker silently skips the row (see
+ * `ThemePicker.tsx`) rather than rendering a broken swatch.
+ */
+export const CURATED_STARTING_POINTS: ReadonlyArray<{
+  readonly slug: string;
+  readonly caption: string;
+}> = Object.freeze([
+  { slug: 'flexoki-light', caption: 'Warm paper. Default.' },
+  { slug: 'alabaster', caption: 'Near-white, quiet.' },
+  { slug: 'claude-light', caption: 'Warm cream with brick accents.' },
+  { slug: 'pierre-light', caption: "A designer's quiet light." },
+  { slug: 'tailwind-slate-light', caption: 'Crisp modern slate.' },
+  { slug: 'modus-operandi', caption: 'Pure-white, accessibility-first.' },
+  { slug: 'github-light-default', caption: 'Recruiter-neutral.' },
+  { slug: 'flexoki-dark', caption: 'Dark companion.' },
+]);
 
 /**
  * True when a normalized theme passes every contrast check we care about:

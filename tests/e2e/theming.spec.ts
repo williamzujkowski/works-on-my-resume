@@ -150,20 +150,19 @@ test('a tag chip narrows the list and the live count', async ({ page }) => {
   const list = dialog.getByRole('listbox', { name: /themes/i });
   const countLine = dialog.locator('.theme-picker__count');
 
-  // Capture the unfiltered baseline. The denominator in the readout is the
-  // full dataset; the numerator equals the rendered option count.
-  await expect(countLine).toContainText(/themes$/);
-  const baselineMatch = (await countLine.textContent())?.match(/(\d+)\s+of\s+(\d+)/);
-  expect(baselineMatch, 'count line should match "X of Y themes"').not.toBeNull();
-  const baselineX = Number(baselineMatch![1]);
-  const baselineY = Number(baselineMatch![2]);
-  expect(baselineX).toBe(await list.getByRole('option').count());
-  // With no filters, the rendered list is the full set.
-  expect(baselineX).toBe(baselineY);
+  // #183: the count line is HIDDEN in the unfiltered baseline — the curated
+  // "Starting points" row takes over the "what am I looking at" role there.
+  // The baseline denominator is therefore measured directly from the
+  // listbox rather than parsed from a non-rendered count string.
+  await expect(countLine).toHaveCount(0);
+  const baselineY = await list.getByRole('option').count();
+  expect(baselineY).toBeGreaterThan(1);
 
   // Activate the `light` chip — every remaining option must be a light theme,
-  // so none should carry the dark badge.
+  // so none should carry the dark badge. The chip flips the picker into
+  // filtered mode, which is where the count line re-mounts.
   await dialog.locator('.theme-picker__tag[data-tag="light"]').click();
+  await expect(countLine).toBeVisible();
 
   // Live count drops AND the readout still references the same total.
   await expect
@@ -174,7 +173,7 @@ test('a tag chip narrows the list and the live count', async ({ page }) => {
     })
     .toMatchObject({ y: baselineY });
   const filteredX = Number((await countLine.textContent())!.match(/(\d+)\s+of\s+(\d+)/)![1]);
-  expect(filteredX).toBeLessThan(baselineX);
+  expect(filteredX).toBeLessThan(baselineY);
   expect(filteredX).toBe(await list.getByRole('option').count());
 
   // No visible option should carry the `dark` badge after the `light` filter.
@@ -284,6 +283,100 @@ test('closing the picker without selecting reverts a hover preview', async ({ pa
 
   // The trigger name should also be unchanged.
   await expect(page.locator('.theme-picker__trigger-name').first()).toHaveText(triggerName);
+});
+
+test('curated "Starting points" row renders eight entries above the search input (#183)', async ({
+  page,
+}) => {
+  // The curated row is the picker's "land in one click" surface: eight
+  // hand-picked tiles that sit above the search input. The dataset is
+  // lazy-loaded (#78), so we go through the same ready-helper every other
+  // picker test uses — otherwise the row would briefly be empty while
+  // CURATED_STARTING_POINTS slugs hydrate against the boot fallback.
+  await openThemePickerReady(page);
+
+  const dialog = page.getByRole('dialog', { name: /choose a theme/i });
+  const curated = dialog.locator('.theme-picker__curated');
+  await expect(curated).toBeVisible();
+
+  // Exactly eight tiles, matching CURATED_STARTING_POINTS — if any slug were
+  // typoed or removed from `src/data/themes.json` the row would silently
+  // shrink, so this is also the typo-detector for the curated list.
+  const tiles = curated.locator('.theme-picker__curated-item');
+  await expect(tiles).toHaveCount(8);
+
+  // First tile is the new default: flexoki-light. Verifying by `data-slug`
+  // is more stable than matching the display name (which is sourced from
+  // the upstream theme JSON).
+  await expect(tiles.first()).toHaveAttribute('data-slug', 'flexoki-light');
+});
+
+test('clicking the first curated tile commits flexoki-light (#183)', async ({ page }) => {
+  await openThemePickerReady(page);
+
+  const dialog = page.getByRole('dialog', { name: /choose a theme/i });
+  const tiles = dialog.locator('.theme-picker__curated .theme-picker__curated-item');
+
+  // Resolve the display name from the tile BEFORE click — the trigger label
+  // is the theme's display name, not the slug, so we cross-check both signals
+  // (URL gets the slug; trigger gets the name).
+  const firstName =
+    (await tiles.first().locator('.theme-picker__curated-name').textContent())?.trim() ?? '';
+  expect(firstName.length).toBeGreaterThan(0);
+
+  await tiles.first().click();
+
+  // The popover closes on selection — same handler as the listbox rows.
+  await expect(dialog).toHaveCount(0);
+
+  // URL gains `?theme=flexoki-light` (the trigger-label cross-check below
+  // is the redundant assertion the spec calls for).
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get('theme') ?? '')
+    .toBe('flexoki-light');
+
+  // Trigger label updates to the chosen theme's name.
+  await expect(page.locator('.theme-picker__trigger-name').first()).toHaveText(firstName);
+});
+
+test('typing in search hides the curated row and reveals the count line (#183)', async ({
+  page,
+}) => {
+  await openThemePickerReady(page);
+
+  const dialog = page.getByRole('dialog', { name: /choose a theme/i });
+  const curated = dialog.locator('.theme-picker__curated');
+  const countLine = dialog.locator('.theme-picker__count');
+
+  // Baseline (unfiltered): curated visible, count line hidden — the curated
+  // row TAKES OVER the "what am I looking at" role in the unfiltered state.
+  await expect(curated).toBeVisible();
+  await expect(countLine).toHaveCount(0);
+
+  // Typing a query flips the mode: curated disappears, count line returns.
+  await page.getByRole('combobox', { name: /search themes/i }).fill('dracula');
+  await expect(curated).toHaveCount(0);
+  await expect(countLine).toBeVisible();
+  await expect(countLine).toContainText(/themes$/);
+
+  // Clearing the query restores the unfiltered baseline.
+  await page.getByRole('combobox', { name: /search themes/i }).fill('');
+  await expect(curated).toBeVisible();
+  await expect(countLine).toHaveCount(0);
+});
+
+test('activating a tag chip hides the curated row (#183)', async ({ page }) => {
+  // Tag chips are the other half of "filtered mode" — they should hide the
+  // curated row the same way a search query does. The `light` chip is a
+  // safe one to press: it does not narrow the list to nothing.
+  await openThemePickerReady(page);
+
+  const dialog = page.getByRole('dialog', { name: /choose a theme/i });
+  const curated = dialog.locator('.theme-picker__curated');
+  await expect(curated).toBeVisible();
+
+  await dialog.locator('.theme-picker__tag[data-tag="light"]').click();
+  await expect(curated).toHaveCount(0);
 });
 
 test('the preview header shows exactly ONE WCAG pill — collapsed worst-case (#130)', async ({
