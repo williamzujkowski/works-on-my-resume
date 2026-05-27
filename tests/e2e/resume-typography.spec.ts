@@ -77,16 +77,24 @@ test('H2 section rule is a hairline (1px + ~0.5 alpha)', async ({ page }) => {
   expect(alpha).toBeLessThan(0.6);
 });
 
-test('on-screen body line-height is 1.6 (≈ 25.6px @ 16px base)', async ({ page }) => {
+test('on-screen body line-height is 1.6 × the computed font-size', async ({ page }) => {
   // The article IS the `.resume-preview` node (see ResumePreview.tsx) — the
   // line-height rule lives on that element directly, so we query it.
+  // The on-screen body font-size changed in #186 from 16px to
+  // `calc(11pt + var(--resume-body-size-shift, 0pt))` so a hardcoded pixel
+  // assertion would drift with that decision. Derive the expected
+  // line-height from the actual computed font-size instead.
   const preview = previewArticle(page);
-  const lineHeight = await preview.evaluate((el) => getComputedStyle(el).lineHeight);
-  // 1.6 × 16 = 25.6 — browsers round to 25.6px or 25.5938... px depending
-  // on subpixel handling. Be lenient on the trailing digit.
-  const numeric = Number.parseFloat(lineHeight);
-  expect(numeric).toBeGreaterThan(25);
-  expect(numeric).toBeLessThan(26);
+  const { lineHeight, fontSize } = await preview.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { lineHeight: cs.lineHeight, fontSize: cs.fontSize };
+  });
+  const lhPx = Number.parseFloat(lineHeight);
+  const fsPx = Number.parseFloat(fontSize);
+  const ratio = lhPx / fsPx;
+  // 1.6 with ±0.01 tolerance for sub-pixel rounding.
+  expect(ratio).toBeGreaterThan(1.59);
+  expect(ratio).toBeLessThan(1.61);
 });
 
 test('print body line-height bumps to 1.55 (≈ 17.05px @ 11pt)', async ({ page }) => {
