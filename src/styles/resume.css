@@ -74,6 +74,9 @@
 
   font-family: var(--resume-serif);
   font-size: 16px;
+  /* Proposal 2 (#184): on-screen body line-height target is 1.6 (was already
+     at this value, so no change here). The matching print-mode bump
+     (1.45 → 1.55) lives in print.css alongside the rest of the print rules. */
   line-height: 1.6;
   font-feature-settings:
     'kern' 1,
@@ -104,7 +107,13 @@
   font-weight: 700;
   line-height: 1.15;
   color: var(--resume-accent, #0b5cae);
-  letter-spacing: -0.01em;
+  /* Proposal 5 (#184): -0.01em → -0.012em. The name in the contact card is
+     the rendered "H1" for the resume document (the body's leading <h1> is
+     stripped by ResumePreview to avoid duplicating the name). A hair tighter
+     tracking reads more confident at the display size — paired with the
+     same tweak on .resume-preview h1 below for any edge case where a body
+     <h1> survives. */
+  letter-spacing: -0.012em;
 }
 
 .resume-preview__contact-role {
@@ -159,15 +168,37 @@
   font-size: 1.8rem;
   margin-top: 0;
   margin-bottom: 0.35rem;
-  letter-spacing: -0.01em;
+  /* Proposal 5 (#184): tightened from -0.01em → -0.012em. At the H1 display
+     size, a hair tighter tracking reads more confident — closer to how a
+     book designer would set the name on a cover. The shift is sub-pixel at
+     the rendered scale but consistently legible on serif faces. */
+  letter-spacing: -0.012em;
 }
 
 .resume-preview h2 {
   font-size: 1.15rem;
-  margin-top: 1.9rem;
+  /* Proposal 4 (#184): +0.25em margin-top for slightly more vertical air
+     between sections. The chrome reads as editorial-stationery after wave
+     4.5; the body wants the same breathing room between sections. */
+  margin-top: 2.15rem;
   margin-bottom: 0.7rem;
   padding-bottom: 0.3rem;
-  border-bottom: 1px solid var(--resume-border, #d6dbe1);
+  /* Proposal 1 (#184): hairline section rule.
+     Was: 1px solid var(--resume-border) — same weight as borders elsewhere
+          on the page, reads as a structural divider rather than a fine
+          engraving.
+     Now: 1px at 0.5 opacity of --resume-muted, expressed via color-mix()
+          so the rule honors the active theme's quiet-text color without
+          locking to any particular accent. The 0.5 alpha delivers the
+          "finer engraving" feel asked for; sub-pixel widths like 0.5px
+          are unreliable across browsers/zoom levels (#184 calls this out
+          as a fallback), and a half-opacity 1px hairline renders
+          consistently on every backing store. The literal fallback is
+          there for bare exports with no theme. The token name in the
+          codebase is `--resume-muted` (not `--resume-fg-muted` per the
+          issue body — verified against src/styles/global.css). */
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--resume-muted, #57606a) 50%, transparent);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -221,7 +252,13 @@
 }
 
 .resume-preview li {
-  margin: 0.3rem 0;
+  /* Proposal 3 (#184): bump per-item gap to ~0.35em for one more notch of
+     vertical air between bullets. The asymmetric top/bottom matches what
+     a typographer would set: a touch more space below an item than above,
+     to keep the wrap-and-flow of long bullets visually grouped with their
+     own bullet rather than the next one. The previous 0.3rem was tight
+     enough that long, multi-line bullets fused with their neighbors. */
+  margin: 0.3rem 0 0.35rem;
 }
 
 .resume-preview li::marker {

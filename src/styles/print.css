@@ -165,7 +165,12 @@
     /* Pin the document typeface so printed / exported PDFs are faithful. */
     font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif;
     font-size: 11pt;
-    line-height: 1.45;
+    /* Proposal 2 (#184): 1.45 → 1.55. One notch more breathing room in
+       print, closer to a premium document's body setting. Screen body
+       line-height stays at 1.6 (already at the target — see resume.css).
+       Print correctness preserved: this rule still wins the cascade
+       because it lives in print.css's @media print scope. */
+    line-height: 1.55;
   }
 
   /* Clean page breaks. */
