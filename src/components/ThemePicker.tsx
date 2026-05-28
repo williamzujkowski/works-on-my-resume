@@ -35,8 +35,10 @@ function wcagLevel(ratio: number): 'AAA' | 'AA' | 'fails AA' {
   return 'fails AA';
 }
 
-/** Cap on rendered option nodes — keeps the popover light. */
-const MAX_RENDERED = 60;
+/** Number of items to render outside the visible viewport */
+const OVERSCAN = 10;
+/** Approximate height of a single option item */
+const ROW_HEIGHT = 33;
 
 interface ThemePickerProps {
   /** All available themes. */
@@ -100,8 +102,17 @@ export default function ThemePicker({
     () => filterThemes(themes, query, resumeSafeOnly),
     [themes, query, resumeSafeOnly],
   );
-  const rendered = allMatches.slice(0, MAX_RENDERED);
-  const overflow = allMatches.length - rendered.length;
+  const [scrollTop, setScrollTop] = useState(0);
+
+  const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
+  const endIndex = Math.min(
+    allMatches.length,
+    Math.ceil(scrollTop / ROW_HEIGHT) + 15 + OVERSCAN
+  );
+
+  const rendered = allMatches.slice(startIndex, endIndex);
+  const topPadding = startIndex * ROW_HEIGHT;
+  const bottomPadding = (allMatches.length - endIndex) * ROW_HEIGHT;
 
   const swatchStyles = useMemo(() => {
     return themes
@@ -181,8 +192,19 @@ export default function ThemePicker({
   useEffect(() => {
     if (!open) return;
     const list = listRef.current;
-    const option = list?.children[activeIndex] as HTMLElement | undefined;
-    option?.scrollIntoView({ block: 'nearest' });
+    if (!list) return;
+    
+    // Calculate the target scroll position based on activeIndex
+    const activeTop = activeIndex * ROW_HEIGHT;
+    const activeBottom = activeTop + ROW_HEIGHT;
+    const viewTop = list.scrollTop;
+    const viewBottom = viewTop + list.clientHeight;
+    
+    if (activeTop < viewTop) {
+      list.scrollTop = activeTop;
+    } else if (activeBottom > viewBottom) {
+      list.scrollTop = activeBottom - list.clientHeight;
+    }
   }, [activeIndex, open]);
 
   /* Keyboard navigation previews the highlighted theme too — so arrow-key
@@ -240,7 +262,7 @@ export default function ThemePicker({
       setActiveIndex(0);
     } else if (event.key === 'End') {
       event.preventDefault();
-      setActiveIndex(rendered.length - 1);
+      setActiveIndex(allMatches.length - 1);
     } else if (event.key === 'Enter') {
       event.preventDefault();
       const theme = rendered[activeIndex];
@@ -248,7 +270,7 @@ export default function ThemePicker({
     }
   }
 
-  const activeTheme = rendered[activeIndex];
+  const activeTheme = allMatches[activeIndex];
   const activeDescId = activeTheme ? optionId(activeTheme.slug) : undefined;
 
   /* Honest, non-blocking signal on the always-visible trigger: when the
@@ -331,7 +353,7 @@ export default function ThemePicker({
           <p id={liveId} className="visually-hidden" aria-live="polite">
             {activeTheme
               ? `${activeTheme.name}, ${activeTheme.isDark ? 'dark' : 'light'} theme, ` +
-                `option ${activeIndex + 1} of ${rendered.length}`
+                `option ${activeIndex + 1} of ${allMatches.length}`
               : ''}
           </p>
 
@@ -346,8 +368,13 @@ export default function ThemePicker({
               className="theme-picker__list"
               role="listbox"
               aria-label="Themes"
+              onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
             >
-              {rendered.map((theme, index) => {
+              {topPadding > 0 && (
+                <div style={{ height: topPadding, width: '100%', flexShrink: 0 }} aria-hidden="true" />
+              )}
+              {rendered.map((theme, idx) => {
+                const index = startIndex + idx;
                 const isSelected = theme.slug === current.slug;
                 const isActive = index === activeIndex;
                 const classNames = ['theme-picker__option'];
@@ -398,15 +425,10 @@ export default function ThemePicker({
                     )}
                   </li>
                 );
-              })}
+              {bottomPadding > 0 && (
+                <div style={{ height: bottomPadding, width: '100%', flexShrink: 0 }} aria-hidden="true" />
+              )}
             </ul>
-          )}
-
-          {overflow > 0 && (
-            <p className="theme-picker__refine" role="status">
-              Showing {rendered.length} of {allMatches.length} — refine your search to narrow it
-              down.
-            </p>
           )}
 
           {/* Legibility readout for the committed theme — body text and
