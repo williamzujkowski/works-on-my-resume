@@ -25,6 +25,13 @@ const THEME_KEY = 'womr:theme';
 const TEMPLATE_KEY = 'womr:template';
 
 /**
+ * Namespaced key for the career-stage preference (#85). The career stage
+ * tunes the Resume Health rubric (junior / mid / senior); like the theme
+ * slug and the template slug, it's a UI preference with no personal data.
+ */
+const CAREER_STAGE_KEY = 'womr:career-stage';
+
+/**
  * Opt-in draft persistence (#32).
  *
  * Two keys, deliberately separate:
@@ -39,6 +46,15 @@ const TEMPLATE_KEY = 'womr:template';
  */
 const DRAFT_KEY = 'womr:draft';
 const DRAFT_ENABLED_KEY = 'womr:draft-enabled';
+
+/**
+ * Namespaced key for the resume snapshots collection (#94). Gated on the
+ * same opt-in (`DRAFT_ENABLED_KEY`) as draft autosave — snapshots are
+ * resume content, so the privacy invariant from #32 applies to them too.
+ * Declared up here so `setDraftPersistenceEnabled` can clear it on opt-out
+ * without forward-referencing the snapshots section below.
+ */
+const SNAPSHOTS_KEY = 'womr:snapshots';
 
 /**
  * Safely obtain `localStorage`, or `null` when it is unavailable.
@@ -125,10 +141,13 @@ export function setDraftPersistenceEnabled(enabled: boolean): void {
     if (enabled) {
       store.setItem(DRAFT_ENABLED_KEY, '1');
     } else {
-      // Opt-out: clear both the flag AND the body. Anything else would be
-      // a surprise — the user's mental model is "I turned it off → it's gone".
+      // Opt-out: clear the flag, the body, AND any snapshots (#94). Anything
+      // else would be a surprise — the user's mental model is "I turned it
+      // off → it's gone". Snapshots are also resume content gated on this
+      // same flag, so they must go when the gate closes.
       store.removeItem(DRAFT_ENABLED_KEY);
       store.removeItem(DRAFT_KEY);
+      store.removeItem(SNAPSHOTS_KEY);
     }
   } catch {
     /* no-op: persistence is best-effort only */
@@ -214,5 +233,220 @@ export function setStoredTemplate(slug: string): void {
     store.setItem(TEMPLATE_KEY, slug);
   } catch {
     /* no-op: persistence is best-effort only */
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Career-stage preference (#85)                                       */
+/* ------------------------------------------------------------------ */
+
+/** The career-stage rubric the Resume Health panel scores against. */
+export type CareerStage = 'junior' | 'mid' | 'senior';
+
+/** True when `value` is a known career stage. */
+function isCareerStage(value: unknown): value is CareerStage {
+  return value === 'junior' || value === 'mid' || value === 'senior';
+}
+
+/**
+ * Read the persisted career-stage preference for the Resume Health panel.
+ *
+ * Returns `null` when nothing is stored, storage is unavailable, or the
+ * stored value isn't one of the known stages — the caller substitutes its
+ * own default (`'mid'`) so a legacy / corrupted value can't produce an
+ * unknown stage.
+ */
+export function getStoredCareerStage(): CareerStage | null {
+  const store = safeLocalStorage();
+  if (!store) return null;
+  try {
+    const value = store.getItem(CAREER_STAGE_KEY);
+    return isCareerStage(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persist the chosen career stage. Silently no-ops when storage is
+ * unavailable — the stage preference is a convenience, never correctness.
+ */
+export function setStoredCareerStage(stage: CareerStage): void {
+  const store = safeLocalStorage();
+  if (!store) return;
+  try {
+    store.setItem(CAREER_STAGE_KEY, stage);
+  } catch {
+    /* no-op: persistence is best-effort only */
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Resume version snapshots (#94)                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The `SNAPSHOTS_KEY` constant lives near the top of this file (alongside
+ * the draft keys) so the opt-out path in `setDraftPersistenceEnabled` can
+ * reference it. The helpers below operate on the same key.
+ *
+ * A snapshot is a *local* point-in-time copy of the resume that the user
+ * can A/B between — e.g. "applying to Stripe" vs "applying to a startup" —
+ * without copy-pasting Markdown around. The privacy invariant from #32 is
+ * preserved: snapshots are gated on the same opt-in (`isDraftPersistenceEnabled`)
+ * that gates draft autosave. If the user has not consented to persisting
+ * resume content on this device, every snapshot helper is a no-op (reads
+ * return an empty array, writes silently drop).
+ */
+
+/** Hard cap on the number of snapshots retained. Oldest auto-evict on overflow. */
+export const MAX_SNAPSHOTS = 10;
+
+/**
+ * One persisted resume snapshot.
+ *
+ * Shape kept narrow on purpose — the snapshot is a frozen view of the few
+ * things that make a resume render look the way the user wants it to:
+ * the Markdown body, the chosen theme, and the chosen layout template.
+ * `name` and `savedAt` are surfaced in the UI.
+ */
+export interface ResumeSnapshot {
+  /** Unique id (timestamp-derived; the row's React key + the delete target). */
+  id: string;
+  /** Human-readable label, defaulted from frontmatter.name + theme/template. */
+  name: string;
+  /** The resume Markdown at capture time. */
+  markdown: string;
+  /** Theme slug that was active at capture time. */
+  themeSlug: string;
+  /** Layout template slug that was active at capture time. */
+  template: string;
+  /** Capture timestamp (epoch ms). */
+  savedAt: number;
+}
+
+/** Input shape for `saveSnapshot` — everything but the auto-generated id. */
+export interface ResumeSnapshotInput {
+  name: string;
+  markdown: string;
+  themeSlug: string;
+  template: string;
+}
+
+/** True when `value` looks like a `ResumeSnapshot` row from storage. */
+function isResumeSnapshot(value: unknown): value is ResumeSnapshot {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.id === 'string' &&
+    typeof v.name === 'string' &&
+    typeof v.markdown === 'string' &&
+    typeof v.themeSlug === 'string' &&
+    typeof v.template === 'string' &&
+    typeof v.savedAt === 'number'
+  );
+}
+
+/**
+ * Read all stored snapshots, newest first.
+ *
+ * Returns `[]` whenever draft persistence is OFF — the snapshots feature
+ * is gated on the same opt-in (#32) as the draft autosave, so a user who
+ * has not consented to local persistence sees no snapshots even if a stale
+ * entry exists in storage.
+ *
+ * Malformed entries (legacy / corrupted) are silently filtered out rather
+ * than thrown — the caller never has to defend against a broken row.
+ */
+export function getSnapshots(): ResumeSnapshot[] {
+  if (!isDraftPersistenceEnabled()) return [];
+  const store = safeLocalStorage();
+  if (!store) return [];
+  try {
+    const raw = store.getItem(SNAPSHOTS_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const rows = parsed.filter(isResumeSnapshot);
+    // Newest first — the UI shows them in reverse-chronological order.
+    return rows.sort((a, b) => b.savedAt - a.savedAt);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Persist a new snapshot, evicting the oldest entries if the cap is hit.
+ *
+ * Gate: draft persistence MUST be on. If it isn't, the call is a silent
+ * no-op and returns `null` so a caller can decide whether to surface a
+ * "please enable Remember this resume" hint.
+ *
+ * The 10-entry cap is enforced HERE rather than in the UI, so any caller
+ * (current or future) that goes through `saveSnapshot` gets the same
+ * guarantee. Oldest-by-`savedAt` are dropped first.
+ */
+export function saveSnapshot(input: ResumeSnapshotInput): ResumeSnapshot | null {
+  if (!isDraftPersistenceEnabled()) return null;
+  const store = safeLocalStorage();
+  if (!store) return null;
+  try {
+    const existing = getSnapshots();
+    const now = Date.now();
+    // Make the id deterministic-ish (timestamp + small random suffix) so two
+    // very-fast saves in the same ms don't collide.
+    const id = `snap-${now.toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const snapshot: ResumeSnapshot = {
+      id,
+      name: input.name.trim().length > 0 ? input.name.trim() : 'Untitled snapshot',
+      markdown: input.markdown,
+      themeSlug: input.themeSlug,
+      template: input.template,
+      savedAt: now,
+    };
+    // Newest first; trim to MAX_SNAPSHOTS by dropping the tail (the oldest).
+    const next = [snapshot, ...existing].slice(0, MAX_SNAPSHOTS);
+    store.setItem(SNAPSHOTS_KEY, JSON.stringify(next));
+    return snapshot;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Remove a snapshot by id. No-op when storage is unavailable, when the
+ * gate is off, or when the id does not exist (idempotent — the UI can
+ * call this without checking).
+ */
+export function deleteSnapshot(id: string): void {
+  if (!isDraftPersistenceEnabled()) return;
+  const store = safeLocalStorage();
+  if (!store) return;
+  try {
+    const existing = getSnapshots();
+    const next = existing.filter((s) => s.id !== id);
+    if (next.length === existing.length) return;
+    store.setItem(SNAPSHOTS_KEY, JSON.stringify(next));
+  } catch {
+    /* no-op */
+  }
+}
+
+/**
+ * Remove ALL snapshots. Used by the draft-opt-out path so a user who turns
+ * "Remember this resume on this device" off also has their snapshots purged
+ * — the privacy mental model is "I turned it off → it's gone".
+ *
+ * Intentionally NOT gated on `isDraftPersistenceEnabled()`: when the user
+ * is opting OUT the flag may already be `false` by the time we reach here,
+ * and we still want the body removed.
+ */
+export function clearSnapshots(): void {
+  const store = safeLocalStorage();
+  if (!store) return;
+  try {
+    store.removeItem(SNAPSHOTS_KEY);
+  } catch {
+    /* no-op */
   }
 }

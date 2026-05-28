@@ -16,10 +16,20 @@
  * print the name twice — so a leading body `<h1>` is dropped, tastefully,
  * before injection. The shipped sample resume already keeps its body
  * content-only; this guard simply makes user resumes forgiving.
+ *
+ * Faded sample preview (#96): the `parsed === null` empty state is no
+ * longer a static card. We fetch the bundled `public/sample-resume.md` on
+ * mount, parse it the same way a real upload would, and render it at
+ * ~0.55 opacity behind a non-blocking overlay (icon, headline, "Try the
+ * sample" button). The overlay's pointer-events: none lets the button stay
+ * clickable; the button routes through the same `onLoad` path the uploader
+ * uses so loading the faded sample is indistinguishable from a real upload.
+ * If the fetch fails the static empty state is the graceful fallback.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ParsedResume, PreviewMode, ResumeTemplate } from '../types';
 import { DEFAULT_RESUME_TEMPLATE } from '../types';
+import { parseResume } from '../utils/markdown';
 import Icon from './Icon';
 
 interface ResumePreviewProps {
@@ -36,6 +46,13 @@ interface ResumePreviewProps {
    * with a monochrome, single-column rendering. Defaults to `normal`.
    */
   mode?: PreviewMode;
+  /**
+   * Faded-sample CTA (#96). When provided, the empty state can offer a
+   * "Try the sample" button that routes through this callback — same path
+   * as MarkdownUploader's "Load sample". Omitting it falls back to the
+   * static empty state.
+   */
+  onLoadSample?: (text: string, sourceName: string) => void;
 }
 
 /**
@@ -80,6 +97,7 @@ export default function ResumePreview({
   parsed,
   template = DEFAULT_RESUME_TEMPLATE,
   mode = 'normal',
+  onLoadSample,
 }: ResumePreviewProps) {
   const { name, role, location, email, phone, links } = parsed?.frontmatter ?? {};
   const hasContact = Boolean(
@@ -92,7 +110,56 @@ export default function ResumePreview({
     return hasContact ? dedupeIdentity(parsed.html) : parsed.html;
   }, [parsed, hasContact]);
 
+  /* ----- Faded sample preview state (#96) -----
+     `sampleText` is the raw Markdown we fetched (kept so the CTA can pass
+     it straight to onLoad — no second fetch). `sampleParsed` is the parsed
+     render-ready version. Both are null until the fetch succeeds; if it
+     fails we leave them null and fall back to the static empty state. The
+     fetch runs only while the empty state is in view. */
+  const [sampleText, setSampleText] = useState<string | null>(null);
+  const [sampleParsed, setSampleParsed] = useState<ParsedResume | null>(null);
+  useEffect(() => {
+    // Only fetch when we are actually showing the empty state AND a CTA
+    // handler exists. If `parsed` becomes non-null the user has loaded a
+    // real resume and the faded preview is no longer needed.
+    if (parsed !== null || !onLoadSample) return;
+    if (sampleText !== null) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+        const url = `${base}sample-resume.md`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const text = await response.text();
+        if (cancelled) return;
+        setSampleText(text);
+        setSampleParsed(parseResume(text));
+      } catch {
+        /* swallow — the static empty state is the graceful fallback */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [parsed, onLoadSample, sampleText]);
+
   if (!parsed) {
+    // Faded-sample variant (#96): only when the fetch succeeded AND a CTA
+    // is wired up. Otherwise fall through to the legacy static empty state
+    // so a network failure (or a host without onLoadSample) still renders
+    // a friendly message.
+    if (onLoadSample && sampleParsed && sampleText !== null) {
+      return (
+        <FadedSamplePreview
+          sampleText={sampleText}
+          sampleParsed={sampleParsed}
+          template={template}
+          mode={mode}
+          onLoadSample={onLoadSample}
+        />
+      );
+    }
     return (
       <div className="preview-frame">
         <div className="preview-empty">
@@ -199,6 +266,125 @@ export default function ResumePreview({
             DOMPurify). The dedupe pass only removes nodes — never adds. */}
         <div className="resume-preview__body" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
       </article>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------------- *
+ * FadedSamplePreview (#96)                                                 *
+ *                                                                          *
+ * A miniature standalone preview of the bundled sample resume, rendered     *
+ * at ~0.55 opacity behind an overlay that carries the call-to-action. The   *
+ * overlay layer is `pointer-events: none` so it never blocks the click on   *
+ * the inner "Try the sample" button — exactly what the spec asks for.       *
+ *                                                                           *
+ * It deliberately uses a SEPARATE class root (`faded-sample-*`) rather than *
+ * reusing `.resume-preview` directly, so the faded styling can never bleed  *
+ * into the real preview when a real resume is loaded.                       *
+ * ----------------------------------------------------------------------- */
+
+interface FadedSamplePreviewProps {
+  sampleText: string;
+  sampleParsed: ParsedResume;
+  template: ResumeTemplate;
+  mode: PreviewMode;
+  onLoadSample: (text: string, sourceName: string) => void;
+}
+
+function FadedSamplePreview({
+  sampleText,
+  sampleParsed,
+  template,
+  mode,
+  onLoadSample,
+}: FadedSamplePreviewProps) {
+  const { name, role, location, email, phone, links } = sampleParsed.frontmatter;
+  const hasContact = Boolean(
+    name || role || location || email || phone || (links && links.length > 0),
+  );
+
+  const bodyHtml = useMemo(
+    () => (hasContact ? dedupeIdentity(sampleParsed.html) : sampleParsed.html),
+    [sampleParsed, hasContact],
+  );
+
+  /* Mirror the real preview's contact-meta construction so the faded
+     sample is visually identical to a real load — just dialed down. The
+     keys are stable, derived from the item's own identity, the same way
+     the live preview does it. */
+  const metaItems: React.ReactElement[] = [];
+  if (location) metaItems.push(<span key="loc">{location}</span>);
+  if (email) metaItems.push(<span key="email">{email}</span>);
+  if (phone) metaItems.push(<span key="phone">{phone}</span>);
+  if (links) {
+    for (const link of links) {
+      metaItems.push(<span key={`link-${link.url}`}>{link.label}</span>);
+    }
+  }
+
+  return (
+    <div className="preview-frame">
+      <div className="faded-sample" data-print-hide>
+        {/* The faded layer — a real preview at low opacity, inert to clicks
+            and to assistive tech (it is purely decorative; the overlay
+            carries the meaningful affordance). `inert` (React 19) also
+            removes the layer's anchors from the tab order, satisfying
+            axe's `aria-hidden-focus` rule (#111). */}
+        <div className="faded-sample__layer" aria-hidden="true" inert>
+          <article
+            className="resume-preview faded-sample__article"
+            data-template={template}
+            data-mode={mode === 'ats' ? 'ats' : undefined}
+          >
+            {hasContact && (
+              <header className="resume-preview__contact">
+                {name && <p className="resume-preview__contact-name">{name}</p>}
+                {role && <p className="resume-preview__contact-role">{role}</p>}
+                {metaItems.length > 0 && (
+                  <p className="resume-preview__contact-meta">
+                    {metaItems.map((item, index) => (
+                      <span key={String(item.key)} className="resume-preview__contact-meta-item">
+                        {index > 0 && (
+                          <span className="resume-preview__contact-sep" aria-hidden="true">
+                            ·
+                          </span>
+                        )}
+                        {item}
+                      </span>
+                    ))}
+                  </p>
+                )}
+              </header>
+            )}
+            {/* Same `dangerouslySetInnerHTML` contract as the real preview:
+                the html came out of parseResume(), already sanitized by
+                DOMPurify. */}
+            <div className="resume-preview__body" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+          </article>
+        </div>
+
+        {/* The CTA overlay. The wrapper carries pointer-events: none (set
+            in global.css) so it never intercepts clicks; the button inside
+            re-enables pointer events on itself so it remains clickable. */}
+        <div className="faded-sample__overlay">
+          <div className="faded-sample__cta">
+            <span className="faded-sample__icon" aria-hidden="true">
+              <Icon name="file" size={36} />
+            </span>
+            <p className="faded-sample__title">Live preview will appear here</p>
+            <p className="faded-sample__desc">
+              This is the bundled sample, dimmed. Load it or upload your own to start editing.
+            </p>
+            <button
+              type="button"
+              className="btn btn--primary faded-sample__action"
+              onClick={() => onLoadSample(sampleText, 'sample-resume.md')}
+            >
+              Try the sample
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

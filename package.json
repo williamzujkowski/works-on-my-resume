@@ -22,6 +22,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "astro": "astro",
+    "size": "npm run build && size-limit",
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots"
   },
@@ -36,6 +37,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
+    "@axe-core/playwright": "^4.11.3",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",
     "@types/js-yaml": "^4.0.9",
@@ -46,7 +48,12 @@
     "globals": "^17.6.0",
     "prettier": "^3.8.3",
     "prettier-plugin-astro": "^0.14.1",
+    "size-limit": "^12.1.0",
+    "@size-limit/file": "^12.1.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.4"
+  },
+  "overrides": {
+    "yaml": "^2.9.0"
   }
 }

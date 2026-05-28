@@ -7,6 +7,44 @@
 import type { Page, Locator } from '@playwright/test';
 import { expect } from '@playwright/test';
 
+/**
+ * Force the document into a specific print mode and switch the viewport to
+ * print-media emulation. Mirrors what the app does in production: ResumeStudio
+ * writes `printMode` onto `body[data-print-mode]`, and print.css keys off
+ * that attribute. Tests that drive the print path through the in-app Export
+ * panel are valuable, but slow and chrome-couples — for the CSS-rule lock-in
+ * matrix it is simpler and more deterministic to set the attribute directly
+ * and assert the resulting computed style.
+ */
+export async function setPrintMode(
+  page: Page,
+  mode: 'conservative' | 'theme' | null,
+): Promise<void> {
+  await page.evaluate((m) => {
+    if (m === null) {
+      delete document.body.dataset.printMode;
+    } else {
+      document.body.dataset.printMode = m;
+    }
+  }, mode);
+  await page.emulateMedia({ media: 'print' });
+}
+
+/** Reset print-media emulation between tests. */
+export async function resetPrintMode(page: Page): Promise<void> {
+  await page.emulateMedia({ media: null });
+}
+
+/**
+ * True iff the element is rendered as `display: none` (the contract that
+ * print.css uses for every chrome-hide rule). `toBeHidden()` waffles on
+ * `visibility: hidden` vs. detached cases — for the lock-in matrix we want
+ * the precise rule that print.css writes.
+ */
+export async function isDisplayNone(locator: Locator): Promise<boolean> {
+  return locator.evaluate((el) => getComputedStyle(el).display === 'none');
+}
+
 /** Ensure all shortcut prefs are reset before a test that depends on them. */
 export async function clearAppStorage(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -32,7 +70,146 @@ export async function loadSampleResume(page: Page): Promise<void> {
   await expect(article.getByText('Avery Quinn')).toBeVisible({ timeout: 10_000 });
 }
 
+/**
+ * Wait until the lazy-loaded ~465-theme dataset (#78, #80, #153) is in place.
+ *
+ * After #80 the dataset is no longer eagerly imported on ResumeStudio mount —
+ * it loads on `requestIdleCallback` (or when the picker first opens). Any
+ * test that asserts on a theme NAME, on a theme-derived CSS variable, or on a
+ * `?theme=<slug>` round-trip must wait for this signal first; otherwise the
+ * `--resume-bg` snapshot it captures may still be the boot fallback and swap
+ * underneath the test as the idle callback fires.
+ *
+ * The signal is `<html data-themes-ready="true">`, set in ResumeStudio's
+ * post-load handler. The 10 s timeout absorbs cold-cache CI runs.
+ */
+export async function waitForThemesReady(page: Page): Promise<void> {
+  await page.waitForFunction(() => document.documentElement.dataset.themesReady === 'true', {
+    timeout: 10_000,
+  });
+}
+
 /** Convenience locator for the resume preview article. */
 export function previewArticle(page: Page): Locator {
   return page.getByRole('article', { name: /rendered resume/i });
+}
+
+/**
+ * Expand the mobile editor accordion (#100) when running on the
+ * `mobile-iphone-13` Playwright project, no-op otherwise.
+ *
+ * Background: below 640px the editor pane collapses to a <details>
+ * accordion as soon as a resume is loaded, so the preview is the first
+ * thing the user sees. Any mobile test that interacts with the editor
+ * (textarea, insert-section menu, draft-toggle, the snapshots gate)
+ * must first expand the accordion. The summary tap is the natural,
+ * accessible way to do that. Idempotent: if the accordion is already
+ * open the call is a no-op.
+ */
+export async function expandMobileEditor(page: Page): Promise<void> {
+  const details = page.locator('details.studio__pane--editor');
+  // The element always exists in Phase 2 — but guard for the rare cases
+  // where a test asserts the empty-state pane.
+  if ((await details.count()) === 0) return;
+  const isOpen = await details.evaluate((el) => (el as HTMLDetailsElement).open);
+  if (!isOpen) {
+    // Use a direct-child selector — the editor pane now nests its own
+    // <details> for "Tailor for a role" (#91), so a bare `summary` lookup
+    // matches the inner disclosure's summary too.
+    await details.locator('> summary').click();
+  }
+}
+
+/**
+ * Open the theme picker and wait for the lazy-loaded ~465-theme dataset
+ * (#78) to be in place before returning. Tests that count or filter the
+ * option list MUST call this rather than clicking the trigger directly,
+ * otherwise they race the dynamic import and may run against just the
+ * boot-fallback theme.
+ *
+ * The "Loading themes…" indicator inside the popover disappears once
+ * `loadAllThemesAsync()` resolves; we wait for that signal AND for the
+ * option list to actually carry more than one option (the boot state has
+ * exactly one). This gives the chunk a deterministic ready-point even on
+ * cold-cache CI runs.
+ */
+export async function openThemePickerReady(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /^theme /i }).click();
+  const dialog = page.getByRole('dialog', { name: /choose a theme/i });
+  await expect(dialog).toBeVisible();
+  // The loading status line is only mounted while themesLoading is true.
+  // Wait for it to disappear before counting options — its absence is the
+  // signal that the full dataset has been normalized into the cache.
+  await expect(dialog.getByText(/loading themes/i)).toHaveCount(0, { timeout: 10_000 });
+  // Defense-in-depth: only proceed once the list actually carries more than
+  // the boot-fallback option, so an unusually fast loading-flash doesn't
+  // sneak the test past the gate.
+  await expect
+    .poll(
+      async () =>
+        dialog
+          .getByRole('listbox', { name: /themes/i })
+          .getByRole('option')
+          .count(),
+      { timeout: 10_000 },
+    )
+    .toBeGreaterThan(1);
+}
+
+/**
+ * Open the Settings drawer (#128) and wait for it to be visible.
+ *
+ * The drawer hosts the controls that used to live in the toolbar as separate
+ * islands: ATS toggle, draft autosave, clear workspace, snapshots, theme
+ * nav (prev/next/random), and the shortcut legend. Tests that interact with
+ * any of those controls open the drawer first via this helper.
+ *
+ * Mobile (#131): on viewports < 640 px the gear icon is collapsed behind the
+ * "More" toolbar menu. The helper opens that first when the gear isn't
+ * already visible — keeps every test that drives the Settings drawer
+ * working on both projects without per-test branching.
+ */
+export async function openSettingsDrawer(page: Page): Promise<void> {
+  const gear = page.getByRole('button', { name: /open settings/i });
+  if (!(await gear.isVisible())) {
+    await openMobileMoreMenu(page);
+  }
+  await gear.click();
+  const drawer = page.getByRole('dialog', { name: /^settings$/i });
+  await expect(drawer).toBeVisible();
+}
+
+/**
+ * Open the mobile "More" toolbar menu (#131). On viewports < 640 px the
+ * non-essential toolbar controls (Presets, LayoutSelector, ATS-exit pill,
+ * Page-fit, Export, Settings gear) are hidden until the More trigger is
+ * tapped. Tests that need to drive any of those controls on the
+ * `mobile-iphone-13` project call this first.
+ *
+ * Idempotent: if the trigger is already expanded the call is a no-op.
+ * Safe on desktop too (the trigger is `display: none` on >= 640 px, so the
+ * visibility guard short-circuits).
+ */
+export async function openMobileMoreMenu(page: Page): Promise<void> {
+  const trigger = page.getByRole('button', { name: /more toolbar actions/i });
+  if (!(await trigger.isVisible())) return;
+  const expanded = await trigger.getAttribute('aria-expanded');
+  if (expanded === 'true') return;
+  await trigger.click();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+}
+
+/**
+ * Reveal a collapsible toolbar control on mobile by opening the More menu
+ * first when the target is hidden behind it (#131). The helper looks up
+ * the target by role/name and, if not visible, opens the mobile drawer.
+ * On desktop the target is already visible inline so the call is a no-op.
+ */
+export async function revealToolbarControl(page: Page, name: RegExp): Promise<Locator> {
+  const target = page.getByRole('button', { name });
+  if (!(await target.isVisible())) {
+    await openMobileMoreMenu(page);
+  }
+  await expect(target).toBeVisible();
+  return target;
 }

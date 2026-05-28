@@ -1,13 +1,15 @@
 /*
  * global.css — Works on My Resume design system.
  *
- * A small, terminal/editor-inspired UI design system for the app chrome,
- * plus sensible default values for the `--resume-*` semantic variables so
- * the resume document renders legibly before the React island hydrates and
- * applies a theme.
+ * An editorial-stationery design system for the app chrome (#163): warm
+ * paper surface, ink-tone text, Source Serif 4 for prose, JetBrains Mono
+ * reserved for technical/numeric/literal labels, a single restrained
+ * ochre accent. The resume document is a sibling system — its `--resume-*`
+ * tokens are untouched here and overridden by the theme engine at runtime.
  *
- * Terminal cues are used sparingly: monospace path labels, command-like
- * buttons, a faux prompt glyph. No CRT effects, scanlines, or cursors.
+ * Dark mode is a re-skin via `@media (prefers-color-scheme: dark)`: warm
+ * graphite, not slate-cool. There is no JS toggle — the chrome quietly
+ * tracks the OS preference.
  */
 
 @import './fonts.css';
@@ -15,42 +17,47 @@
 @import './print.css';
 
 /* ------------------------------------------------------------------ */
-/* Design tokens — app chrome                                          */
+/* Design tokens — app chrome (editorial-stationery, #163)             */
 /* ------------------------------------------------------------------ */
 
 :root {
   color-scheme: light dark;
 
-  /* App chrome surfaces — a calm, slightly cool editor palette.
-     The luminance steps are deliberately wider than before so layered
-     depth (shadow + inset highlight) actually reads on a panel. */
-  --ui-bg: #0c0e12;
-  --ui-bg-elevated: #14171e;
-  --ui-panel: #1c212b;
-  --ui-panel-hover: #252b37;
-  --ui-border: #2c333f;
-  --ui-border-strong: #3c4554;
+  /* App chrome surfaces — warm paper. Each step is OKLCH-derived so the
+     light/dark pair lives in the same perceptual space. The chrome reads
+     as cream stationery with ink and a single ochre stamp. */
+  --ui-bg: #fbf8f3;             /* paper           — oklch(0.985 0.008 85) */
+  --ui-bg-elevated: #f6f1e8;    /* card body       — oklch(0.972 0.010 85) */
+  --ui-panel: #ece5d7;          /* toolbar pill bed — oklch(0.945 0.013 85) */
+  --ui-panel-hover: #e2d9c5;    /* hover wash      — derived */
+  --ui-border: #d4cab4;         /* hairline        — oklch(0.88 0.012 80) */
+  --ui-border-strong: #b9ad92;  /* heavier rule    — derived */
 
-  --ui-fg: #e7eaf0;
-  --ui-fg-muted: #9aa4b2;
-  --ui-fg-subtle: #717b8b;
+  --ui-fg: #2a241c;             /* warm near-black ink — oklch(0.22 0.020 70) */
+  --ui-fg-muted: #6b6253;       /* kickers, captions   — oklch(0.46 0.014 70) */
+  --ui-fg-subtle: #8a8170;      /* subtler tint        — derived */
 
-  --ui-accent: #5b9bff;
-  --ui-accent-hover: #82b3ff;
-  --ui-accent-contrast: #0a0c10;
-  --ui-success: #4ec98a;
-  --ui-warning: #e0b341;
-  --ui-danger: #ef6f6f;
+  --ui-accent: #9b5d28;         /* ochre ink-stamp — oklch(0.50 0.105 55) */
+  --ui-accent-hover: #b16f33;   /* lighter ochre   — derived */
+  --ui-accent-contrast: #fbf8f3;/* on-accent text — paper */
+  --ui-success: #4d6b3a;        /* olive — restrained success */
+  --ui-warning: #b46a1f;        /* sienna — sits next to ochre without clashing */
+  --ui-danger: #a23a2a;         /* terracotta */
 
-  --ui-focus-ring: #82b3ff;
+  --ui-focus-ring: #9b5d28;
 
-  /* A subtle top highlight applied as an inset shadow on raised surfaces —
-     the way real editor panels catch light along their top edge. */
-  --ui-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  /* No top highlight on paper — printing presses don't catch light. The
+     inset-highlight token remains as a near-no-op so call-sites that
+     reference it don't need to be retired wholesale. */
+  --ui-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 
-  /* Typography. The chrome is typeset entirely in JetBrains Mono — the
-     editor identity. --font-sans is a system fallback kept only for any
-     surface that genuinely needs proportional text. */
+  /* Typography.
+     - --font-serif: display + body (titles, taglines, prose).
+     - --font-mono: technical-only — file paths, code, kbd, numeric readouts,
+       toolbar KICKER labels.
+     - --font-sans: fallback for surfaces that genuinely need proportional
+       sans (none today; kept for future use). */
+  --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
@@ -65,9 +72,10 @@
   --space-4: 1rem;
   --space-5: 1.5rem;
   --space-6: 2rem;
-  /* Layered shadows — a tight contact shadow plus a soft ambient cast. */
-  --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px -6px rgba(0, 0, 0, 0.45);
-  --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.55), 0 16px 40px -10px rgba(0, 0, 0, 0.6);
+  /* Layered shadows — a quiet contact shadow plus a soft ambient cast.
+     Tuned for paper (the previous dark-mode values blew out on cream). */
+  --shadow-panel: 0 1px 2px rgba(58, 38, 12, 0.06), 0 6px 18px -8px rgba(58, 38, 12, 0.1);
+  --shadow-pop: 0 2px 4px rgba(58, 38, 12, 0.08), 0 14px 32px -12px rgba(58, 38, 12, 0.18);
 
   /* App chrome layout. */
   --app-max-width: 1480px;
@@ -85,6 +93,48 @@
   --resume-border: #d6dbe1;
   --resume-card: #f6f8fa;
   --resume-code-bg: #f0f2f5;
+}
+
+/* ------------------------------------------------------------------ */
+/* Dark mode (#163) — warm graphite, NOT slate-cool.                   */
+/*                                                                     */
+/* The OS preference drives the switch; there is no in-app toggle. Each */
+/* `--ui-*` token shifts in the same OKLCH chroma direction so the      */
+/* editorial register reads on either side. The `--resume-*` tokens are */
+/* intentionally NOT re-mapped here — the theme engine owns those, and  */
+/* the user's chosen resume theme is independent of the chrome's mood.  */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ui-bg: #181410;             /* warm ink — oklch(0.18 0.012 60) */
+    --ui-bg-elevated: #221d18;    /* card body — oklch(0.23 0.014 60) */
+    --ui-panel: #2d2620;          /* toolbar pill bed */
+    --ui-panel-hover: #3a3128;
+    --ui-border: #3b322a;
+    --ui-border-strong: #574a3e;
+
+    --ui-fg: #efe6d6;             /* warm paper text — oklch(0.92 0.012 85) */
+    --ui-fg-muted: #b8ab93;
+    --ui-fg-subtle: #8a7f6a;
+
+    --ui-accent: #d18a4f;         /* lifted ochre so it carries on dark paper */
+    --ui-accent-hover: #e09c63;
+    --ui-accent-contrast: #1a1410;
+    --ui-success: #94a872;
+    --ui-warning: #d9a463;
+    --ui-danger: #d97862;
+
+    --ui-focus-ring: #d18a4f;
+
+    /* Very faint top highlight reads as candlelight on dark paper. */
+    --ui-inset-highlight: inset 0 1px 0 rgba(255, 240, 210, 0.04);
+
+    /* Shadows on dark paper sit closer to the underlying tone — they
+       read as recessed panels rather than floating cards. */
+    --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px -8px rgba(0, 0, 0, 0.55);
+    --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.6), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -108,14 +158,19 @@ html {
 
 body {
   min-height: 100vh;
-  font-family: var(--font-mono);
+  /* Editorial-stationery (#163): body is set in Source Serif 4 for prose;
+     mono survives only on technical surfaces (code, kbd, status-line
+     readouts, toolbar KICKER labels, the editor textarea). */
+  font-family: var(--font-serif);
   font-size: 15px;
   line-height: 1.55;
   color: var(--ui-fg);
   background: var(--ui-bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  font-feature-settings: 'calt' 0;
+  /* Serif text profits from default contextual alternates; the mono-`calt 0`
+     override is no longer the body default (the editor textarea keeps its
+     own `font-feature-settings` in its rule). */
 }
 
 img,
@@ -246,18 +301,26 @@ a {
   }
 }
 
-/* ----- App header ----- */
+/* ----- App header (#163) -----
+   A flat paper banner. No gradient, no dots, no prompt. The wordmark sets
+   in Source Serif 4 at a heavier weight; the tagline sits in the same
+   serif at caption tone. The right-side path chip keeps the file metaphor
+   (mono, on purpose) — the chrome's file-tab vocabulary still belongs
+   there. */
 
+/* Hidden by default (#165 path 1) — see the workbench rule below. The
+   strip is workbench chrome only; the landing AppHero carries the brand
+   row instead. Mounting hidden avoids a pre-hydration flash of a stale
+   header surface against the new cream body. */
 .app-header {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3) var(--space-4);
   padding: var(--space-3) var(--space-4);
-  background: linear-gradient(180deg, var(--ui-panel) 0%, var(--ui-bg-elevated) 100%);
+  background: var(--ui-bg-elevated);
   border: 1px solid var(--ui-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--ui-inset-highlight);
 }
 
 .app-header__brand {
@@ -265,53 +328,22 @@ a {
   align-items: baseline;
   gap: var(--space-3);
   min-width: 0;
-}
-
-/* Faux window-control dots — a quiet editor cue. */
-.app-header__dots {
-  display: flex;
-  align-self: center;
-  gap: 0.4rem;
-}
-
-.app-header__dot {
-  width: 0.66rem;
-  height: 0.66rem;
-  border-radius: 50%;
-  background: var(--ui-border-strong);
-}
-
-.app-header__dot:nth-child(1) {
-  background: #e0655f;
-}
-.app-header__dot:nth-child(2) {
-  background: #e0b341;
-}
-.app-header__dot:nth-child(3) {
-  background: #4ec98a;
-}
-
-.app-header__prompt {
-  align-self: center;
-  font-family: var(--font-mono);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--ui-accent);
-  user-select: none;
+  flex-wrap: wrap;
 }
 
 .app-header__name {
-  font-family: var(--font-mono);
+  font-family: var(--font-serif);
   font-size: 1.32rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.005em;
   color: var(--ui-fg);
 }
 
 .app-header__tagline {
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
   color: var(--ui-fg-muted);
+  font-style: italic;
 }
 
 /* The path chip reads like an open-file tab clipped to the titlebar. */
@@ -341,31 +373,325 @@ a {
   }
 }
 
-/* ----- Privacy notice ----- */
+/* ------------------------------------------------------------------ */
+/* App hero — empty-state landing block (#127, restyled #163)          */
+/*                                                                     */
+/* Rendered only when no resume is loaded yet. The static AppHeader     */
+/* astro chrome is hidden in that state; this block is the loud landing */
+/* presence — serif title, prose tagline, stat counter row.             */
+/*                                                                     */
+/* #163 swap: no gradient backdrop, no traffic-light dots, no `›_`      */
+/* prompt, no title shimmer. The hero reads as the opening spread of    */
+/* a printed catalogue — paper bed, serif display, mono kickers.        */
+/* ------------------------------------------------------------------ */
+
+.app-hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-5);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-lg);
+  text-align: left;
+}
+
+.app-hero__brand {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.app-hero__title {
+  font-family: var(--font-serif);
+  /* clamp() keeps the title legible without an explicit media query — it
+     grows from ~2rem on narrow viewports up to ~3rem on wide ones. */
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  color: var(--ui-fg);
+  line-height: 1.05;
+}
+
+.app-hero__tagline {
+  font-family: var(--font-serif);
+  font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+  line-height: 1.55;
+  color: var(--ui-fg-muted);
+  max-width: 60ch;
+}
+
+/* Keyboard chips stay mono — they're literal keys. Recoloured to sit on
+   paper without shouting. */
+.app-hero__tagline kbd {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 0.1rem 0.42rem;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg);
+}
+
+/* "How it works" 3-step microcopy (#173). Sits between the tagline and
+   the stat row inside the hero — which is itself conditional on the
+   no-resume state in ResumeStudio.tsx, so the list disappears the moment
+   a resume lands. Caption-size serif body in muted ink; the numeral
+   ("1." / "2." / "3.") is the only ochre touch — mono so the digits
+   tabulate like a printer's recipe card. */
+.app-hero__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-width: 60ch;
+}
+
+.app-hero__step {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  /* Caption size, matches .app-header__tagline. Serif body keeps the
+     register editorial — the kicker numeral is the only mono note. */
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--ui-fg-muted);
+}
+
+.app-hero__step-num {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ui-accent);
+  font-variant-numeric: tabular-nums lining-nums;
+  /* Fixed width keeps "1." / "2." / "3." aligned across rows even when
+     the renderer chooses a proportional digit pair. */
+  min-width: 1.4em;
+  flex-shrink: 0;
+}
+
+/* Stat counter row: Themes 465 · Layouts 4 · Templates 4 · Offline-ready.
+   The number is the eye-catch (serif, heavy, ochre); the label is the
+   small-caps kicker (mono). The em-style separators read as printed
+   ornament rather than terminal punctuation. */
+.app-hero__stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.app-hero__stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.app-hero__stat-value {
+  font-family: var(--font-serif);
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--ui-accent);
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 1;
+}
+
+.app-hero__stat-value--icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ui-accent);
+}
+
+.app-hero__stat-label {
+  /* Extends .section-kicker — the muted small-caps mono caption next to
+     the loud serif number. The mono face is kept here on purpose — the
+     numbers/labels pair reads as a printer's spec sheet rhythm. */
+  color: var(--ui-fg-muted);
+}
+
+.app-hero__stat-sep {
+  color: var(--ui-border-strong);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+/* Check-stat fade-in (#140): the Offline-ready check is the last entrance
+   in the staggered tick-up — it fades in ~400 ms after the Themes counter
+   starts. The number stats animate via JS (textContent ticks 0 → final),
+   the check is iconography so it gets a class-toggled fade instead. The
+   `--check-enter` modifier is omitted under prefers-reduced-motion in
+   AppHero.tsx, so the icon mounts at opacity 1 with no animation. */
+.app-hero__stat--check-enter {
+  animation: app-hero-check-fade 400ms cubic-bezier(0.22, 1, 0.36, 1) 400ms both;
+}
+
+@keyframes app-hero-check-fade {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .app-hero {
+    padding: var(--space-5) var(--space-4);
+    gap: var(--space-3);
+  }
+
+  .app-hero__stat-value {
+    font-size: 1.25rem;
+  }
+}
+
+/* The static AppHeader strip is workbench chrome — it carries the
+   filename tab when a resume is open. Default-hidden (see the .app-header
+   rule above) and only revealed once the React island flips <body> to
+   `data-app-phase='workbench'`. Path 1 of #165. */
+body[data-app-phase='workbench'] .app-header {
+  display: flex;
+}
+
+/* ----- Privacy notice (#163) -----
+   No more card surface and green left-rail — both read as alert chrome
+   and clash with the editorial register. The notice is now a soft
+   serif caption beneath a single thin hairline rule (ochre at 35% mix
+   with the border token, so it reads as "stamped on paper"). */
 
 .privacy-notice {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  margin-top: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--ui-bg-elevated);
-  border: 1px solid var(--ui-border);
-  border-left: 3px solid var(--ui-success);
-  border-radius: var(--radius-md);
-  box-shadow: var(--ui-inset-highlight);
-  font-size: 0.84rem;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding: var(--space-3) 0 0;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid color-mix(in oklch, var(--ui-accent) 35%, var(--ui-border));
+  border-radius: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.9rem;
+  line-height: 1.55;
   color: var(--ui-fg-muted);
 }
 
 .privacy-notice__icon {
   flex-shrink: 0;
-  color: var(--ui-success);
+  color: var(--ui-accent);
+  /* Pull the shield down a hair so it sits next to the italic baseline. */
+  transform: translateY(0.15rem);
 }
 
 .privacy-notice strong {
   color: var(--ui-fg);
   font-weight: 600;
+  font-style: normal;
+}
+
+/* ----- App footer (#172) -----
+   A colophon-style closing line beneath the studio: credits, GitHub
+   link, the privacy reassurance restated in plain language, and the
+   shipped version + month. Single thin top-rule (`--ui-border`),
+   caption-size italic serif at `--ui-fg-muted`, centered to read as
+   editorial colophon rather than navigation. Hidden on print via
+   `data-print-hide` (print.css already wires that in). */
+
+.app-footer {
+  /* Stretch across the viewport but constrain inner content to the same
+     app rhythm as the shell. The top-rule reads as the page's quiet
+     closing thread. */
+  width: 100%;
+  max-width: var(--app-max-width);
+  margin: var(--space-5) auto 0;
+  padding: var(--space-3) var(--space-5) var(--space-5);
+  border-top: 1px solid var(--ui-border);
+}
+
+.app-footer__line {
+  /* Wrap to two/three lines on narrow viewports; flex-wrap keeps the
+     separators sitting alongside their phrases without orphaning a "·"
+     on its own line. */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ui-fg-muted);
+  text-align: center;
+}
+
+.app-footer__item {
+  /* Keep each phrase as a single visual unit so the line wraps between
+     phrases rather than mid-phrase. */
+  white-space: nowrap;
+}
+
+.app-footer__sep {
+  color: var(--ui-border-strong);
+  /* The middot is decoration only — `aria-hidden` strips it from the AT
+     tree; this rule just nudges the optical weight. */
+  font-style: normal;
+}
+
+.app-footer__link {
+  color: var(--ui-fg-muted);
+  /* A 1px dotted rule under the link reads as a quiet citation rather
+     than the loud underline a primary CTA would warrant. */
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--ui-border-strong);
+  text-underline-offset: 0.18em;
+  transition:
+    color 110ms ease,
+    text-decoration-color 110ms ease;
+}
+
+.app-footer__link:hover,
+.app-footer__link:focus-visible {
+  color: var(--ui-accent);
+  text-decoration-color: var(--ui-accent);
+}
+
+.app-footer__version {
+  /* The version reads as a literal — tabular-nums so `v0.1.0` stays
+     even-rhythm, and the italic-serif treatment is kept; switching to
+     mono here would break the colophon voice. */
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+@media (max-width: 640px) {
+  .app-footer {
+    margin-top: var(--space-4);
+    padding: var(--space-3) var(--space-3) var(--space-4);
+  }
+
+  .app-footer__line {
+    /* Hide the inline separators on narrow viewports and let each phrase
+       take its own line — easier to read than three mid-dot-broken
+       phrases stacked at random wrap-points. */
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .app-footer__sep {
+    display: none;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -377,9 +703,14 @@ a {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: 0.46rem 0.8rem;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
+  padding: 0.46rem 0.85rem;
+  /* Editorial-shift (#163): button labels are prose ("Save as PDF",
+     "Export", "Replace file"), so the base primitive is serif. Surfaces
+     that genuinely want mono (the export-panel format glyphs, the
+     editor's snippet trigger, the rewrite tray, the file-tab strip)
+     opt back into `var(--font-mono)` explicitly in their own rules. */
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--ui-fg);
   background: var(--ui-panel);
@@ -471,11 +802,31 @@ a {
   margin-bottom: var(--space-2);
 }
 
+/* Section kicker — the small-caps mono label that prefixes a value cluster
+   (THEME · LAYOUT · FIT in the toolbar; group titles in the Settings drawer;
+   "What's working" and "Next step" in Resume Health). The primitive was
+   referenced across the codebase but missing as a real definition (#135);
+   this rule is the canonical source of truth. */
+.section-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ui-fg-muted);
+}
+
+/* The text-input primitive used by several inputs that take free-text
+   prose values (snapshot names, JD bodies, search queries). Mono used
+   to be the default; the #165 mono sweep flips it to serif because
+   prose belongs in serif. The two call-sites that take literal strings
+   (gist URL, gist filename select) opt back into mono in their own
+   rules below. */
 .text-input {
   width: 100%;
   padding: 0.45rem 0.6rem;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
   color: var(--ui-fg);
   background: var(--ui-bg);
   border: 1px solid var(--ui-border-strong);
@@ -510,21 +861,353 @@ a {
   flex: 1;
 }
 
+/* Sticky toolbar (#101).
+   The toolbar is only rendered while a resume is loaded — see ResumeStudio's
+   `hasResume` gate — so making it `position: sticky` cannot strand the user
+   on the empty Phase 1 screen. `top: 0` pins it to the viewport edge as the
+   editor / preview scroll; `z-index` keeps the picker popover and the export
+   panel above scrolling content.
+
+   The translucent backdrop uses `backdrop-filter: blur(10px)` paired with a
+   `color-mix()` background that is 92% opaque on the existing `--ui-bg` token,
+   so the panel reads as a clear surface on every theme without depending on a
+   hard-coded color. The `@media (prefers-reduced-transparency: reduce)`
+   override drops the blur and reverts to a fully opaque surface for users
+   who have asked for that (Windows 11+, macOS 14+ in particular).
+
+   The print stylesheet hides the toolbar via `[data-print-hide]`, so the
+   sticky positioning is automatically dropped when printing — sticky has no
+   special print behavior, but `display: none` short-circuits it. */
 .studio__toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3);
-  background: var(--ui-bg-elevated);
+  background: color-mix(in oklch, var(--ui-bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--ui-border);
   border-radius: var(--radius-md);
   box-shadow: var(--ui-inset-highlight), var(--shadow-panel);
 }
 
+/* Reduced-transparency: fall back to a solid panel surface. Browsers that
+   honor this media query (Safari, recent Chromium) automatically respect
+   the system-level setting; browsers that don't simply use the translucent
+   default, which is no worse than today. */
+@media (prefers-reduced-transparency: reduce) {
+  .studio__toolbar {
+    background: var(--ui-bg-elevated);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* On narrow viewports the toolbar grows tall enough (multiple wrapped rows
+   of pills, picker, layout, AtsToggle, exports) that pinning it would eat
+   most of the editing area. Drop back to normal flow on mobile — the
+   single-column layout already keeps the toolbar one tap-scroll away. */
+@media (max-width: 720px) {
+  .studio__toolbar {
+    position: static;
+  }
+}
+
 .studio__toolbar-spacer {
   flex: 1;
   min-width: var(--space-3);
+}
+
+/* ------------------------------------------------------------------ */
+/* Toolbar rhythm (#135).                                              */
+/*                                                                     */
+/* The toolbar is grouped into clusters of `[KICKER] [value]` (THEME,  */
+/* LAYOUT, FIT) separated by 1-px hairlines, with Save-as-PDF as the   */
+/* only conventionally clickable button. Pill outlines on the theme    */
+/* trigger, page-fit pill, export trigger, and gear icon are removed   */
+/* so they read as "text with affordance" — the kicker carries the     */
+/* label, the value carries the meaning, and the separator carries     */
+/* the grouping.                                                       */
+/* ------------------------------------------------------------------ */
+
+/* Hairline vertical separator between toolbar groups. A 1-px rule on
+   the existing border token; an explicit min-height keeps it tall
+   enough to read as a deliberate divider even when the surrounding
+   text is small. `aria-hidden` on the JSX node hides it from AT. */
+.studio__toolbar-sep {
+  display: inline-block;
+  width: 1px;
+  align-self: stretch;
+  /* Explicit height so the rule reads at the right size even when the
+     surrounding cluster has no padding to stretch against. */
+  height: 1.5rem;
+  background: var(--ui-border);
+  flex-shrink: 0;
+}
+
+/* Inside the mobile More drawer the column stacking already separates
+   rows — a horizontal hairline between them would read as decoration. */
+@media (max-width: 639.98px) {
+  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-sep {
+    display: none;
+  }
+}
+
+/* Hard row-break for the toolbar (#112). `flex-basis: 100%` forces the
+   next sibling onto a new flex line regardless of remaining horizontal
+   room, so the toolbar reads as two grouped rows on wide viewports
+   instead of arbitrarily wrapping at the third or fourth control.
+   Height collapses to 0 so the break doesn't add visible space on its
+   own — the toolbar's own `gap` provides the vertical breathing room
+   between rows. */
+.studio__toolbar-rowbreak {
+  flex-basis: 100%;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* ----- ATS preview — toolbar greyed-out state (#98) -----
+   When ATS mode is on, the theme/layout controls are still INTERACTIVE
+   (the user may want to pre-select the theme they'll return to when
+   they exit ATS) but visibly inert: opacity scales to ~0.55 and hover
+   affordances are removed so the cluster reads as "these are muted
+   right now". The persistent exit pill (sibling element below) gives a
+   one-click path back to normal mode. */
+.studio__toolbar-themable {
+  display: contents;
+}
+
+.studio__toolbar--ats-active .studio__toolbar-themable {
+  display: contents;
+}
+
+.studio__toolbar--ats-active .studio__toolbar-themable > * {
+  opacity: 0.55;
+  transition: opacity 140ms ease;
+}
+
+/* Cancel the hover lift on muted controls so they don't read as live. */
+.studio__toolbar--ats-active .studio__toolbar-themable > *:hover,
+.studio__toolbar--ats-active .studio__toolbar-themable > *:focus-within {
+  opacity: 0.7;
+}
+
+.studio__toolbar--ats-active .studio__toolbar-themable .btn:hover,
+.studio__toolbar--ats-active .studio__toolbar-themable .theme-picker__trigger:hover {
+  background: var(--ui-bg-elevated);
+  border-color: var(--ui-border);
+}
+
+/* When Presets / LayoutSelector are wrapped in a `studio__toolbar-collapsible`
+   span (#131) the ATS muting selector above can't see them — `display: contents`
+   on the wrapper renders opacity ineffective. Cascade the same muted state
+   onto descendants of the wrapper so the ATS visual contract is preserved. */
+.studio__toolbar--ats-active .studio__toolbar-themable .studio__toolbar-collapsible > * {
+  opacity: 0.55;
+  transition: opacity 140ms ease;
+}
+
+.studio__toolbar--ats-active .studio__toolbar-themable .studio__toolbar-collapsible > *:hover,
+.studio__toolbar--ats-active .studio__toolbar-themable .studio__toolbar-collapsible > *:focus-within {
+  opacity: 0.7;
+}
+
+/* ------------------------------------------------------------------ */
+/* Mobile "More" menu (#131).                                          */
+/*                                                                     */
+/* On viewports < 640px the toolbar wraps to four+ rows on first load   */
+/* and pushes the resume header out of frame entirely. The fix:        */
+/* collapse everything except ThemePicker + Save-as-PDF behind a       */
+/* single More trigger that opens a stacked drawer over the toolbar.   */
+/*                                                                     */
+/* Desktop (≥ 640px):                                                   */
+/*   - `.studio__toolbar-collapsible` is `display: contents` — the      */
+/*     wrapper is transparent in flex layout, no visual change.         */
+/*   - `.studio__toolbar-more-trigger` is `display: none` — the         */
+/*     toolbar already shows everything inline.                         */
+/*                                                                     */
+/* Mobile (< 640px):                                                    */
+/*   - `.studio__toolbar-collapsible` is `display: none` by default —   */
+/*     only ThemePicker + Save-as-PDF + the More trigger remain inline. */
+/*   - `.studio__toolbar-more-trigger` is `display: inline-flex`.       */
+/*   - When `[data-mobile-more-open='true']` lands on the toolbar root, */
+/*     the collapsible wrappers become full-width flex blocks stacked   */
+/*     in a column, layered over the resume preview via the toolbar's   */
+/*     own (now elevated) z-index.                                      */
+/* ------------------------------------------------------------------ */
+
+.studio__toolbar-collapsible {
+  /* `display: contents` keeps the wrapper transparent in the toolbar's
+     flex flow on desktop — its children participate in the parent's
+     layout as if the wrapper weren't there. */
+  display: contents;
+}
+
+/* Default (desktop): the mobile More trigger is invisible. */
+.studio__toolbar-more-trigger {
+  display: none;
+}
+
+@media (max-width: 639.98px) {
+  /* Hide every opt-in collapsible toolbar element by default. */
+  .studio__toolbar-collapsible {
+    display: none;
+  }
+
+  /* Reveal the More trigger and tighten its mobile spacing. */
+  .studio__toolbar-more-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: auto;
+  }
+
+  /* Mobile budget: the closed toolbar must stay under ~100 px so the
+     resume header is preserved above the fold (#131 acceptance test).
+     ThemePicker's desktop `min-width: 12rem` forces a wrap on a 390 px
+     viewport alongside the Save-as-PDF + More buttons. Drop the floor
+     here so the three controls fit on a single row, and shrink the
+     trigger's padding + label kicker to claw back a bit more space.
+
+     ThemePicker is the elastic item: `flex: 1 1 0` makes it consume the
+     leftover width and shrink as needed; the inner trigger gets
+     `min-width: 0` + `width: 100%` so the ellipsis kicks in instead of
+     overflowing. Save-as-PDF + More are `flex-shrink: 0` (intrinsic). */
+  .studio__toolbar .theme-picker {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .studio__toolbar .theme-picker__trigger {
+    min-width: 0;
+    width: 100%;
+    padding: 0.3rem var(--space-2) 0.3rem 0.4rem;
+  }
+
+  /* Hide the "theme" kicker visually but keep it in the accessibility
+     tree — the trigger's accessible name remains "theme <NAME>" so the
+     existing journey + helpers tests that look for `/^theme /i` still
+     find the button on the mobile-iphone-13 project. */
+  .studio__toolbar .theme-picker__trigger-kicker {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .studio__toolbar .btn--primary,
+  .studio__toolbar .studio__toolbar-more-trigger {
+    flex-shrink: 0;
+  }
+
+  /* When the user opens the drawer, the toolbar restructures:
+       - flex direction becomes column so the kept controls + drawer
+         contents stack instead of clipping
+       - z-index is bumped so the drawer overlays the preview pane
+       - `studio__toolbar-collapsible` wrappers become full-width
+         block-level slots so each control reads as a row */
+  .studio__toolbar[data-mobile-more-open='true'] {
+    flex-direction: column;
+    align-items: stretch;
+    z-index: 6;
+  }
+
+  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-collapsible {
+    display: block;
+    width: 100%;
+  }
+
+  /* The Row-1 themable wrapper is `display: contents` (transparent in
+     flex layout); inside it the picker is a direct child but Presets +
+     LayoutSelector are wrapped in collapsibles. When the drawer opens we
+     keep its `display: contents` shape so its children flow into the
+     toolbar's column directly. */
+  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-themable {
+    display: contents;
+  }
+
+  /* The collapsible children of the themable wrapper should stretch
+     full-width as well — they were `display: contents` siblings of the
+     picker, now they're column rows. */
+  .studio__toolbar[data-mobile-more-open='true']
+    .studio__toolbar-themable
+    .studio__toolbar-collapsible
+    > * {
+    width: 100%;
+  }
+
+  /* The row-break spans `flex-basis: 100%` for the desktop two-row
+     layout; in the mobile drawer that becomes redundant (the column
+     already separates rows) and visually empty. Keep it hidden. */
+  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-rowbreak {
+    display: none;
+  }
+
+  /* The spacer is `flex: 1` on desktop to push the save/export cluster
+     to the right edge. In the column drawer it would just consume
+     vertical space — collapse it. */
+  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-spacer {
+    display: none;
+  }
+
+  /* The export popover trigger button reads better as a full-width row
+     than as an inline pill in the drawer; same for the settings gear
+     (which becomes a labelled row via aria-label being read by AT —
+     visually it remains the icon). Save-as-PDF (`.btn--primary`) is
+     kept inline above so it stays the loud, single-click action. */
+  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-collapsible .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Make the More trigger sit on its own row above the drawer body so
+     the close affordance and the drawer contents read as a coherent
+     panel rather than a wrapped row. */
+  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-more-trigger {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+}
+
+/* The exit-ATS pill — a quiet but persistent affordance next to the ATS
+   toggle. It uses the accent color so the way out is obvious without
+   competing with the primary Save-as-PDF button. */
+.studio__ats-exit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.32rem 0.7rem;
+  /* Button label, not a literal — serif now (#165 mono sweep). */
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ui-accent);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-accent);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease,
+    border-color 110ms ease;
+}
+
+.studio__ats-exit-pill:hover,
+.studio__ats-exit-pill:focus-visible {
+  color: var(--ui-accent-contrast);
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
 }
 
 /* The split editor / preview workbench. Panes stretch to a shared height
@@ -590,6 +1273,309 @@ a {
   border-radius: var(--radius-sm);
 }
 
+/* ----- Preview pane tablist (#85) -----
+   A pair of <button role="tab"> elements sit where the static
+   "preview · {theme.name}" used to be. Each button uses the same base
+   class as the editor pane's file-tab so the typographic rhythm matches;
+   inside a `studio__pane-tabs` container they read as a connected pair.
+   The trailing meta cluster (theme name + WCAG badge) flows after the
+   tablist when the Preview tab is active. */
+.studio__pane-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  padding: 2px;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--ui-inset-highlight);
+}
+
+.studio__pane-tabs .studio__pane-tab {
+  font: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ui-fg-muted);
+  cursor: pointer;
+  padding: 0.22rem 0.55rem;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease,
+    border-color 110ms ease;
+}
+
+.studio__pane-tabs .studio__pane-tab:hover {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+}
+
+.studio__pane-tabs .studio__pane-tab--active,
+.studio__pane-tabs .studio__pane-tab[aria-selected='true'] {
+  color: var(--ui-fg);
+  background: var(--ui-bg);
+  border-color: var(--ui-border);
+  box-shadow:
+    inset 0 0 0 1px var(--ui-accent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* The pane-header meta cluster: theme name + WCAG badge.
+   The wrapper carries serif (the theme name inside is a NAME, not a
+   literal — #165 mono sweep). The WCAG badge below opts back into mono
+   because it's a literal grading readout (AAA/AA/Fails). */
+.studio__pane-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: var(--space-2);
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  color: var(--ui-fg-muted);
+}
+
+.studio__pane-theme-name {
+  color: var(--ui-fg);
+}
+
+/* ----- WCAG conformance badge (#88) -----
+   Glyph + literal carry the meaning; the colour reinforces but never
+   carries the signal alone. Three flavours map to AAA / AA / fails. */
+.studio__pane-wcag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.05rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.studio__pane-wcag-glyph {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.studio__pane-wcag-text {
+  letter-spacing: 0.03em;
+}
+
+.studio__pane-wcag--aaa {
+  color: var(--ui-success);
+  border-color: var(--ui-success);
+}
+
+.studio__pane-wcag--aa {
+  color: var(--ui-warning);
+  border-color: var(--ui-warning);
+}
+
+.studio__pane-wcag--fail {
+  color: var(--ui-danger);
+  border-color: var(--ui-danger);
+}
+
+/* ------------------------------------------------------------------ */
+/* Studio status line (#134) — vim-modeline-style state strip.         */
+/*                                                                     */
+/* Mono, uppercase kickers, ~28 px tall. Thin vertical separators      */
+/* rendered with `::after { content: '│' }` so we never add a real     */
+/* divider element to the DOM tree. `position: sticky; bottom: 0`     */
+/* pins it to the bottom of the `.studio` container as the editor /    */
+/* preview pane scroll. Hidden on print (the component carries         */
+/* `data-print-hide`, and print.css generic rule turns it off).        */
+/*                                                                     */
+/* On viewports ≤ 640 px (matching the mobile breakpoint used by the   */
+/* toolbar More menu) the lines / cursor / fit / WCAG segments hide    */
+/* via `display: none`, leaving filename + HEALTH + dirty dot — the    */
+/* terminal-modeline minimum.                                          */
+/* ------------------------------------------------------------------ */
+.studio__statusline {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  min-height: 28px;
+  padding: 0 var(--space-3);
+  margin-top: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1;
+  background: color-mix(in oklch, var(--ui-bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg-muted);
+  font-variant-numeric: tabular-nums;
+  /* Hide the scrollbar that `overflow-x: auto` would otherwise paint
+     when segments overflow on narrow widths. The fade is purely visual. */
+  scrollbar-width: none;
+}
+
+.studio__statusline::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .studio__statusline {
+    background: var(--ui-bg-elevated);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Each segment carries a trailing `│` separator via `::after`. The last
+   one is suppressed below — using `:last-child` keeps the rule honest
+   when a segment is conditionally absent (cursor missing, dirty off,
+   parsed null). */
+.studio__statusline-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0 var(--space-2);
+  white-space: nowrap;
+  position: relative;
+}
+
+.studio__statusline-seg::after {
+  content: '│';
+  position: absolute;
+  right: -0.2em;
+  color: var(--ui-border-strong);
+  font-weight: 400;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.studio__statusline-seg:last-child::after {
+  content: none;
+}
+
+/* Uppercase kicker (HEALTH, FIT, …). Sibling of the global `.section-kicker`
+   primitive defined near the top of this file, tuned for the modeline's
+   tighter type scale — the modeline runs at ~0.62rem vs the primitive's
+   0.7rem (the primitive's letter-spacing is also wider at 0.12em), so this
+   class can't just extend the primitive without overriding both, and the
+   override + extend pattern reads worse than a sibling rule. Keep both. */
+.studio__statusline-kicker {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-fg-subtle);
+  font-weight: 600;
+}
+
+.studio__statusline-value {
+  color: var(--ui-fg);
+  font-weight: 500;
+}
+
+/* Filename: subtler tint, ellipsis at narrow widths. */
+.studio__statusline-seg--filename .studio__statusline-value {
+  color: var(--ui-fg-muted);
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+
+/* The `●draft` dot uses the same accent the rest of the chrome reaches
+   for when a state needs to read as "in progress". */
+.studio__statusline-seg--draft .studio__statusline-value {
+  color: var(--ui-accent);
+  font-weight: 600;
+}
+
+.studio__statusline-dot {
+  font-size: 0.85em;
+  line-height: 1;
+  /* Pull the bullet up a hair so it sits on the baseline of the text. */
+  position: relative;
+  top: -0.05em;
+}
+
+/* WORDS meter (#155) — three-tier severity mirrors the Fit pill. The
+   colour rides the value span so the kicker stays in the muted tone the
+   rest of the modeline uses; only the numeric ratio + suffix carry the
+   severity. Hues match `.page-fit--*` for cross-chrome consistency. */
+.studio__statusline-seg--words-ok .studio__statusline-value {
+  color: var(--ui-fg);
+  font-weight: 500;
+}
+
+.studio__statusline-seg--words-warn .studio__statusline-value {
+  color: #b45309; /* amber-700 — matches .page-fit--warn */
+  font-weight: 600;
+}
+
+.studio__statusline-seg--words-danger .studio__statusline-value {
+  color: #b91c1c; /* red-700 — matches .page-fit--danger */
+  font-weight: 600;
+}
+
+/* The trailing `· N page` suffix on the WORDS segment reads softer than
+   the numerator/denominator so the ratio is the eye-catch. */
+.studio__statusline-words-suffix {
+  color: var(--ui-fg-muted);
+  font-weight: 400;
+}
+
+/* WCAG tone — same three-tier mapping as the preview-pane badge so the
+   reviewer sees the same green / amber / red regardless of which surface
+   they're looking at. */
+.studio__statusline-seg--wcag-aaa .studio__statusline-value {
+  color: var(--ui-success);
+  font-weight: 600;
+}
+
+.studio__statusline-seg--wcag-aa .studio__statusline-value {
+  color: var(--ui-warning);
+  font-weight: 600;
+}
+
+.studio__statusline-seg--wcag-fail .studio__statusline-value {
+  color: var(--ui-danger);
+  font-weight: 600;
+}
+
+/* Mobile collapse: hide the lower-priority segments and let the modeline
+   read as filename · HEALTH · ●. Match the toolbar's 640 px breakpoint
+   so the chrome shifts together. */
+@media (max-width: 640px) {
+  .studio__statusline-seg--cursor,
+  .studio__statusline-seg--lines,
+  .studio__statusline-seg--fit,
+  .studio__statusline-seg--words,
+  .studio__statusline-seg--wcag {
+    display: none;
+  }
+  /* The compact form drops the word "draft", leaving just the bullet. */
+  .studio__statusline-seg--draft .studio__statusline-value {
+    font-size: 0;
+  }
+  .studio__statusline-seg--draft .studio__statusline-dot {
+    font-size: 0.85rem;
+  }
+  /* On the compact form the HEALTH kicker shortens to "H". */
+  .studio__statusline-seg--health .studio__statusline-kicker {
+    font-size: 0;
+  }
+  .studio__statusline-seg--health .studio__statusline-kicker::before {
+    content: 'H';
+    font-size: 0.62rem;
+  }
+}
+
 /* Let the editor pane body grow so its textarea can fill the shared
    height — no dead space beside a tall preview (#52). */
 .studio__pane-body {
@@ -604,35 +1590,6 @@ a {
   font-family: var(--font-mono);
   font-size: 0.78rem;
   color: var(--ui-fg-subtle);
-}
-
-.studio__shortcuts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-4);
-  padding: var(--space-2) var(--space-3);
-  font-size: 0.76rem;
-  color: var(--ui-fg-muted);
-}
-
-.studio__shortcuts-label {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ui-fg-subtle);
-}
-
-.studio__shortcuts kbd {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  padding: 0.1rem 0.4rem;
-  background: var(--ui-panel);
-  border: 1px solid var(--ui-border-strong);
-  border-bottom-width: 2px;
-  border-radius: var(--radius-sm);
-  color: var(--ui-fg);
 }
 
 /* ------------------------------------------------------------------ */
@@ -696,45 +1653,31 @@ a {
   margin-top: var(--space-2);
 }
 
-/* Phase 2: the collapsed one-line "file is loaded" affordance (#51). */
-.uploader__loaded {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--ui-bg);
-  border: 1px solid var(--ui-border-strong);
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
+/* In hero phase (#127) the CTAs are the primary user path — bump their
+   size and breathing room a notch so they read as the loud affordance
+   beneath the hero. The dropzone surface stays the same, just quieter in
+   relation to the hero above; the buttons themselves get larger so they
+   pull weight. */
+body[data-app-phase='hero'] .uploader__actions {
+  gap: var(--space-3);
+  margin-top: var(--space-3);
 }
 
-.uploader__loaded-icon {
-  display: flex;
-  color: var(--ui-accent);
+body[data-app-phase='hero'] .uploader__actions .btn {
+  padding: 0.6rem 1.1rem;
+  font-size: 0.86rem;
 }
 
-.uploader__loaded-name {
+body[data-app-phase='hero'] .uploader__actions .btn--primary {
+  padding: 0.66rem 1.3rem;
+  font-size: 0.92rem;
   font-weight: 600;
-  color: var(--ui-fg);
 }
 
-.uploader__loaded-sep {
-  color: var(--ui-fg-subtle);
-}
-
-.uploader__loaded-lines {
-  color: var(--ui-fg-muted);
-}
-
-.uploader__loaded-spacer {
-  flex: 1;
-  min-width: var(--space-2);
-}
-
-.uploader__loaded-action {
-  font-size: 0.74rem;
-}
+/* The Phase 2 ".uploader__loaded" collapsed bar moved into the editor's
+   document tab strip in #138; the uploader's Phase 2 view now mounts
+   only the hidden file input. No visible styles needed here for the
+   loaded state. */
 
 /* ----- Optional "Import from Gist" disclosure (#33) ----- */
 .uploader__gist {
@@ -745,8 +1688,9 @@ a {
 
 .uploader__gist-summary {
   padding: var(--space-2) var(--space-3);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
+  /* Disclosure label "Import from a public Gist" — prose, serif (#165). */
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
   color: var(--ui-fg-muted);
   cursor: pointer;
   user-select: none;
@@ -783,6 +1727,10 @@ a {
 .uploader__gist-input {
   flex: 1;
   min-width: 14rem;
+  /* The gist input takes a literal URL — opt back into mono (#165) even
+     though the shared `.text-input` primitive now defaults to serif. */
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
 }
 
 .uploader__gist-disclosure {
@@ -807,6 +1755,138 @@ a {
   background: var(--ui-bg);
   border: 1px solid var(--ui-border);
   border-radius: var(--radius-sm);
+}
+
+/* ----- Gist preview-before-commit card (#68) -----
+   Sits beneath the URL form inside the disclosure. The body uses a <pre>
+   so the fetched text is rendered as-is — never as Markdown — preserving
+   indentation and preventing any markup from leaking into the app chrome. */
+.uploader__gist-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 var(--space-3) var(--space-3);
+  padding: var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border-strong);
+  border-left: 3px solid var(--ui-accent);
+  border-radius: var(--radius-sm);
+}
+
+.uploader__gist-preview-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+
+.uploader__gist-preview-title {
+  /* Card title — prose, serif (#165). The filename chip and body opt
+     back into mono in their own rules; this is the human-readable
+     "Preview" / "Review before importing" headline. */
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ui-fg);
+  margin: 0;
+}
+
+.uploader__gist-preview-filename {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  padding: 0.12rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--ui-fg-muted);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uploader__gist-preview-filename svg {
+  flex-shrink: 0;
+  color: var(--ui-accent);
+}
+
+.uploader__gist-preview-filename span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uploader__gist-preview-body {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  max-height: 16rem;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: var(--ui-fg);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  white-space: pre;
+  /* The wrapping fallback for narrow viewports — long lines should fold
+     gracefully rather than smear sideways. */
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .uploader__gist-preview-body {
+    white-space: pre-wrap;
+  }
+}
+
+.uploader__gist-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ----- Multi-file picker (#76) -----
+   Sits between the header chip and the preview body inside the card.
+   Native <select> on purpose: collapses to one row even for gists with
+   many files, gets type-ahead and arrow-key navigation for free, and
+   carries the right <label> association without extra ARIA. */
+.uploader__gist-preview-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.uploader__gist-preview-picker-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ui-fg-subtle);
+}
+
+.uploader__gist-preview-picker-select {
+  flex: 1;
+  min-width: 12rem;
+  padding: 0.3rem var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ui-fg);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.uploader__gist-preview-picker-select:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
 }
 
 /* ----- Opt-in draft persistence toggle (#32) ----- */
@@ -844,6 +1924,59 @@ a {
   color: var(--ui-fg-muted);
 }
 
+/* #176: collapsed/expanded detail under the draft-toggle card. Matches
+   the tailor__summary disclosure pattern — small caption + chevron, no
+   default marker, chevron rotates on [open]. Sits one indent in from
+   the toggle label so it reads as a child of the hint, not a peer of
+   the checkbox. */
+.studio__draft-toggle-details {
+  margin-top: 0.35rem;
+  /* Align with the hint text, not the checkbox: checkbox is ~0.9rem +
+     gap (var(--space-2)) ≈ 1.4rem of inset. Keep it pragmatic. */
+  padding-left: calc(0.9rem + var(--space-2));
+  font-size: 0.7rem;
+}
+
+.studio__draft-toggle-details-summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  user-select: none;
+  color: var(--ui-fg-muted);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+}
+
+.studio__draft-toggle-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.studio__draft-toggle-details-summary:hover {
+  color: var(--ui-fg);
+}
+
+.studio__draft-toggle-details-summary:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.studio__draft-toggle-details-caret {
+  transition: transform 0.18s ease;
+}
+
+.studio__draft-toggle-details[open] .studio__draft-toggle-details-caret {
+  transform: rotate(180deg);
+}
+
+.studio__draft-toggle-details-body {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--ui-fg-muted);
+}
+
 .uploader__error,
 .uploader__notice {
   display: flex;
@@ -861,13 +1994,13 @@ a {
 }
 
 .uploader__error {
-  background: rgba(239, 111, 111, 0.1);
+  background: color-mix(in oklch, var(--ui-danger) 10%, var(--ui-bg-elevated));
   border: 1px solid var(--ui-danger);
   color: var(--ui-danger);
 }
 
 .uploader__notice {
-  background: rgba(224, 179, 65, 0.1);
+  background: color-mix(in oklch, var(--ui-warning) 10%, var(--ui-bg-elevated));
   border: 1px solid var(--ui-warning);
   color: var(--ui-warning);
 }
@@ -889,6 +2022,146 @@ a {
   flex-direction: column;
   flex: 1;
   gap: var(--space-2);
+}
+
+/* ----- Document tab strip (#138) -----
+   The editor's "real code-editor" file-tab row. Sits at the very top
+   of the editor pane, above the toolbar. A single active tab today,
+   but the markup is a `<ul>` of `<li>`s so multi-buffer support (e.g.
+   snapshots-as-tabs, #94 follow-on) drops in without restyling.
+
+   Visual language: the strip carries the same elevated-panel tint as
+   the rest of the pane chrome; the active tab punches down into the
+   editor surface (`background: var(--ui-bg)`, matching the textarea),
+   with a top accent stripe in `--ui-accent` that calls out "this is
+   the currently focused buffer". The filename is mono + slightly
+   heavier; the line count is right-aligned in `--ui-fg-muted`. */
+.editor__tabstrip {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding: 0;
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-bottom: 1px solid var(--ui-border);
+  border-top-left-radius: var(--radius-sm);
+  border-top-right-radius: var(--radius-sm);
+  box-shadow: var(--ui-inset-highlight);
+}
+
+.editor__tabs {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: 1;
+  min-width: 0;
+}
+
+/* A single buffer tab. Forward-compatible with multiple tabs — the
+   sizing assumes a row of tabs that can grow individually rather than
+   one rigid pill. The 2 px transparent top border becomes the accent
+   stripe on the active tab without shifting layout. */
+.editor__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.4rem var(--space-3) 0.4rem var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ui-fg-muted);
+  background: transparent;
+  border-top: 2px solid transparent;
+  border-right: 1px solid transparent;
+}
+
+/* Active tab: punches down into the editor surface so it reads as
+   "current buffer". The top accent stripe ties it to `--ui-accent`. */
+.editor__tab--active {
+  color: var(--ui-fg);
+  background: var(--ui-bg);
+  border-top-color: var(--ui-accent);
+  border-right-color: var(--ui-border);
+}
+
+/* The dirty `●`. Reserves its glyph width even when clean so the
+   filename never jumps left/right as the user starts/stops editing. */
+.editor__tab-dot {
+  display: inline-block;
+  width: 0.7em;
+  min-width: 0.7em;
+  text-align: center;
+  color: var(--ui-accent);
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.editor__tab--dirty .editor__tab-dot {
+  color: var(--ui-accent);
+}
+
+.editor__tab-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.editor__tab-lines {
+  flex-shrink: 0;
+  margin-left: var(--space-3);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-fg-subtle);
+}
+
+/* Trailing actions cluster (Replace file / Clear). The actions move
+   here from the now-removed uploader collapsed bar (#138 constraint).
+   They keep their ghost-button look and live on the trailing edge of
+   the strip so the file-tab itself stays clean. */
+.editor__tabstrip-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-right: var(--space-2);
+}
+
+.editor__tabstrip-action {
+  font-size: 0.72rem;
+  padding: 0.28rem 0.45rem;
+}
+
+/* Below 640px the editor pane lives inside a <details> accordion (#100).
+   The tab strip stays mounted inside the body; the summary still shows
+   its own filename pill (`.studio__pane-tab--mobile-only`) so the
+   collapsed-row reading "● ● ● sample-resume.md · 5 lines · edit"
+   still works as a single-line affordance. The strip itself only
+   appears when the accordion is open, so there's no visual duplication
+   in either state. */
+@media (max-width: 640px) {
+  .editor__tabstrip {
+    flex-wrap: wrap;
+  }
+  .editor__tabstrip-actions {
+    margin-left: auto;
+  }
+}
+
+/* The summary's filename pill is now mobile-only: desktop has the
+   document tab strip below, so we hide the duplicate in the summary
+   above 640px to avoid two file labels stacked one over the other. */
+@media (min-width: 641px) {
+  .studio__pane-tab--mobile-only {
+    display: none;
+  }
 }
 
 /* The label + toolbar row above the editing surface. */
@@ -923,9 +2196,18 @@ a {
   background: var(--ui-panel);
 }
 
-/* ----- Insert-section menu ----- */
+/* ----- Insert-section menu (#154) -----
+   One popover for every snippet, grouped by Frontmatter / Always /
+   Optional and ordered by document position within each group. The
+   pre-#154 always-visible "quick-insert" row was removed in favor of
+   this single affordance — two paths to insert the same section was
+   adding more confusion than it removed. */
 .editor__snippet {
   position: relative;
+}
+
+.editor__snippet-li {
+  display: block;
 }
 
 .editor__snippet-menu {
@@ -960,6 +2242,36 @@ a {
 .editor__snippet-item:hover,
 .editor__snippet-item:focus-visible {
   background: var(--ui-panel-hover);
+}
+
+/* Group heading inside the snippet popover (#154). Each group reads as a
+   short, muted, all-caps label above its entries. The list nested under
+   the heading drops list semantics from the outer menu — `role="group"`
+   wraps the entries so the heading is announced as a section divider,
+   not as a focusable menu item. */
+.editor__snippet-group {
+  display: block;
+}
+
+.editor__snippet-group + .editor__snippet-group {
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--ui-border);
+}
+
+.editor__snippet-group-label {
+  padding: 0.2rem var(--space-2) 0.15rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-fg-muted);
+}
+
+.editor__snippet-group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 /* ----- Editing surface: gutter + textarea, scroll-synced ----- */
@@ -1010,6 +2322,10 @@ a {
   border-radius: 0;
   resize: none;
   tab-size: 2;
+  /* Keep the textarea above the structural overlay (#141) so caret /
+     selection / text paint over the heading-rail + frontmatter band. */
+  position: relative;
+  z-index: 1;
 }
 
 .editor__textarea:focus {
@@ -1028,12 +2344,196 @@ a {
   overflow-wrap: normal;
 }
 
+/* ----- Editor pane + structural overlay (#141) -----
+   The pane wraps the textarea and a decorative overlay together. The
+   overlay sits behind the textarea and paints two minimal-but-distinctive
+   structural cues:
+     - a 2 px accent left-rail on any line whose first non-whitespace
+       char is `#` (Markdown heading);
+     - a 1 px-tinted band across the leading frontmatter region (between
+       the opening `---` on line 0 and the next `---`).
+
+   It is intentionally NOT a syntax highlighter — adding more colors would
+   over-decorate this monospace editor. The cues exist to give the writer
+   a quick "where am I" cue when scanning a long document.
+
+   The overlay mirrors the textarea's font / padding / line-height so the
+   per-line `<div>`s register against the same vertical positions the
+   textarea is painting. `white-space: pre-wrap` matches the textarea's
+   wrap-on mode; `.editor__surface--nowrap` flips both to `pre`. Scroll
+   is JS-synced from the textarea (see `syncScroll`). */
+.editor__pane {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+
+.editor__overlay {
+  position: absolute;
+  inset: 0;
+  /* Same font + spacing as the textarea so the per-line `<div>`s land on
+     the same vertical positions the textarea is painting. */
+  padding: var(--editor-pad);
+  font-family: var(--font-mono);
+  font-size: var(--editor-font-size);
+  line-height: var(--editor-line-height);
+  /* Same wrap behavior as the textarea: pre-wrap when soft-wrap is on,
+     pre when off (toggled below by the surface modifier). */
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  /* Overflow hidden + JS-synced scrollTop keeps the overlay's lines in
+     register with the textarea without painting a second scrollbar. */
+  overflow: hidden;
+  /* The textarea stays the controllable element; pointer + selection
+     events fall through. */
+  pointer-events: none;
+  user-select: none;
+  /* Foreground is invisible — we only paint the structural cues. The
+     text is present so per-line wrapping matches the textarea exactly
+     even for non-heading / non-frontmatter lines. */
+  color: transparent;
+  /* The textarea repaints over the top in the regular cascade — the
+     overlay precedes it in DOM order so it sits BEHIND. */
+  z-index: 0;
+}
+
+.editor__overlay-line {
+  /* Each line is a block-level div so the `border-left` rail sits to
+     the left of the text and the `background` band fills the full
+     content width. Min-height keeps blank lines from collapsing. */
+  display: block;
+  min-height: calc(var(--editor-font-size) * var(--editor-line-height));
+  /* Reserve the rail's gutter on every line so heading rows don't push
+     their text right relative to non-heading rows — only the rail's
+     visibility changes between heading and non-heading lines. */
+  border-left: 2px solid transparent;
+  padding-left: 0;
+  margin-left: -2px;
+}
+
+.editor__overlay-heading {
+  border-left-color: var(--ui-accent);
+}
+
+.editor__overlay-frontmatter {
+  /* The tint is intentionally subtle — 0.4 opacity on the panel-elevated
+     surface tone reads as a band, not a panel. `color-mix` is the
+     CSP-friendly equivalent of `background: <var>; opacity: 0.4` without
+     dimming any child content (the overlay has no readable content). */
+  background-color: color-mix(in srgb, var(--ui-bg-elevated) 40%, transparent);
+}
+
+.editor__surface--nowrap .editor__overlay {
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 .editor__meta {
   display: flex;
   justify-content: space-between;
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: var(--ui-fg-subtle);
+}
+
+/* ----- Bullet-rewrite affordance (#93) -----
+   When the caret sits on an Experience-style bullet, the editor surfaces
+   a single trigger button below the textarea that opens a tray of 2-3
+   pattern-based rewrite candidates. The wrapper is `position: relative`
+   so the tray anchors to it; the tray itself uses absolute positioning
+   to float above the meta row without inflating the editor's footprint
+   on the page (handy when the editor sits in a height-constrained pane).
+
+   The button keeps the standard ghost-button look so it reads as part of
+   the editor's compact toolbar vocabulary, with an accent left-border
+   indicator (NOT color-only — the chevron icon + literal label carry the
+   signal too). */
+.editor__rewrite {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.editor__rewrite-trigger {
+  padding: 0.32rem 0.6rem;
+  font-size: 0.74rem;
+  border-left: 2px solid var(--ui-accent);
+}
+
+.editor__rewrite-trigger-count {
+  color: var(--ui-fg-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.editor__rewrite-tray {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + var(--space-1));
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: min(28rem, 92vw);
+  max-width: 36rem;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+}
+
+.editor__rewrite-li {
+  display: block;
+}
+
+.editor__rewrite-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  width: 100%;
+  padding: 0.5rem var(--space-2);
+  /* The wrapper carries serif so the pattern-name LABEL reads as prose;
+     the preview line opts back into mono in its own rule because the
+     preview IS the Markdown bullet the user will paste in (#165). */
+  font-family: var(--font-serif);
+  text-align: left;
+  color: var(--ui-fg);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.editor__rewrite-item:hover,
+.editor__rewrite-item:focus-visible {
+  background: var(--ui-panel-hover);
+  border-color: var(--ui-border-strong);
+}
+
+.editor__rewrite-item-label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ui-fg);
+}
+
+/* The preview line of the rewritten bullet. The wrapper carries serif
+   (so the pattern-name label reads as prose), so this rule opts the
+   preview row back into mono — the preview IS the literal Markdown
+   bullet text. Muted and clipped to a single line. */
+.editor__rewrite-item-preview {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--ui-fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1094,7 +2594,7 @@ a {
 .preview-warnings {
   margin-bottom: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  background: rgba(224, 179, 65, 0.1);
+  background: color-mix(in oklch, var(--ui-warning) 10%, var(--ui-bg-elevated));
   border: 1px solid var(--ui-warning);
   border-radius: var(--radius-sm);
   font-size: 0.8rem;
@@ -1106,6 +2606,16 @@ a {
   padding-left: 1.2rem;
 }
 
+/* CSP-friendly stand-in for what used to be `style={{ display: 'contents' }}`
+   inline in ResumePreview.tsx. The wrapper exists only to carry a stable React
+   key around an interleaved separator + item pair; `display: contents` removes
+   its own box so the inner nodes participate directly in the parent flex
+   layout. Lives in global.css (not resume.css) because the parent owns this
+   structural component class — see issue #38 for the CSP rationale. */
+.resume-preview__contact-meta-item {
+  display: contents;
+}
+
 /* ------------------------------------------------------------------ */
 /* Theme picker                                                        */
 /* ------------------------------------------------------------------ */
@@ -1114,56 +2624,64 @@ a {
   position: relative;
 }
 
-/* Collapsed: the single trigger button showing the current theme. */
+/* Collapsed: the single trigger button showing the current theme.
+   Reworked for #135 (text-with-affordance rhythm) and #163 (editorial
+   shift): the trigger reads as a mono kicker + serif theme name. The
+   kicker (`THEME`) stays mono via `.section-kicker`; the name itself is
+   the prose-shift surface. */
 .theme-picker__trigger {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-width: 12rem;
-  padding: 0.34rem var(--space-2) 0.34rem 0.4rem;
-  font-family: var(--font-mono);
+  padding: 0.25rem 0.3rem 0.25rem 0.2rem;
+  font-family: var(--font-serif);
   color: var(--ui-fg);
-  background: var(--ui-panel);
-  border: 1px solid var(--ui-border-strong);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  box-shadow: var(--ui-inset-highlight);
   cursor: pointer;
   text-align: left;
   transition:
     background-color 110ms ease,
-    border-color 110ms ease;
+    border-color 110ms ease,
+    color 110ms ease;
 }
 
-.theme-picker__trigger:hover {
+.theme-picker__trigger:hover,
+.theme-picker__trigger[aria-expanded='true'] {
+  /* Subtle wash on hover + active (popover-open) keeps the affordance
+     discoverable without restoring the old pill outline. */
   background: var(--ui-panel-hover);
-  border-color: var(--ui-accent);
+  color: var(--ui-fg);
 }
 
 .theme-picker__trigger-label {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
   line-height: 1.2;
   min-width: 0;
 }
 
 .theme-picker__trigger-kicker {
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ui-fg-subtle);
+  /* Tone provided by `.section-kicker` on the same element. This class
+     remains as a stable selector for the mobile visually-hidden treatment
+     in the < 640 px block below. */
 }
 
 .theme-picker__trigger-name {
-  font-size: 0.84rem;
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
   font-weight: 600;
+  color: var(--ui-fg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .theme-picker__trigger-caret {
-  margin-left: auto;
+  /* No `margin-left: auto` — the trigger no longer has a min-width pill
+     to fill, so the caret sits flush after the theme name. */
   color: var(--ui-fg-muted);
 }
 
@@ -1300,9 +2818,12 @@ a {
   color: var(--ui-success);
 }
 
-.theme-picker__contrast-icon--warn {
-  color: var(--ui-warning);
-}
+/* `.theme-picker__contrast-icon--warn`, `.theme-picker__trigger-warning`,
+   and `.theme-picker__checkbox` lived here. All three went away in #153:
+   the resume-safe toggle was removed (every theme in the dataset clears
+   the threshold by construction), and the low-contrast warning glyph on
+   the trigger / inside the contrast readout is unreachable for the same
+   reason. */
 
 .theme-picker__accent-dot {
   width: 0.7rem;
@@ -1312,20 +2833,160 @@ a {
   flex-shrink: 0;
 }
 
-/* Non-blocking low-contrast warning on the always-visible picker trigger. */
-.theme-picker__trigger-warning {
-  display: inline-flex;
-  align-items: center;
-  color: var(--ui-warning);
+/* ----- Facet-tag chip row (#87) -----
+   Sits between the search input and the option list. Each chip is a real
+   <button> with aria-pressed; the row uses flex-wrap so a narrow popover
+   folds chips onto a second line cleanly. The `Reset` chip uses a muted
+   modifier so it reads as a control, not a filter. */
+.theme-picker__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
 }
 
-.theme-picker__checkbox {
+.theme-picker__tag {
+  /* Reset the platform <button> look so chips read as small pills.
+     The chip text is a short categorical NAME (Dark / Warm / High-contrast)
+     — serif (#165), not mono. */
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--ui-fg-muted);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    border-color 110ms ease,
+    color 110ms ease;
+}
+
+.theme-picker__tag:hover {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+  border-color: var(--ui-accent);
+}
+
+/* Pressed state — the chip reads as "on" via accent fill, not just color
+   shift, so the toggle is unmistakable next to its unpressed siblings. */
+.theme-picker__tag[aria-pressed='true'] {
+  color: var(--ui-accent-contrast);
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+}
+
+.theme-picker__tag[aria-pressed='true']:hover {
+  background: var(--ui-accent-hover);
+  border-color: var(--ui-accent-hover);
+}
+
+/* `Reset` is not a filter — it clears them. Stays a ghost button so it
+   doesn't compete visually with the actual filter chips. */
+.theme-picker__tag--reset {
+  color: var(--ui-fg-subtle);
+  border-style: dashed;
+}
+
+/* ----- Live match count (#87) -----
+   Sits between the chip row / safe toggle and the listbox. Tabular figures
+   keep the number from twitching as digits change; aria-live="polite" in
+   the JSX handles the announcement. */
+.theme-picker__count {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--ui-fg-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----- Curated "Starting points" row (#183) -----
+   A small grid of eight hand-picked themes the writer can land on in one
+   click. Sits ABOVE the search input in the picker popover and hides the
+   moment the user filters (search text or any tag chip) — the count line
+   takes over the "what am I looking at" role in that state. Each tile is
+   a real <button> so keyboard / SR users reach it the same way as the
+   listbox rows; swatch colors are painted via CSSOM (see ThemeSwatch in
+   ThemePicker.tsx) to stay clean under our CSP. */
+.theme-picker__curated {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.theme-picker__curated-kicker {
+  margin: 0;
+}
+
+.theme-picker__curated-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+}
+
+.theme-picker__curated-item {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: 0.76rem;
-  color: var(--ui-fg-muted);
+  padding: 0.35rem 0.45rem;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 110ms ease,
+    border-color 110ms ease,
+    transform 110ms ease,
+    box-shadow 110ms ease;
+}
+
+.theme-picker__curated-item:hover,
+.theme-picker__curated-item:focus-visible {
+  background: var(--ui-panel-hover);
+  border-color: var(--ui-accent);
+  /* Slightly-elevated hover state — the tiny lift + shadow signals the
+     row is clickable without the heavier feel of a primary button. */
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 0.08));
+}
+
+.theme-picker__curated-swatch {
+  /* Slightly larger than the listbox swatch so the curated row reads as
+     a distinct, more confident set of tiles than the dense option list. */
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.theme-picker__curated-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.05rem;
+}
+
+.theme-picker__curated-name {
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ui-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-picker__curated-caption {
+  font-family: var(--font-serif);
+  font-size: 0.7rem;
+  color: var(--ui-fg-muted);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1361,26 +3022,11 @@ a {
   margin-left: -1px;
 }
 
-.theme-controls__current {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0.3rem var(--space-2);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  background: var(--ui-bg);
-  border: 1px solid var(--ui-border);
-  border-radius: var(--radius-sm);
-}
-
-/* Small swatch shown inside the accent-contrast badge. */
-.theme-controls__accent-dot {
-  width: 0.6rem;
-  height: 0.6rem;
-  border-radius: 50%;
-  border: 1px solid var(--ui-border-strong);
-  flex-shrink: 0;
-}
+/* `.theme-controls__current` and `.theme-controls__accent-dot` were
+   removed in #112 — the toolbar no longer hosts the dark/light + WCAG
+   contrast chips. The canonical WCAG signal lives in the preview pane
+   header (#88) instead. The picker still surfaces per-theme badges in
+   its option list, so `.badge*` rules below are kept intact. */
 
 .badge {
   display: inline-flex;
@@ -1409,23 +3055,15 @@ a {
   color: #2a2f37;
 }
 
-.badge--safe {
-  border-color: var(--ui-success);
-  color: var(--ui-success);
-}
+/* `.badge--safe` and `.badge--unsafe` lived here. Both went away in #153:
+   the unsafe-badge was removed from the picker's option rows (every theme
+   in the dataset clears the resume-safe threshold by construction), and
+   `.badge--safe` had no remaining caller after the preview-pane
+   conformance badge moved to its own class in #88. */
 
-.badge--unsafe {
-  border-color: var(--ui-warning);
-  color: var(--ui-warning);
-}
-
-.theme-controls__copied {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  color: var(--ui-success);
-}
+/* `.theme-controls__copied` was the inline copy-confirmation pip next to
+   the toolbar's "Copy theme link" button; both moved into the Export
+   panel in #112 (see `.export-panel__copied`). */
 
 /* ------------------------------------------------------------------ */
 /* Export panel                                                        */
@@ -1433,6 +3071,47 @@ a {
 
 .export-panel {
   position: relative;
+}
+
+/* The Export trigger button (direct `.btn` child of `.export-panel`) lives
+   in the toolbar's row-2 cluster and was previously rendered with the full
+   pill outline. #135 strips the outline + panel fill so it reads as text
+   with affordance ("Export ▾") matching the rhythm of the kicker groups.
+   The focus-visible outline and the active state (popover open) keep the
+   control discoverable for keyboard + sighted users. */
+.studio__toolbar .export-panel > .btn {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--ui-fg);
+  /* Match the kicker-group padding so the trigger sits at the same
+     baseline as the THEME / LAYOUT / FIT clusters. */
+  padding: 0.25rem 0.4rem;
+}
+
+.studio__toolbar .export-panel > .btn:hover,
+.studio__toolbar .export-panel > .btn[aria-expanded='true'] {
+  background: var(--ui-panel-hover);
+  border-color: transparent;
+  color: var(--ui-fg);
+}
+
+/* The rightmost gear icon (Settings drawer trigger) lives inside a
+   `studio__toolbar-collapsible` span. #135 strips its outline + panel
+   fill so it reads as a quiet glyph rather than a chrome'd pill,
+   matching the rest of the toolbar's text-with-affordance rhythm. */
+.studio__toolbar > .studio__toolbar-collapsible > .btn--icon {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--ui-fg-muted);
+}
+
+.studio__toolbar > .studio__toolbar-collapsible > .btn--icon:hover,
+.studio__toolbar > .studio__toolbar-collapsible > .btn--icon[aria-expanded='true'] {
+  background: var(--ui-panel-hover);
+  border-color: transparent;
+  color: var(--ui-fg);
 }
 
 .export-panel__dialog {
@@ -1464,12 +3143,13 @@ a {
 }
 
 .export-panel__title {
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 
-.export-panel__group {
+.export-panel__group,
+.export-panel__section {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -1488,6 +3168,45 @@ a {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+/* Download rows now lead with a 4ch monospace format glyph (PDF / MD /
+   HTM / TXT / JSON / CSS / ZIP) so the popover reads like a directory
+   listing (#136). The glyph slot is fixed-width — every row's label
+   column lines up regardless of glyph length. Buttons inside the
+   grouped sections become left-aligned flex containers; the `btn`
+   primitive defaults to center, so override it locally. */
+.export-panel__section .export-panel__buttons .btn {
+  justify-content: flex-start;
+  gap: 0;
+}
+
+.export-panel__glyph {
+  display: inline-block;
+  width: 4ch;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: left;
+  color: var(--ui-fg-subtle);
+}
+
+/* When the row is the primary action (PDF), the label sits on the
+   accent — keep the glyph readable against that background by leaning
+   toward the on-accent foreground token rather than the muted neutral
+   the unstyled rows use. */
+.export-panel__section .btn--primary .export-panel__glyph {
+  color: color-mix(in oklch, var(--ui-accent-contrast) 78%, transparent);
+}
+
+/* When the row is disabled (no resume loaded), the .btn primitive dims
+   its label via `color`; mirror that dim onto the glyph so the row
+   reads as a unit, not a label + brighter prefix. */
+.export-panel__section .btn[disabled] .export-panel__glyph {
+  color: inherit;
+  opacity: 0.7;
 }
 
 .export-panel__radio-group {
@@ -1519,37 +3238,49 @@ a {
   color: var(--ui-fg-subtle);
 }
 
+/* Confirmation pip for the "Copy theme link" action (#112). Mirrors the
+   tone of the old `.theme-controls__copied` pill, but inside the Export
+   panel's share group rather than the toolbar. */
+.export-panel__copied {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--ui-success);
+}
+
 /* ------------------------------------------------------------------ */
 /* Layout selector (#30)                                               */
 /* ------------------------------------------------------------------ */
 
+/* LayoutSelector — segmented control (#30, restyled #135).
+   The kicker (`LAYOUT`) now sits INLINE to the left of the segmented
+   options so the cluster reads as `LAYOUT [Classic|Modern|Compact]` —
+   the same kicker + value rhythm as the THEME and FIT groups. The
+   outer chrome on the segments is softened (no panel fill, no inset
+   shadow) to align with the rest of the toolbar; the segments still
+   carry a discrete border so the 3-way toggle reads as a unit. */
 .layout-selector {
   display: inline-flex;
-  flex-direction: column;
-  gap: 0.18rem;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   border: 0;
 }
 
 .layout-selector__legend {
-  /* Render the fieldset legend as a small kicker label above the
-     segmented control, matching the rest of the toolbar's tone. */
+  /* Tone comes from the shared `.section-kicker` utility applied via
+     JSX in #135. The legend participates in the inline-flex row as a
+     flex item, so it sits inline to the LEFT of the segmented options. */
   padding: 0;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ui-fg-subtle);
 }
 
 .layout-selector__options {
   display: inline-flex;
-  background: var(--ui-panel);
-  border: 1px solid var(--ui-border-strong);
+  background: transparent;
+  border: 1px solid var(--ui-border);
   border-radius: var(--radius-sm);
-  box-shadow: var(--ui-inset-highlight);
   padding: 2px;
 }
 
@@ -1557,9 +3288,12 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.28rem 0.6rem;
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
+  padding: 0.28rem 0.7rem;
+  /* Editorial-shift (#163): segment labels are short prose tokens
+     (Classic / Modern / Compact) — serif suits them. The legend kicker
+     beside the segments keeps the mono via .section-kicker. */
+  font-family: var(--font-serif);
+  font-size: 0.86rem;
   color: var(--ui-fg-muted);
   border-radius: 4px;
   cursor: pointer;
@@ -1627,8 +3361,9 @@ a {
   align-items: center;
   gap: var(--space-2);
   cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
+  /* Toggle label "ATS preview" — prose-ish trigger name, serif (#165). */
+  font-family: var(--font-serif);
+  font-size: 0.84rem;
   color: var(--ui-fg);
 }
 
@@ -1684,47 +3419,6 @@ a {
 }
 
 /* ------------------------------------------------------------------ */
-/* Shortcut legend — help affordance + disabled state                  */
-/* ------------------------------------------------------------------ */
-
-/* The "All shortcuts" / "Shortcut settings" button that opens the help
-   dialog. A quiet inline affordance, not a heavy button. */
-.studio__shortcuts-help {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  margin-left: auto;
-  padding: 0.16rem 0.5rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--ui-fg-muted);
-  background: var(--ui-panel);
-  border: 1px solid var(--ui-border-strong);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition:
-    background-color 110ms ease,
-    border-color 110ms ease,
-    color 110ms ease;
-}
-
-.studio__shortcuts-help:hover {
-  color: var(--ui-fg);
-  background: var(--ui-panel-hover);
-  border-color: var(--ui-accent);
-}
-
-.studio__shortcuts-off {
-  color: var(--ui-fg-subtle);
-}
-
-@media (max-width: 640px) {
-  .studio__shortcuts-help {
-    margin-left: 0;
-  }
-}
-
-/* ------------------------------------------------------------------ */
 /* Keyboard-shortcuts help overlay (modal dialog)                      */
 /* ------------------------------------------------------------------ */
 
@@ -1736,7 +3430,9 @@ a {
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
-  background: rgba(4, 6, 10, 0.66);
+  /* Warm-paper-friendly scrim — a slate-cool dim looked harsh against
+     the new cream surface. */
+  background: rgba(38, 26, 14, 0.42);
   animation: kbd-help-fade 140ms ease-out;
 }
 
@@ -1771,9 +3467,11 @@ a {
 }
 
 .kbd-help__title {
-  font-family: var(--font-mono);
-  font-size: 1.02rem;
-  font-weight: 700;
+  /* Dialog title at "lead" weight (#165). */
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
   color: var(--ui-fg);
 }
 
@@ -1864,6 +3562,2731 @@ a {
   font-size: 0.74rem;
   line-height: 1.6;
   color: var(--ui-fg-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* Resume Health "Open an example" fallback dialog (#120)              */
+/* ------------------------------------------------------------------ */
+/* Mirrors the KeyboardHelp modal: a centered card on a dimmed overlay,
+   focus-trapped, dismissable via Esc, click-outside, or the close button.
+   Styling lives behind a separate class root (`health-example-dialog__*`)
+   so the rules can never bleed into other modals or into the in-pane
+   resume preview that the dialog body re-uses for its rendered slice. */
+
+.health-example-dialog__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(38, 26, 14, 0.42);
+  animation: kbd-help-fade 140ms ease-out;
+}
+
+.health-example-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(40rem, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--space-5);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+}
+
+.health-example-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.health-example-dialog__title {
+  /* Dialog title at "lead" weight (#165). */
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--ui-fg);
+  margin: 0;
+}
+
+.health-example-dialog__intro {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--ui-fg-muted);
+  margin: 0;
+}
+
+/* The slice container uses `resume-preview` for typography so the section
+   renders with the same heading/list styles a real preview gets, but the
+   dialog wrapper here gives it a softer card around itself so it reads
+   as an embedded example rather than a real export. */
+.health-example-dialog__body {
+  padding: var(--space-4);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+}
+
+.health-example-dialog__body h2 {
+  margin-top: 0;
+}
+
+.health-example-dialog__fallback {
+  margin: 0;
+  padding: var(--space-4);
+  font-size: 0.85rem;
+  color: var(--ui-fg-muted);
+  background: var(--ui-bg);
+  border: 1px dashed var(--ui-border);
+  border-radius: var(--radius-md);
+}
+
+/* ------------------------------------------------------------------ */
+/* Markdown format reference dialog (#157)                             */
+/*                                                                     */
+/* Mirrors KeyboardHelp / ExampleDialog modal contract: dimmed overlay,*/
+/* centered card, focus-trapped, dismissable via Esc / click-outside / */
+/* close button. The body packs four sections (intro paragraph,        */
+/* frontmatter key table, section vocabulary, LLM-handoff <pre>) plus  */
+/* a privacy footer. Styling lives behind `.format-docs*` so the rules */
+/* never bleed into other modals or the in-pane preview.               */
+/* ------------------------------------------------------------------ */
+
+.format-docs__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(38, 26, 14, 0.42);
+  animation: kbd-help-fade 140ms ease-out;
+}
+
+.format-docs {
+  /* #175: narrower card (640px) centers the reference content and gives
+     the frontmatter table room to breathe; asymmetric padding (vertical
+     space-5, horizontal space-6) widens the gutters on desktop without
+     bloating the modal height. */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(40rem, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--space-5) var(--space-6);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+}
+
+.format-docs__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.format-docs__title {
+  /* Dialog title at "lead" weight (#165). Source Serif 4 reads as a
+     proper editorial section head at 500 against the cream surface —
+     the bolder 700 was leaning toward a workbench KICKER mood. */
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--ui-fg);
+  margin: 0;
+}
+
+.format-docs__intro {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: var(--ui-fg);
+}
+
+.format-docs__intro code,
+.format-docs__section-intro code,
+.format-docs__section-list code,
+.format-docs__hint code {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  padding: 0.05rem 0.32rem;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg);
+}
+
+.format-docs__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+}
+
+.format-docs__section-title {
+  margin: 0;
+}
+
+.format-docs__section-intro {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--ui-fg-muted);
+}
+
+/* Frontmatter rows — a key column, a description, an example. The example
+   may include `\n` (links[] is multi-line); preserve whitespace so the YAML
+   indentation reads correctly. */
+.format-docs__fm-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.format-docs__fm-row {
+  /* #175: row padding 0.65rem 0 + space-4 column gap gives the frontmatter
+     table the breathing room the cramped space-2 / space-3 sketch lacked.
+     The key chip claims the left column (6rem so `links[]` doesn't
+     overflow); the description sits to its right, and the example chip
+     flows under the description as a second row spanning the same
+     column. The pre-#175 layout tried to cram all three into one row;
+     at the narrower 640px modal width that squashed `links[]`'s
+     multi-line YAML chip against the description and broke prose into
+     a four-line column. Stacking example-under-description is the
+     readable shape at this width. */
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  column-gap: var(--space-4);
+  row-gap: var(--space-2);
+  align-items: baseline;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.format-docs__fm-row:last-child {
+  border-bottom: 0;
+}
+
+.format-docs__fm-key {
+  /* #175: tabular-nums keeps the chips visually aligned when a key contains
+     digits (none today, but `links[]` reads as a token and the numeric
+     variant locks digit widths if any field gains a number later). */
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 0.1rem 0.4rem;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg);
+  justify-self: start;
+}
+
+.format-docs__fm-desc {
+  /* #175: serif body to match the editorial-stationery voice (#163-#165) —
+     the description column reads as prose, not chrome, and the 1.55
+     line-height keeps the two-line descriptions readable inside the
+     0.65rem-padded row. */
+  font-family: var(--font-serif);
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--ui-fg);
+}
+
+.format-docs__fm-example {
+  /* #175: occupies the second row of the description column (the row
+     stacks: key | desc, then a full-width example below desc). justify-
+     self: start keeps the chip width-to-content so a 12-char `Avery
+     Quinn` doesn't stretch to fill the column. */
+  grid-column: 2;
+  justify-self: start;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  padding: 0.15rem 0.4rem;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg-muted);
+  white-space: pre;
+  text-align: left;
+}
+
+@media (max-width: 640px) {
+  /* On narrow viewports the rows stack — collapse the column gap and pull
+     the row padding back so the stacked key/desc/example trio reads as a
+     single block, not three loosely-spaced lines (#175). */
+  .format-docs {
+    padding: var(--space-4);
+  }
+  .format-docs__fm-row {
+    grid-template-columns: 1fr;
+    row-gap: var(--space-1);
+    padding: var(--space-3) 0;
+  }
+  .format-docs__fm-example {
+    grid-column: auto;
+    justify-self: start;
+  }
+}
+
+.format-docs__section-list {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: var(--ui-fg);
+}
+
+.format-docs__section-list strong {
+  color: var(--ui-fg);
+}
+
+.format-docs__hint {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: var(--ui-fg-subtle);
+}
+
+/* The LLM-handoff prompt. Reads as code (it IS code, in a sense — a literal
+   string the writer will paste verbatim into a model). Wide enough to show
+   the YAML keys without horizontal scroll on desktop; on narrow viewports
+   it scrolls. */
+.format-docs__prompt {
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  line-height: 1.55;
+  color: var(--ui-fg);
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.format-docs__prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.format-docs__prompt-status {
+  font-size: 0.76rem;
+  color: var(--ui-fg-muted);
+}
+
+.format-docs__privacy {
+  margin: 0;
+  padding: var(--space-3);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--ui-fg-muted);
+  background: var(--ui-panel);
+  border: 1px dashed var(--ui-border);
+  border-radius: var(--radius-sm);
+}
+
+/* ------------------------------------------------------------------ */
+/* Print preview modal (#185)                                          */
+/*                                                                     */
+/* Mirrors the ExampleDialog / FormatDocsDialog modal contract: dimmed */
+/* overlay, centered card, focus-trapped, dismissable via Esc /        */
+/* click-outside / close button. The body hosts an iframe loaded from  */
+/* a Blob URL containing the standalone HTML export, anchored at a     */
+/* US-Letter aspect ratio so multi-page resumes scroll inside it.      */
+/*                                                                     */
+/* The overlay carries `data-print-hide` from the JSX so the print     */
+/* stylesheet hides it when the user invokes window.print() — the      */
+/* iframe contains its own document and brings its own print CSS, so   */
+/* the parent page's modal must NOT leak ink onto the printed output.  */
+/* ------------------------------------------------------------------ */
+
+.print-preview-dialog__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(38, 26, 14, 0.42);
+  animation: kbd-help-fade 140ms ease-out;
+}
+
+/* The modal card. Wider than ExampleDialog because the iframe wants a
+   minimum readable width — at 8.5/11 aspect ratio a 720-px-wide page
+   gives a roughly natural-size view. The card itself caps at 960 px so
+   the preview reads as embedded, not as a full-bleed takeover. */
+.print-preview-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(60rem, 100%);
+  max-height: 100%;
+  overflow: hidden;
+  padding: var(--space-5);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+}
+
+.print-preview-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.print-preview-dialog__title {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--ui-fg);
+  margin: 0;
+}
+
+.print-preview-dialog__intro {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--ui-fg-muted);
+}
+
+/* Print-mode radio group. Shape mirrors `.export-panel__radio-group`
+   so the visual language of "print mode = a small pair of radios"
+   stays consistent between the Export panel and this modal — they're
+   driving the same state. Horizontal on desktop to keep the chrome
+   above the iframe compact; stacks on mobile. */
+.print-preview-dialog__modes {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  margin: 0;
+}
+
+.print-preview-dialog__mode {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-1);
+  font-size: 0.82rem;
+  cursor: pointer;
+  flex: 1 1 12rem;
+}
+
+.print-preview-dialog__mode-hint {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--ui-fg-subtle);
+}
+
+/* The iframe wrapper anchors the US-Letter aspect ratio AND clips the
+   inner iframe so the page corners read as a paper sheet, not a
+   default-stretched HTML viewport. */
+.print-preview-dialog__frame-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+}
+
+.print-preview-dialog__frame {
+  /* US-Letter portrait. Width is capped so the modal isn't dominated by
+     the frame on huge displays; multi-page resumes scroll inside the
+     iframe itself. */
+  width: min(100%, 38rem);
+  aspect-ratio: 8.5 / 11;
+  background: white;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-pop);
+  display: block;
+}
+
+/* Actions row sits at the bottom of the card. Cancel left, Save-as-PDF
+   right (primary). Matches the dialog conventions in the rest of the
+   app — primary actions trail in latin reading order. */
+.print-preview-dialog__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Mobile: the modal fills the viewport. The iframe stretches to fit the
+   wrap width; the aspect-ratio rule keeps the page proportions correct,
+   and the wrap's scroll handles the resulting height. */
+@media (max-width: 640px) {
+  .print-preview-dialog__overlay {
+    padding: 0;
+  }
+  .print-preview-dialog {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    padding: var(--space-4);
+  }
+  .print-preview-dialog__modes {
+    flex-direction: column;
+  }
+  .print-preview-dialog__frame {
+    width: 100%;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Overwrite toast (#77) — visual companion to the aria-live notice    */
+/* ------------------------------------------------------------------ */
+
+@keyframes toast-rise {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: min(28rem, calc(100vw - var(--space-5)));
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  background: var(--ui-bg-elevated);
+  color: var(--ui-fg);
+  border: 1px solid var(--ui-border-strong);
+  /* The accent stripe doubles as a non-color cue (the icon + the words
+     "Saved draft replaced" carry the meaning); the tint just frames it. */
+  border-left: 3px solid var(--ui-accent);
+  border-radius: var(--radius-md);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+  font-size: 0.84rem;
+  line-height: 1.4;
+  animation: toast-rise 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Reduced-motion users: no entrance fade/slide. The class is added by
+   the component itself; the global reduced-motion block already neutralizes
+   `animation-duration`, but we drop the transform too so there's no
+   half-tick of off-position paint on slow hardware. */
+.toast--reduced {
+  animation: none;
+}
+
+.toast__icon {
+  flex-shrink: 0;
+  color: var(--ui-accent);
+}
+
+.toast__message {
+  flex: 1;
+  min-width: 0;
+  /* Allow filenames to wrap rather than overflow the toast. */
+  overflow-wrap: anywhere;
+}
+
+.toast__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  color: var(--ui-fg-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color 110ms ease,
+    background-color 110ms ease,
+    border-color 110ms ease;
+}
+
+.toast__close:hover,
+.toast__close:focus-visible {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+  border-color: var(--ui-border-strong);
+}
+
+@media (max-width: 640px) {
+  .toast {
+    top: var(--space-3);
+    right: var(--space-3);
+    left: var(--space-3);
+    max-width: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Resume Health panel (#85)                                           */
+/* ------------------------------------------------------------------ */
+
+.health {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--ui-inset-highlight);
+}
+
+.health__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.health__score {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.health__score-num {
+  font-family: var(--font-mono);
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ui-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.health__score-stage {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ui-fg-subtle);
+}
+
+/* Stage picker — segmented control matching `.layout-selector__options`. */
+.health__stage-picker {
+  display: inline-flex;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--ui-inset-highlight);
+  padding: 2px;
+}
+
+.health__stage-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.28rem 0.7rem;
+  /* Segmented button label (Draft / Tighten / Polish) — names, serif (#165). */
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
+  color: var(--ui-fg-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease;
+}
+
+.health__stage-btn:hover {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+}
+
+.health__stage-btn--active {
+  background: var(--ui-bg);
+  color: var(--ui-fg);
+  box-shadow:
+    inset 0 0 0 1px var(--ui-accent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Empty-state copy ("Load a resume to see Health feedback."). */
+.health__empty {
+  margin: 0;
+  padding: var(--space-3) 0;
+  font-size: 0.82rem;
+  color: var(--ui-fg-muted);
+}
+
+/* Section-kicker label above the findings list (#129). The base tone comes
+   from `.section-kicker`; this rule provides the spacing. */
+.health__findings-kicker {
+  margin: var(--space-2) 0 var(--space-1);
+}
+
+.health__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.health__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--ui-fg);
+}
+
+.health__item-dot {
+  flex-shrink: 0;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-top: 0.32rem;
+  border-radius: 50%;
+  background: var(--ui-fg-subtle);
+  border: 1px solid transparent;
+}
+
+/* Severity-coded dots — paired with the dot's accessible label
+   ("Good" / "Warning" / "Needs attention") so colour is reinforcement,
+   not the only signal. */
+.health__item--good .health__item-dot {
+  background: var(--ui-success);
+}
+
+.health__item--warn .health__item-dot {
+  background: var(--ui-warning);
+}
+
+.health__item--bad .health__item-dot {
+  background: var(--ui-danger);
+}
+
+/* Borrow a subtle tint along the leading edge for `bad` items so they
+   read as more urgent than the warns. Glyph + text still carry meaning. */
+.health__item--bad {
+  border-left: 3px solid var(--ui-danger);
+}
+
+.health__item-message {
+  flex: 1;
+  min-width: 0;
+}
+
+/* "Jump to line N" — small text button that pops the finding's line
+   into focus in the editor. */
+.health__item-jump {
+  flex-shrink: 0;
+  padding: 0.15rem 0.5rem;
+  /* "Jump to line N" — button label (#165). The line number is part of
+     the label but the label as a whole reads as prose, not a literal. */
+  font-family: var(--font-serif);
+  font-size: 0.76rem;
+  color: var(--ui-accent);
+  background: transparent;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 110ms ease,
+    background-color 110ms ease,
+    border-color 110ms ease;
+}
+
+.health__item-jump:hover {
+  color: var(--ui-accent-hover);
+  background: var(--ui-panel);
+  border-color: var(--ui-accent);
+}
+
+/* Actionable findings (#115). The original row was a flex container with
+   message + jump-button as direct siblings; for #115 we wrap message and
+   action buttons (and the optional Suggest-a-fix tray) in a column so the
+   tray hangs below the buttons without disturbing the dot's alignment. */
+.health__item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.health__item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+/* "Suggest a fix" and "Open an example" share the jump button's shape so
+   the three affordances read as a coherent row. The fix button uses the
+   accent tint as a subtle distinction — it is the primary action on
+   findings that have a templated rewrite. */
+.health__item-fix,
+.health__item-example {
+  flex-shrink: 0;
+  padding: 0.15rem 0.5rem;
+  /* "Suggest a fix" / "Open an example" — button labels, serif (#165). */
+  font-family: var(--font-serif);
+  font-size: 0.76rem;
+  background: transparent;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 110ms ease,
+    background-color 110ms ease,
+    border-color 110ms ease;
+}
+
+.health__item-fix {
+  color: var(--ui-accent);
+}
+
+.health__item-fix:hover {
+  color: var(--ui-accent-hover);
+  background: var(--ui-panel);
+  border-color: var(--ui-accent);
+}
+
+.health__item-example {
+  color: var(--ui-fg-muted);
+}
+
+.health__item-example:hover {
+  color: var(--ui-fg);
+  background: var(--ui-panel);
+  border-color: var(--ui-border-strong);
+}
+
+/* Inline tray of candidate rewrites. Sits beneath the row, flush with the
+   action buttons. Each candidate is a button that fills the tray width;
+   label on top, preview underneath in mono. */
+.health__item-tray {
+  margin-top: var(--space-1);
+}
+
+.health__item-tray-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--ui-inset-highlight);
+}
+
+.health__item-tray-li {
+  margin: 0;
+}
+
+.health__item-tray-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 110ms ease,
+    border-color 110ms ease;
+}
+
+.health__item-tray-item:hover {
+  background: var(--ui-bg);
+  border-color: var(--ui-border);
+}
+
+.health__item-tray-label {
+  /* Pattern NAME (Aggressive / Conservative rewrite) — serif (#165).
+     The preview row beneath keeps mono because it's literal Markdown. */
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ui-fg);
+}
+
+.health__item-tray-preview {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ui-fg-muted);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Health tab body: drop the default flex/padding so the .health card
+   owns its own padding (and renders as a single rounded block rather
+   than nesting one inside another). */
+.studio__pane-body--health {
+  padding: var(--space-3);
+}
+
+/* ------------------------------------------------------------------ */
+/* Resume Health coaching blocks (#137)                                */
+/*                                                                     */
+/* Three blocks sit BELOW the findings list so a single-finding pane    */
+/* no longer leaves 60% of its vertical space empty:                    */
+/*   .resume-health__celebrate — "What's working" strip                 */
+/*   .resume-health__progress  — Stage progress meter                    */
+/*   .resume-health__next      — Next step CTA                          */
+/*                                                                     */
+/* CSP: every rule lives here — the component carries no inline styles. */
+/* ------------------------------------------------------------------ */
+
+.resume-health__celebrate,
+.resume-health__progress,
+.resume-health__next {
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.resume-health__celebrate-kicker,
+.resume-health__progress-kicker,
+.resume-health__next-kicker {
+  margin: 0 0 var(--space-1);
+}
+
+/* "What's working" — mono ✓ list with a soft success tint. The glyph
+   carries the meaning; the tint is reinforcement so users on a high-
+   contrast theme still see what each row is. */
+.resume-health__celebrate-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resume-health__celebrate-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  /* "What's working" findings are prose (#165). The ✓ glyph is in
+     `.resume-health__celebrate-glyph` and stays aligned via the rule
+     below — the font shift only affects the message body. */
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ui-fg);
+}
+
+.resume-health__celebrate-glyph {
+  color: var(--ui-success);
+  font-weight: 700;
+  flex-shrink: 0;
+  /* Tabular alignment so the ✓ column lines up cleanly regardless of
+     the message text after it. */
+  width: 0.8rem;
+  text-align: center;
+}
+
+.resume-health__celebrate-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Stage progress meter (#174) — mono kicker above a thin graphical bar,
+   right-aligned score caption, serif muted sub-caption below.
+
+   The bar is a 6px-tall rounded track painted in `--ui-bg` with a 1px
+   ink border. The fill is `--ui-accent` (ochre) and its width is set
+   dynamically through the CSSOM (see ProgressMeter in ResumeHealth.tsx) —
+   inline `style=` would be blocked by the project's hash-based CSP. The
+   width transition is ~400ms and is neutralized under the global
+   `prefers-reduced-motion: reduce` rule earlier in this file. */
+.resume-health__progress-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+}
+
+.resume-health__progress-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ui-fg-muted);
+  text-transform: uppercase;
+}
+
+/* Bar + value caption sit side by side. The bar flexes to fill the row;
+   the caption is a fixed-content mono number to its right. */
+.resume-health__progress-track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.resume-health__progress-bar {
+  flex: 1;
+  position: relative;
+  height: 6px;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.resume-health__progress-fill {
+  display: block;
+  height: 100%;
+  width: 0; /* CSSOM writes the real width; this is the SSR floor. */
+  background: var(--ui-accent);
+  border-radius: 999px;
+  transition: width 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.resume-health__progress-value {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-fg);
+  white-space: nowrap;
+}
+
+.resume-health__progress-hint {
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  color: var(--ui-fg-muted);
+}
+
+/* Next step CTA — full-width button with a leading ▸ glyph. Clicking it
+   jumps to the offender line via the existing #115 plumbing. */
+.resume-health__next-cta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-left: 3px solid var(--ui-accent);
+  border-radius: var(--radius-sm);
+  /* "Next step" CTA — button label, serif (#165). The ▸ glyph keeps the
+     leading literal punctuation; the text after it is prose. */
+  font-family: var(--font-serif);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--ui-fg);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 110ms ease,
+    border-color 110ms ease,
+    color 110ms ease;
+}
+
+.resume-health__next-cta:hover {
+  background: var(--ui-panel);
+  border-color: var(--ui-border-strong);
+  border-left-color: var(--ui-accent-hover);
+}
+
+.resume-health__next-cta:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.resume-health__next-glyph {
+  color: var(--ui-accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.resume-health__next-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Start-from-template modal (#86)                                     */
+/* ------------------------------------------------------------------ */
+
+.template-picker__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(38, 26, 14, 0.42);
+  animation: kbd-help-fade 140ms ease-out;
+}
+
+.template-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(54rem, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--space-5);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+}
+
+.template-picker__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.template-picker__title {
+  /* Dialog title at "lead" weight (#165). */
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--ui-fg);
+}
+
+.template-picker__close {
+  /* Keep the close button visible on the dialog's elevated surface — the
+     base .btn--ghost is fully transparent until hover. */
+  color: var(--ui-fg-muted);
+}
+
+.template-picker__close:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.template-picker__intro {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--ui-fg-muted);
+  line-height: 1.5;
+}
+
+.template-picker__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  /* Five worked-or-empty templates (#156). Auto-fit lets the grid hold
+     all five in a row at wide widths and gracefully step down to 2 and
+     then 1 column at narrower breakpoints. The 12rem minimum keeps the
+     card title and description legible at every step. */
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 1080px) {
+  .template-picker__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .template-picker__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.template-picker__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.template-picker__card:hover {
+  border-color: var(--ui-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.55);
+}
+
+.template-picker__card-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ui-fg);
+}
+
+.template-picker__card-desc {
+  margin: 0;
+  flex: 1;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--ui-fg-muted);
+}
+
+.template-picker__card-action {
+  /* Emphasis on the action — primary tinting + a tight margin-top to
+     separate it from the description. */
+  align-self: stretch;
+  margin-top: var(--space-2);
+}
+
+/* Scaffold-only secondary action row (#156): "Copy to LLM" button +
+   transient "Copied" pip. Sits below the primary "Use this template"
+   action on the Scaffold card. The button itself reuses
+   `.template-picker__card-action` for the stretch + margin rhythm; this
+   wrapper just gives the confirmation pip somewhere stable to sit. */
+.template-picker__card-secondary {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+}
+
+.template-picker__copied {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--ui-success);
+}
+
+/* ------------------------------------------------------------------ */
+/* Curated theme presets (#95) — removed in #132.                       */
+/*                                                                     */
+/* The Presets row bundled a theme + layout per pill (Conservative /   */
+/* Modern / Creative) and lived alongside the standalone Layout        */
+/* selector (Classic / Modern / Compact). The two controls shared the  */
+/* word "Modern" with two different meanings, and a preset's active    */
+/* state went stale the moment a user changed either of its bundled    */
+/* coordinates. After the theme picker grew tag chips + a WCAG badge   */
+/* and lazy-loaded the whole theme dataset, presets were vestigial     */
+/* training                                                            */
+/* wheels. Removing the row simplifies the toolbar to two clean        */
+/* independent axes: theme (picker) and layout (selector).             */
+/* ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ */
+/* Faded sample preview (#96)                                          */
+/*                                                                     */
+/* A dimmed, real render of the bundled sample sitting behind a CTA    */
+/* overlay. The faded layer is purely decorative (aria-hidden) and the */
+/* overlay layer uses pointer-events: none so the inner button is the   */
+/* only thing that intercepts clicks.                                   */
+/* ------------------------------------------------------------------ */
+
+.faded-sample {
+  position: relative;
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-height: 22rem;
+  align-items: stretch;
+  justify-content: center;
+  /* The frame's own min-height is enough on its own, but a positive flex
+     keeps the faded preview filling the pane on tall viewports. */
+}
+
+.faded-sample__layer {
+  /* The faded preview lives in normal flow so the parent pane can size to
+     its content; the overlay sits on top via absolute positioning. */
+  flex: 1;
+  opacity: 0.55;
+  pointer-events: none;
+  /* Subtle saturation drop reads as "preview, not live" without going so
+     far that the theme stops being recognizable. */
+  filter: saturate(0.85);
+  display: flex;
+  justify-content: center;
+}
+
+.faded-sample__article {
+  /* Reuse the canonical resume-preview width so the faded sample matches a
+     real load exactly. The article's own padding comes from resume.css. */
+  width: 100%;
+  max-width: 56rem;
+}
+
+.faded-sample__overlay {
+  /* Centered above the faded layer. `pointer-events: none` lets clicks
+     pass through to whatever is behind (there is nothing interactive
+     behind anyway, but the rule documents intent and keeps the layer from
+     swallowing accidental drag attempts on touch). */
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  padding: var(--space-4);
+}
+
+.faded-sample__cta {
+  /* Re-enable pointer events on the actual interactive island so the
+     button inside is clickable. The card itself absorbs the focus ring
+     for the button and provides the prominent surface the visitor reads. */
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 32ch;
+  padding: var(--space-5) var(--space-5);
+  text-align: center;
+  color: var(--ui-fg-muted);
+  background: color-mix(in oklch, var(--ui-bg-elevated) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-panel);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .faded-sample__cta {
+    background: var(--ui-bg-elevated);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+.faded-sample__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  color: var(--ui-fg-subtle);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+}
+
+.faded-sample__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ui-fg);
+}
+
+.faded-sample__desc {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.faded-sample__action {
+  /* The CTA button uses .btn .btn--primary for the base look; this rule
+     only ensures it sits beneath the description with a consistent gap. */
+  margin-top: var(--space-1);
+}
+
+/* ------------------------------------------------------------------ */
+/* Resume version snapshots (#94)                                      */
+/*                                                                     */
+/* Toolbar control sitting between the Export popover and the help     */
+/* chip. The trigger is a `.btn`; opening it reveals a popover with a  */
+/* Save-snapshot row and a list of saved snapshots. The disabled       */
+/* variant uses the native `disabled` attribute (`:disabled` already   */
+/* dims via the global `.btn:disabled` rule), so this section only     */
+/* lays out the popover and its rows.                                  */
+/* ------------------------------------------------------------------ */
+
+.snapshots-menu {
+  position: relative;
+}
+
+.snapshots-menu__trigger {
+  /* Match the Export trigger's gap so the two reads as a peer cluster. */
+  gap: 0.4rem;
+}
+
+/* Zero-state collapse (#112). When no snapshots exist yet, the trigger
+   renders as an icon-only button rather than `Snapshots (0)`. The .btn--icon
+   class already handles sizing; this modifier just opts out of the
+   labelled-trigger gap so the single icon centers cleanly. The disabled
+   state (off-gate) reuses this same compact form so the privacy-gated
+   surface doesn't shout an empty count either. */
+.snapshots-menu__trigger--icon-only {
+  gap: 0;
+}
+
+.snapshots-menu__popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(24rem, 92vw);
+  padding: var(--space-3);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+}
+
+.snapshots-menu__save {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.snapshots-menu__save-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ui-fg-subtle);
+}
+
+.snapshots-menu__save-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.snapshots-menu__name-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.snapshots-menu__save-btn {
+  flex-shrink: 0;
+}
+
+.snapshots-menu__hint {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--ui-fg-subtle);
+}
+
+.snapshots-menu__empty {
+  margin: 0;
+  padding: var(--space-2) 0;
+  font-size: 0.78rem;
+  color: var(--ui-fg-muted);
+  text-align: center;
+}
+
+.snapshots-menu__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.snapshots-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+}
+
+.snapshots-menu__item-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+}
+
+.snapshots-menu__item-name {
+  color: var(--ui-fg);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  /* Cap the visible width so a long name doesn't push the actions off
+     the edge — the title attribute still surfaces the full string. */
+  max-width: 14rem;
+}
+
+.snapshots-menu__item-sep {
+  color: var(--ui-fg-subtle);
+}
+
+.snapshots-menu__item-time {
+  /* Timestamps are tabular numerals — keep mono (#165). The sibling
+     `.snapshots-menu__item-name` inherits the popover's serif body
+     so a snapshot NAME reads as a name, not a literal. */
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--ui-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.snapshots-menu__item-actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.snapshots-menu__item-load {
+  padding: 0.28rem 0.6rem;
+  font-size: 0.74rem;
+}
+
+.snapshots-menu__item-delete {
+  padding: 0.32rem;
+  min-width: auto;
+  color: var(--ui-fg-muted);
+}
+
+.snapshots-menu__item-delete:hover {
+  color: var(--ui-danger);
+  border-color: var(--ui-danger);
+}
+
+/* ------------------------------------------------------------------ */
+/* Mobile editor accordion (#100)                                      */
+/*                                                                     */
+/* The editor pane is rendered as a real <details>. Phase 1 (no resume)*/
+/* always sets `open` so the uploader IS the experience. Phase 2 on    */
+/* mobile (<640px) lets the user toggle the accordion via the native   */
+/* <summary>, with the preview being the first thing they see.         */
+/*                                                                     */
+/* On viewports ≥ 640px we force the editor pane back into "always     */
+/* visible" mode: the `open` attribute is overridden by CSS that keeps */
+/* the body laid out as a block regardless of state, and the summary   */
+/* loses its disclosure cursor / marker so it reads as a static pane   */
+/* header again. No JS state needed — purely declarative.              */
+/* ------------------------------------------------------------------ */
+
+/* Base: the <details> element should fill the pane the same way the
+   former <section> did. `details` is a block by default; flex layout
+   inside <details> only applies to children once the element is open,
+   so we keep the pane's own surface (border, background) on the
+   details element and let the body div own its inner flex layout. */
+details.studio__pane--editor {
+  /* The pane keeps the same chrome as the preview pane — the rules in
+     `.studio__pane` already provide that. No overrides needed here. */
+  min-width: 0;
+}
+
+/* Summary acts as the pane header. Remove the default disclosure
+   triangle so it reads as the existing pane chrome rather than a
+   native widget, and surface a focus ring for keyboard users. */
+.studio__pane-header--summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.studio__pane-header--summary::-webkit-details-marker {
+  display: none;
+}
+
+.studio__pane-header--summary::marker {
+  content: '';
+}
+
+.studio__pane-header--summary:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: -2px;
+}
+
+/* The "N lines · edit" mobile-only meta lives at the right edge of the
+   summary. It's hidden by default and only revealed below 640px when a
+   resume is loaded — the parent only renders it when `hasResume`. */
+.studio__pane-summary-meta {
+  display: none;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--ui-fg-muted);
+}
+
+@media (max-width: 640px) {
+  .studio__pane-summary-meta {
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* Above 640px the accordion is a no-op: the body is visible regardless
+   of the `open` attribute, and the summary stops behaving as an
+   interactive disclosure. Modern Chromium uses a `::details-content`
+   pseudo-element to control disclosure; older engines simply set
+   `display: none` on non-summary children. We override both. */
+@media (min-width: 641px) {
+  details.studio__pane--editor:not([open]) > .studio__pane-body {
+    /* Force the body back into the flow when the element is "closed".
+       This is the desktop pane behavior — `open` is a state we ignore
+       at this width, since the editor lives beside the preview. */
+    display: flex !important;
+  }
+  /* Chromium 131+ implements <details> disclosure via the
+     `::details-content` pseudo-element. The default style hides the
+     content when the host is not `[open]`; we counter that here so the
+     editor body stays visible on desktop regardless of state. */
+  details.studio__pane--editor:not([open])::details-content {
+    content-visibility: visible;
+    display: block;
+  }
+  .studio__pane-header--summary {
+    cursor: default;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Page-fit indicator (#92)                                            */
+/*                                                                     */
+/* Toolbar pill that surfaces an approximate "how many printed pages"  */
+/* estimate. Click opens a popover with per-section heights, 2-3 trim  */
+/* suggestions, and a toggle for a visual page-break ruler overlay on  */
+/* the preview. The estimate is intentionally approximate: signal, not */
+/* precision. See src/utils/pageFit.ts for the math; this is just CSS. */
+/* ------------------------------------------------------------------ */
+
+/* --------------------------------------------------------------------
+ * Body font-size control (#186): A− and A+ buttons flanking the Fit
+ * chip. Each click adjusts the resume body font-size by ±0.5pt within a
+ * ±2pt clamp around the 11pt default. Per-session, not persisted.
+ *
+ * Visual silhouette:
+ *   [A−] [ • 1.4p ]·[ CONSERVATIVE ▾ ] [A+]
+ *
+ * The buttons sit inside `.page-fit__size-control`, a flex row that wraps
+ * the existing chip. The buttons read as quiet utility chrome (muted
+ * glyph, no border), brightening to `--ui-fg` on hover; the disabled
+ * state at the clamp boundary drops the glyph to half-opacity. The
+ * current shift value isn't shown in the toolbar — the chip already
+ * shows the consequence (Fit X pages), which is the loaded signal here.
+ * ------------------------------------------------------------------ */
+.page-fit__size-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.page-fit__size-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ui-fg-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color 110ms ease,
+    background-color 110ms ease;
+}
+
+.page-fit__size-btn:hover:not(:disabled),
+.page-fit__size-btn:focus-visible:not(:disabled) {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+  outline: none;
+}
+
+.page-fit__size-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* Composite "A−" / "A+" glyph: the operator sits as a superscript next to
+   the A so the button reads as a typography control rather than a generic
+   plus/minus. Tabular alignment keeps both buttons the same visual width. */
+.page-fit__size-btn-op {
+  margin-left: 1px;
+  font-size: 0.7em;
+  font-weight: 700;
+  vertical-align: super;
+  line-height: 1;
+}
+
+/* Combined chip (#139): the Fit pill and the print-mode dropdown live
+   inside ONE pill-shaped container so the user can see at a glance which
+   colour profile the Fit estimate and Save-as-PDF will use. The container
+   carries the severity modifier; each segment inherits the colour by
+   reading `color` from a parent declaration on the chip, so a single fit
+   severity tints the whole chip continuously.
+
+   Visual silhouette:
+     [ • 1.4p ]·[ CONSERVATIVE ▾ ]
+   The dot trigger button sits on the left (still the popover trigger);
+   the `·` separator and the print-mode `<select>` sit on the right. */
+.page-fit {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease,
+    border-color 110ms ease;
+}
+
+.page-fit--ok {
+  color: var(--ui-accent);
+  border-color: color-mix(in oklch, var(--ui-accent) 55%, var(--ui-border-strong));
+}
+
+.page-fit--warn {
+  color: #b45309; /* amber-700 */
+  border-color: color-mix(in oklch, #f59e0b 55%, var(--ui-border-strong));
+}
+
+.page-fit--danger {
+  color: #b91c1c; /* red-700 */
+  border-color: color-mix(in oklch, #ef4444 60%, var(--ui-border-strong));
+}
+
+/* The Fit-side trigger button. Sized to read as a status chip rather than
+   a primary action. The severity colour is inherited from the chip
+   container (`color: inherit`) so the two segments stay in lockstep; the
+   per-segment `--ok / --warn / --danger` modifiers below are kept for the
+   case where the trigger is rendered without the wrapping chip — defensive,
+   no current callsite. #139's chip + #135's text-with-affordance rhythm
+   converge here: the chip already has `background: transparent` / `border: 0`,
+   so the rhythm contract is already satisfied. */
+.page-fit__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  /* Round the left side so the hover background hugs the chip's silhouette
+     and never pokes past the rounded outer border. */
+  border-radius: 999px 0 0 999px;
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease;
+}
+
+.page-fit__pill:hover,
+.page-fit__pill[aria-expanded='true'] {
+  background: var(--ui-panel-hover);
+  outline: none;
+}
+
+/* Severity modifiers on the trigger itself — preserved for back-compat /
+   defensive rendering. The wrapping chip is the primary colour carrier
+   today (#139). */
+.page-fit__pill--ok {
+  color: var(--ui-accent);
+}
+
+.page-fit__pill--warn {
+  color: #b45309;
+}
+
+.page-fit__pill--danger {
+  color: #b91c1c;
+}
+
+/* Separator dot between the Fit segment and the mode segment. Sits inline
+   with both segments and carries the chip colour so the severity reads
+   through the divider too. */
+.page-fit__mode-sep {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.1rem;
+  color: inherit;
+  opacity: 0.6;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  user-select: none;
+}
+
+/* Mode-side wrapper. Holds the native `<select>` and a chevron icon
+   overlayed at the right edge — the select's own dropdown arrow is hidden
+   via `appearance: none` so the chip's silhouette is uniform regardless of
+   platform. */
+.page-fit__mode {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.page-fit__mode-select {
+  /* Strip native chrome — we paint our own chevron next to the text. */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 1.4rem 0.3rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  /* Round the right side so the hover background follows the chip's outer
+     silhouette and never pokes past the rounded outer border. */
+  border-radius: 0 999px 999px 0;
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease;
+}
+
+.page-fit__mode-select:hover,
+.page-fit__mode-select:focus-visible {
+  background: var(--ui-panel-hover);
+  outline: none;
+}
+
+/* Keep the dropdown's own option list in default platform colours — the
+   chip tint is for the chip itself, not the popped menu. The `<option>`
+   elements live in a native popup that doesn't inherit our background. */
+.page-fit__mode-select option {
+  color: var(--ui-fg);
+  background: var(--ui-bg-elevated);
+}
+
+/* Per-severity overrides kept for symmetry; the chip container already
+   inherits down the colour, but specifying the modifier here makes the
+   select usable in isolation too (defensive). */
+.page-fit__mode-select--ok {
+  color: var(--ui-accent);
+}
+
+.page-fit__mode-select--warn {
+  color: #b45309;
+}
+
+.page-fit__mode-select--danger {
+  color: #b91c1c;
+}
+
+/* Visual chevron, painted to the right of the select text. `pointer-events:
+   none` so the click goes through to the native select. */
+.page-fit__mode-caret {
+  position: absolute;
+  right: 0.45rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.page-fit__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  /* Slight opacity dip keeps the dot from yelling at the wordmark. */
+  opacity: 0.85;
+}
+
+.page-fit__label {
+  letter-spacing: 0.01em;
+}
+
+/* The click-to-open popover. Anchors to the left edge of the pill (pill sits
+   in row 2 of the two-row toolbar after #112, on the left side; right-anchored
+   would overflow the viewport). Width is bounded so long section names don't
+   blow it out. */
+.page-fit__popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(360px, 80vw);
+  padding: var(--space-3);
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-panel);
+  color: var(--ui-fg);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.page-fit__popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.page-fit__popover-title {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-fg);
+}
+
+.page-fit__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg-muted);
+  cursor: pointer;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease,
+    border-color 110ms ease;
+}
+
+.page-fit__close:hover,
+.page-fit__close:focus-visible {
+  color: var(--ui-fg);
+  background: var(--ui-panel);
+  border-color: var(--ui-border-strong);
+}
+
+.page-fit__hint {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--ui-fg-muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.page-fit__hint-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--ui-fg-subtle);
+}
+
+.page-fit__sections-title,
+.page-fit__suggestions-title {
+  margin: 0 0 var(--space-1) 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ui-fg-muted);
+}
+
+.page-fit__sections-list,
+.page-fit__suggestions-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.page-fit__section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0.25rem 0;
+  border-bottom: 1px dashed var(--ui-border);
+}
+
+.page-fit__section:last-child {
+  border-bottom: none;
+}
+
+.page-fit__section-name {
+  color: var(--ui-fg);
+}
+
+.page-fit__section-pages {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-fg-muted);
+}
+
+.page-fit__suggestion {
+  padding: var(--space-2);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+}
+
+.page-fit__suggestion-title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ui-fg);
+}
+
+.page-fit__suggestion-detail {
+  margin: 0.15rem 0 0 0;
+  font-size: 0.74rem;
+  color: var(--ui-fg-muted);
+  line-height: 1.4;
+}
+
+.page-fit__ruler-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-top: var(--space-1);
+  font-size: 0.78rem;
+  color: var(--ui-fg);
+  cursor: pointer;
+  border-top: 1px solid var(--ui-border);
+}
+
+.page-fit__ruler-toggle input[type='checkbox'] {
+  margin: 0;
+}
+
+/* Narrow viewports: anchor the popover to the LEFT edge of the pill
+   instead of the right. On a phone the toolbar wraps multiple rows and
+   the pill commonly sits near the left side of its row, so a
+   left-anchored popover (default since #112) needs a tighter width budget
+   so it doesn't bleed off the right edge of the viewport on narrow screens. */
+@media (max-width: 720px) {
+  .page-fit__popover {
+    width: min(320px, calc(100vw - var(--space-3) * 2));
+  }
+}
+
+/* ----- Ruler overlay -----
+   Portal-mounted into the preview pane (`.studio__pane-body`), absolutely
+   positioned over the rendered `.resume-preview` article. Each line is a
+   1px dashed horizontal at y = N * page-content-height. Pointer-events
+   off so the overlay never blocks editing/scrolling. */
+.studio__pane-body--has-ruler {
+  position: relative;
+}
+
+.page-fit-ruler {
+  position: absolute;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.page-fit-ruler__line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px dashed color-mix(in oklch, var(--ui-accent) 70%, transparent);
+}
+
+.page-fit-ruler__label {
+  position: absolute;
+  top: -0.85rem;
+  right: 0;
+  padding: 0.1rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ui-accent);
+  background: color-mix(in oklch, var(--ui-bg-elevated) 90%, transparent);
+  border: 1px solid color-mix(in oklch, var(--ui-accent) 60%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+/* ------------------------------------------------------------------ */
+/* Tailor for a role — JD keyword overlap (#91)                        */
+/* ------------------------------------------------------------------ */
+
+/* The disclosure lives in the editor pane beneath the textarea. Default
+   closed; opening it never persists anything (component-state only). */
+.tailor {
+  margin-top: var(--space-3);
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  background: var(--ui-bg);
+  font-size: 0.78rem;
+}
+
+.tailor__summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  color: var(--ui-fg);
+}
+
+.tailor__summary::-webkit-details-marker {
+  display: none;
+}
+
+.tailor__summary:hover {
+  background: var(--ui-bg-elevated);
+}
+
+.tailor__summary:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.tailor__summary-label {
+  flex: 1;
+}
+
+.tailor__summary-chip {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--ui-success) 18%, var(--ui-bg-elevated));
+  color: var(--ui-success);
+  border: 1px solid color-mix(in oklch, var(--ui-success) 35%, transparent);
+}
+
+.tailor__summary-caret {
+  transition: transform 0.18s ease;
+}
+
+.tailor[open] .tailor__summary-caret {
+  transform: rotate(180deg);
+}
+
+.tailor__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-top: 1px solid var(--ui-border);
+}
+
+.tailor__field-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ui-fg-muted);
+  text-transform: uppercase;
+}
+
+.tailor__textarea {
+  width: 100%;
+  min-height: 6.5rem;
+  max-height: 16rem;
+  resize: vertical;
+  /* Pasted job-description prose — serif (#165). The textarea also
+     inherits the `.text-input` primitive which is now serif by default;
+     this rule is explicit because the textarea overrides font-size /
+     line-height locally for the multi-line surface. */
+  font-family: var(--font-serif);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.tailor__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.tailor__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--ui-fg-muted);
+  margin: 0;
+}
+
+.tailor__hint svg {
+  flex-shrink: 0;
+}
+
+.tailor__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+}
+
+.tailor__empty {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px dashed var(--ui-border);
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.tailor__results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tailor__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tailor__section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.tailor__section-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ui-fg);
+}
+
+.tailor__section-count {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ui-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tailor__section-empty {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ui-fg-muted);
+  line-height: 1.5;
+}
+
+.tailor__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tailor__list-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-bg-elevated);
+  color: var(--ui-fg);
+}
+
+.tailor__list--matches .tailor__list-item {
+  border-color: color-mix(in oklch, var(--ui-success) 45%, transparent);
+  color: var(--ui-success);
+  background: color-mix(in oklch, var(--ui-success) 10%, var(--ui-bg-elevated));
+}
+
+.tailor__list--gaps .tailor__list-item {
+  border-color: color-mix(in oklch, var(--ui-warning) 50%, transparent);
+  color: var(--ui-warning);
+  background: color-mix(in oklch, var(--ui-warning) 10%, var(--ui-bg-elevated));
+}
+
+.tailor__list-term {
+  font-weight: 500;
+}
+
+.tailor__list-count {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+/* Per-category breakdown chip (#116). Compact `Tech 5/12 · Soft 3/8`
+   text under the disclosure's main hit-rate chip. #165 mono sweep
+   splits the chip into name + count spans: the category NAME (Tech,
+   Soft, Domain) is a serif label; the matched/total READOUT keeps mono
+   tabular numerals so the counts align vertically across rows. */
+.tailor__category-chip {
+  margin: 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  color: var(--ui-fg-muted);
+}
+
+.tailor__category-chip-sep {
+  color: var(--ui-fg-subtle);
+}
+
+.tailor__category-chip-label {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  color: var(--ui-fg);
+}
+
+.tailor__category-chip-count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Per-category collapsible group (#116). One `<details>` per non-empty
+   bucket; the chrome is intentionally lighter than the outer `.tailor`
+   disclosure — these are sub-disclosures inside an already-open panel,
+   not a top-level affordance. */
+.tailor__group {
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--ui-bg) 60%, var(--ui-bg-elevated));
+}
+
+.tailor__group-summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ui-fg);
+}
+
+.tailor__group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.tailor__group-summary:hover {
+  background: var(--ui-bg-elevated);
+}
+
+.tailor__group-summary:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.tailor__group-label {
+  flex: 1;
+}
+
+.tailor__group-count {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ui-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tailor__group-caret {
+  transition: transform 0.18s ease;
+  color: var(--ui-fg-muted);
+  transform: rotate(-90deg);
+}
+
+.tailor__group[open] .tailor__group-caret {
+  transform: rotate(0deg);
+}
+
+.tailor__group-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-top: 1px solid var(--ui-border);
+}
+
+/* The mark element painted onto the rendered resume preview when a JD
+   match is found. Subtle green underline + slightly tinted background so
+   the highlight reads as "annotated" rather than "selected". Stays
+   theme-aware via color-mix on --ui-success. Print-hidden because the
+   tailoring overlay is an authoring aid, not a publication artifact. */
+.tailor-match {
+  background: color-mix(in oklch, var(--ui-success) 14%, transparent);
+  color: inherit;
+  border-bottom: 2px solid color-mix(in oklch, var(--ui-success) 70%, transparent);
+  border-radius: 2px;
+  padding: 0 0.05em;
+  /* Bullets that wrap retain a continuous underline across the wrap. */
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+@media print {
+  .tailor-match {
+    background: transparent;
+    border-bottom: 0;
+    padding: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Settings drawer (#128)                                              */
+/*                                                                     */
+/* Right-anchored modal drawer hosting low-frequency controls (ATS,    */
+/* draft toggle, clear workspace, snapshots, theme nav, help legend).  */
+/* Same modal contract as KeyboardHelp / ExampleDialog: dimmed overlay,*/
+/* focus trap inside the panel, Esc + click-outside close.             */
+/* ------------------------------------------------------------------ */
+
+.settings-drawer__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(38, 26, 14, 0.42);
+  animation: kbd-help-fade 140ms ease-out;
+}
+
+@keyframes settings-drawer-slide {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.settings-drawer {
+  display: flex;
+  flex-direction: column;
+  width: min(28rem, 100vw);
+  max-height: 100vh;
+  background: var(--ui-bg-elevated);
+  border-left: 1px solid var(--ui-border-strong);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+  animation: settings-drawer-slide 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (max-width: 640px) {
+  .settings-drawer {
+    width: 100vw;
+    border-left: 0;
+  }
+}
+
+.settings-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.settings-drawer__title {
+  /* Editorial-shift (#163): the drawer's H2 is prose, so it reads in
+     the serif display register. Group titles below stay mono via the
+     `.section-kicker` mixin — those are categorical labels. */
+  font-family: var(--font-serif);
+  font-size: 1.18rem;
+  font-weight: 700;
+  color: var(--ui-fg);
+}
+
+.settings-drawer__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.settings-drawer__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings-drawer__group-title {
+  /* .section-kicker provides tone; this rule just adjusts the spacing
+     beneath the kicker so the group body reads as belonging to it. */
+  margin-bottom: var(--space-1);
+}
+
+.settings-drawer__group-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+}
+
+.settings-drawer__toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.settings-drawer__toggle input {
+  margin-top: 0.25rem;
+  flex-shrink: 0;
+}
+
+.settings-drawer__toggle-name {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--ui-fg);
+}
+
+.settings-drawer__toggle-hint {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: 0.74rem;
+  line-height: 1.55;
+  color: var(--ui-fg-muted);
+}
+
+.settings-drawer__danger-btn {
+  align-self: flex-start;
+  color: var(--ui-danger);
+  border-color: var(--ui-border-strong);
+}
+
+.settings-drawer__danger-btn:hover {
+  color: var(--ui-fg);
+  background: color-mix(in oklch, var(--ui-danger) 22%, var(--ui-panel));
+  border-color: var(--ui-danger);
+}
+
+.settings-drawer__empty {
+  font-size: 0.8rem;
+  color: var(--ui-fg-muted);
+  line-height: 1.55;
+}
+
+.settings-drawer__empty strong {
+  color: var(--ui-fg);
+}
+
+.settings-drawer__theme-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.settings-drawer__hint {
+  font-size: 0.74rem;
+  color: var(--ui-fg-muted);
+}
+
+.settings-drawer__hint kbd {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 0.08rem 0.34rem;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg);
+}
+
+.settings-drawer__shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.settings-drawer__shortcut-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.settings-drawer__shortcut-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-drawer__shortcut-keys {
+  flex-shrink: 0;
+  width: 5rem;
+}
+
+.settings-drawer__shortcut-keys kbd {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 0.1rem 0.4rem;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg);
+}
+
+.settings-drawer__shortcut-sep {
+  display: inline-block;
+  width: 0.2rem;
+}
+
+.settings-drawer__shortcut-label {
+  font-size: 0.82rem;
+  color: var(--ui-fg);
+}
+
+.settings-drawer__shortcuts-off {
+  font-size: 0.74rem;
+  color: var(--ui-fg-subtle);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+}
+
+.settings-drawer__shortcuts-off kbd {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 0.08rem 0.34rem;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ui-fg);
+}
+
+.settings-drawer__about {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--ui-border);
+  font-size: 0.76rem;
+  color: var(--ui-fg-muted);
+  line-height: 1.55;
 }
 
 .display-contents { display: contents; }

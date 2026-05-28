@@ -16,32 +16,37 @@
 
 @media print {
   /* --------------------------------------------------------------
-   * Hide all app chrome — print only the resume document.
+   * Collapse the workbench framing so the resume fills the page.
+   *
+   * IMPORTANT (#79): the previous version targeted the unmodified
+   * `.studio__pane` here, which has the same specificity as the
+   * `.studio__pane--editor` hide rule below — and came LATER in source
+   * order, so `display: block` won and the editor pane reappeared,
+   * leaking the uploader bar, the draft-toggle card, and the textarea
+   * onto page 1 of every printed PDF. We now neutralize ONLY the
+   * preview pane's chrome. The editor pane is hidden outright by the
+   * `display: none` rule further down.
    * ------------------------------------------------------------ */
-  .app-header,
-  .privacy-notice,
-  .studio__toolbar,
-  .studio__shortcuts,
-  .skip-link,
-  .editor,
-  [data-print-hide],
-  .studio__pane--editor {
-    display: none !important;
-  }
-
-  /* Collapse the workbench framing so the resume fills the page. */
   html,
   body {
     background: #fff;
     margin: 0;
+    /* Visible page margins now come from `@page { margin: 0.6in }` below
+       (#133). Body padding was a #106-era workaround so the themed body bg
+       could reach the page edges, but it only paints once at body's actual
+       top/bottom — multi-page resumes lost the top/bottom margin on every
+       page after page 1. The themed bleed is preserved by `html { background }`
+       lower down, which paints across the @page margin area on modern
+       browsers (the canvas root background covers the entire page surface,
+       including the @page margin region). */
     padding: 0;
   }
 
   .app-shell,
   .studio,
   .studio__split,
-  .studio__pane,
-  .studio__pane-body,
+  .studio__pane--preview,
+  .studio__pane--preview .studio__pane-body,
   .preview-frame {
     display: block !important;
     max-width: none !important;
@@ -53,14 +58,98 @@
     overflow: visible !important;
   }
 
-  .studio__pane-header {
+  /* --------------------------------------------------------------
+   * Hide all app chrome — print only the resume document.
+   *
+   * Listed AFTER the framing-reset block above so the `display: none`
+   * declarations always win at equal specificity, no matter what
+   * elements end up matching both rules.
+   * ------------------------------------------------------------ */
+  .app-header,
+  .app-footer,
+  .privacy-notice,
+  .studio__toolbar,
+  .studio__statusline,
+  .studio__pane-header,
+  .skip-link,
+  .editor,
+  [data-print-hide],
+  .studio__pane--editor,
+  .studio__draft-toggle,
+  .uploader,
+  .toast,
+  .kbd-help__overlay {
     display: none !important;
   }
 
-  /* Letter-size friendly margins. */
+  /* Letter-size pages with the visible content margin on @page itself, so
+     every page (1, 2, 3, …) gets identical top/bottom/left/right insets.
+     The previous setup (#106) tried to put the margin on `body { padding }`
+     to let the themed bg bleed to the page edges, but body padding only
+     paints once — page 2+ ended up with content flush to the edge (#133).
+     We now lean on `html { background }` for the theme bleed (the canvas
+     root paints across the @page margin area on modern browsers). */
   @page {
     size: letter;
     margin: 0.6in;
+  }
+
+  /* --------------------------------------------------------------
+   * Multi-page footer (#109) — "Page X of Y" in the bottom-right
+   * margin box for conservative print mode only.
+   *
+   * Design choices, all driven by the constraint that `@page` rules
+   * are document-scoped (not selector-scoped), so we cannot key the
+   * footer directly off `body[data-print-mode]`:
+   *
+   *   1. Suppress on page 1 via `@page :first`. CSS cannot read the
+   *      value of `counter(pages)` conditionally, so we cannot say
+   *      "hide on single-page resumes only". The next best thing is
+   *      to omit page 1's footer ALWAYS — which means a one-page
+   *      resume shows no footer at all (the desired outcome), and a
+   *      multi-page resume starts numbering at "Page 2 of N". That
+   *      reads cleanly and avoids a useless "1 / 1" on the common case.
+   *
+   *   2. Honor theme print mode by routing the footer text through a
+   *      custom property defined at the document root. Theme mode
+   *      sets it to the empty string; conservative mode (the default)
+   *      sets it to the full "Page X of Y" expression. `@page` margin
+   *      boxes inherit custom properties from the document root, so
+   *      this cleanly toggles the footer without duplicating the rule.
+   *
+   *   3. Use `html:has(body[data-print-mode='theme'])` to detect the
+   *      theme-mode body attribute from the root element, since the
+   *      app writes the attribute on `<body>` but `@page` only reads
+   *      properties cascaded from the root.
+   * ------------------------------------------------------------ */
+  :root {
+    --print-page-footer: 'Page ' counter(page) ' of ' counter(pages);
+  }
+
+  /* Theme print mode suppresses the footer — the theme has its own
+     visual identity and the page-counter would clutter it. */
+  html:has(body[data-print-mode='theme']) {
+    --print-page-footer: '';
+  }
+
+  @page {
+    @bottom-right {
+      content: var(--print-page-footer);
+      font: 10pt 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif;
+      color: rgb(0 0 0 / 0.6);
+      /* Pull the footer in from the page edge so it sits inside the
+         body's 0.6in padding visually, matching the resume's margin. */
+      padding: 0 0.6in 0.4in 0;
+    }
+  }
+
+  /* Suppress the footer on page 1 always — a single-page resume needs no
+     "1 / 1" footer, and a multi-page resume reads more naturally starting
+     at "Page 2 of N" than "Page 1 of N" on the cover page. */
+  @page :first {
+    @bottom-right {
+      content: none;
+    }
   }
 
   /* --------------------------------------------------------------
@@ -75,8 +164,16 @@
     box-shadow: none !important;
     /* Pin the document typeface so printed / exported PDFs are faithful. */
     font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif;
-    font-size: 11pt;
-    line-height: 1.45;
+    /* Print font-size is driven by resume.css's `calc(11pt + var(...))` rule
+       so the A−/A+ shift (#186) flows through to the printed PDF and to the
+       standalone-HTML export. We previously hard-pinned `font-size: 11pt`
+       here, which won the cascade and silently ignored the shift. */
+    /* Proposal 2 (#184): 1.45 → 1.55. One notch more breathing room in
+       print, closer to a premium document's body setting. Screen body
+       line-height stays at 1.6 (already at the target — see resume.css).
+       Print correctness preserved: this rule still wins the cascade
+       because it lives in print.css's @media print scope. */
+    line-height: 1.55;
   }
 
   /* Clean page breaks. */
@@ -119,6 +216,17 @@
     background: none !important;
   }
 
+  /* Italic body emphasis (#113). A saturated theme (e.g. popping-and-locking)
+     derives its `em` color from a low-chroma OKLCH var that's meant to sit on
+     the theme's dark background. When conservative print flips the background
+     to white, that muted hue falls below WCAG AA (3.46:1 on the offender).
+     Clamp em/i to the same secondary-text shade other conservative rules use
+     (#222 → ~16:1 on white, well clear of AA). Keep them visually distinct from
+     body text — italic styling carries the emphasis; color doesn't have to. */
+  body:not([data-print-mode='theme']) .resume-preview :is(em, i) {
+    color: #222 !important;
+  }
+
   body:not([data-print-mode='theme']) .resume-preview h2 {
     border-bottom-color: #000 !important;
   }
@@ -159,11 +267,155 @@
   }
 
   /* --------------------------------------------------------------
-   * THEME mode — print with the active theme colors. The resume
-   * already consumes --resume-* vars, so we only need to ask the
-   * browser to actually print background colors.
+   * CONSERVATIVE × `modern` layout (#81)
+   *
+   * The `[data-template='modern']` overlay in resume.css restyles
+   * headings, the role/date stub, and the contact identity with a
+   * designer's-CV palette: monospaced section labels in ALL-CAPS,
+   * wide letter-spacing, mono on the role line, accent color on H3.
+   * Those overlays use higher specificity than `.resume-preview`,
+   * so the `font-family` we pin above at the document level does
+   * not reach the per-element selectors — a conservative print of
+   * a modern-layout resume came out with MONO UPPERCASE section
+   * headings instead of the ATS-plain serif this mode is meant to
+   * produce.
+   *
+   * The intent of conservative print mode is ATS-plain regardless
+   * of the on-screen layout. Theme print mode (handled below) keeps
+   * modern's distinctive look — that is by design and is not touched.
+   *
+   * Properties the modern overlay sets, and what we reset them to:
+   *
+   *   h1                     font-size, letter-spacing
+   *                          → defer to the document-level reset; we
+   *                            only need to neutralize letter-spacing
+   *                            so the identity reads sentence-natural.
+   *
+   *   h2                     margin-top/bottom, padding-bottom,
+   *                          border-bottom, font-family (mono),
+   *                          font-size, font-weight, letter-spacing,
+   *                          text-transform (uppercase), color (muted)
+   *                          → font-family back to the serif stack,
+   *                            text-transform: none, letter-spacing: 0,
+   *                            color: #000, border-bottom-color: #000.
+   *                            Sizes / margins stay at whatever modern
+   *                            asked for — they do not break ATS.
+   *
+   *   h3                     font-size, margins, color (accent),
+   *                          font-weight
+   *                          → color: #000. Sizes/weight harmless.
+   *
+   *   h3 + p em, h4 + p em   font-family (mono), font-size,
+   *                          letter-spacing, text-transform (uppercase),
+   *                          color (muted)
+   *                          → font-family inherit (serif), text-transform: none,
+   *                            letter-spacing: 0, color #222 (the same
+   *                            quiet-but-readable shade other conservative
+   *                            rules use for secondary text).
+   *
+   *   .resume-preview__contact
+   *                          border-bottom-width/-color
+   *                          → border-color #000 (matches the
+   *                            existing conservative contact rule).
+   *
+   *   .resume-preview__contact-name
+   *                          font-size, letter-spacing
+   *                          → letter-spacing 0; size is harmless.
+   *
+   *   .resume-preview__contact-role
+   *                          font-family (mono), font-size,
+   *                          letter-spacing, text-transform (uppercase),
+   *                          color (muted)
+   *                          → font-family inherit (serif),
+   *                            text-transform: none, letter-spacing: 0,
+   *                            color #222.
+   *
+   * The modern overlay uses no `!important`, but its selectors have
+   * higher specificity than the document-level `.resume-preview` rule
+   * we already pin. We use `!important` here for the same reason the
+   * other conservative-mode rules above do: to defeat the layout
+   * overlay unambiguously and survive future overlay additions.
    * ------------------------------------------------------------ */
+  body:not([data-print-mode='theme']) .resume-preview[data-template='modern'] :is(h1, h2, h3, h4) {
+    font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme']) .resume-preview[data-template='modern'] h2 {
+    border-bottom-color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview[data-template='modern']
+    :is(h3 + p em, h4 + p em) {
+    font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    color: #222 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview[data-template='modern']
+    .resume-preview__contact {
+    border-bottom-color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview[data-template='modern']
+    .resume-preview__contact-name {
+    letter-spacing: 0 !important;
+    color: #000 !important;
+  }
+
+  body:not([data-print-mode='theme'])
+    .resume-preview[data-template='modern']
+    .resume-preview__contact-role {
+    font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    color: #222 !important;
+  }
+
+  /* --------------------------------------------------------------
+   * THEME mode — print with the active theme colors. The resume
+   * already consumes --resume-* vars; we ask the browser to actually
+   * print background colors AND extend the themed background to the
+   * page edges. Pair: @page { margin: 0 } above + the body's 0.6in
+   * padding becomes the themed-margin frame around the resume (#106).
+   * ------------------------------------------------------------ */
+  /* The PAGE background — html element's own bg, visible in the 0.6in
+     padding zone outside `body`. Both html and body carry the same
+     `padding: 0.6in` above (it provides the printed margin frame), so
+     body's themed bg only fills the inner area; the surrounding strip
+     is painted by html. Without this rule that strip prints as the
+     default #fff, producing a white frame around themed content (#125
+     follow-up to #123 — caught by tests/e2e/downloads.spec.ts's
+     corner-pixel sampling). The `:has()` selector lets a body attribute
+     reach the html element; this is the same pattern the @page footer
+     suppression uses above. */
+  html:has(body[data-print-mode='theme']) {
+    background: var(--resume-bg) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body[data-print-mode='theme'] {
+    background: var(--resume-bg) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   body[data-print-mode='theme'] .resume-preview {
+    /* Match the body's --resume-bg so the printed page is uniform (#123).
+       On screen the resume sits on a slightly different --resume-card shade
+       to lift the document off the app shell; in print the page IS the
+       document, so the card accent becomes a visible page-to-card gradient
+       (most obvious on light themes where --resume-card is darker than
+       --resume-bg). Repaint to the body's bg here. Conservative mode is
+       unaffected — it explicitly forces white on both. */
+    background: var(--resume-bg) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }

@@ -1,0 +1,55 @@
+# Performance budget gate.
+#
+# Runs `size-limit` against the built `dist/_astro/*.js` chunks on every PR
+# and every push to `main`. Fails the job if any of the configured caps in
+# `.size-limit.cjs` are exceeded so an accidental bundle blow-up never
+# lands silently.
+#
+# Caps are tuned per-chunk (eager vs. lazy-loaded) -- see `.size-limit.cjs`
+# for the rationale. To raise a cap, edit that file and explain why in the
+# commit message.
+name: Performance budget
+
+on:
+  # Manual rerun via the Actions UI or `gh workflow run` — added in #182.
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel an older in-flight run for the same ref when a new commit lands.
+concurrency:
+  group: perf-budget-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  size-limit:
+    name: size-limit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        # Read the Node version from `package.json` (`engines.node` =
+        # `>=22.12.0`) so this workflow can never drift from the project's
+        # declared runtime. Matches the deploy + e2e workflows.
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: 'package.json'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the static site
+        run: npm run build
+
+      - name: Check bundle size budget
+        # Reads `.size-limit.cjs`, walks the hashed-filename globs, and exits
+        # non-zero if any of the per-chunk caps are exceeded.
+        run: npx size-limit

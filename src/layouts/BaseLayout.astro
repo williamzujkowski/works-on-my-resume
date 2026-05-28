@@ -9,6 +9,7 @@
  * no third-party scripts, and no network calls that carry resume content.
  */
 import '../styles/global.css';
+import AppFooter from '../components/AppFooter.astro';
 
 interface Props {
   title?: string;
@@ -30,14 +31,20 @@ const base = import.meta.env.BASE_URL;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
 
-    <!--
-      Content Security Policy. The site is static and local-first: resume
-      content is parsed and sanitized (DOMPurify) entirely in the browser
-      and is never transmitted. img-src allows data:/blob: but no remote
-      hosts, so a malicious resume cannot beacon out via an <img>.
-      'unsafe-inline' is currently required for Astro's island hydration
-      scripts and for the theme picker's dynamic per-theme swatch colors;
-      tightening this to hashes is tracked in issue #38.
+    {
+      /*
+      Content Security Policy is now emitted by Astro itself (#38).
+      `security.csp` in `astro.config.mjs` lists the non-script/style
+      directives; Astro builds `script-src` / `style-src` from the SHA-256
+      hashes it computes for every inline <script> and <style> it emits
+      (island hydration glue, scoped component CSS). The page therefore
+      ships without `'unsafe-inline'` on either directive.
+
+      Dynamic per-theme swatch colors used to require `style-src
+      'unsafe-inline'`; the components now write those colors via the CSSOM
+      (`el.style.setProperty(...)`) in a `useLayoutEffect`. CSSOM mutations
+      from script are governed by `script-src`, not `style-src`, so they
+      bypass the inline-style restriction entirely.
 
       connect-src exception — `https://api.github.com` (#33):
       A single, deliberate allowance so the user-initiated "Import from
@@ -63,5 +70,6 @@ const base = import.meta.env.BASE_URL;
   </head>
   <body>
     <slot />
+    <AppFooter />
   </body>
 </html>

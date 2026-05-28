@@ -1,25 +1,22 @@
 /**
- * ThemeControls — previous / next / random theme buttons, the current theme
- * name with dark/light + contrast indicators, and a "Copy theme link" button.
+ * ThemeControls — previous / next / random theme buttons.
  *
- * The copied link carries ONLY the theme slug — never resume content — which
- * is the entire reason `?theme=` exists.
+ * Originally also hosted the dark/light + WCAG contrast chips and the
+ * "Copy theme link" button, but #112 collapsed those out of the toolbar:
+ *   - The WCAG badge is now shown ONCE, in the preview pane header (#88),
+ *     so the user has a single canonical conformance signal rather than
+ *     two competing ones.
+ *   - "Copy theme link" moved into the Export popover, where it sits
+ *     alongside the other "give someone a copy of this look" actions —
+ *     it was always a low-frequency control and didn't deserve toolbar
+ *     real estate.
+ *
+ * What's left is the segmented prev / next / random cluster — the rapid-
+ * fire stepping affordance that pairs with the ← / → / r keyboard
+ * shortcuts.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ResumeTheme } from '../types';
-import { RESUME_SAFE_MIN_CONTRAST } from '../types';
 import Icon from './Icon';
-
-/**
- * Map a WCAG contrast ratio to its conformance level for normal-size text.
- * AAA ≥ 7:1, AA ≥ 4.5:1, otherwise it fails AA. Used to label contrast
- * figures so a reader understands what a number like "15.8:1" means.
- */
-function wcagLevel(ratio: number): 'AAA' | 'AA' | 'fails AA' {
-  if (ratio >= 7) return 'AAA';
-  if (ratio >= 4.5) return 'AA';
-  return 'fails AA';
-}
 
 interface ThemeControlsProps {
   current: ResumeTheme;
@@ -29,49 +26,14 @@ interface ThemeControlsProps {
 }
 
 export default function ThemeControls({
-  current,
+  // current is unused now that the chips have been removed (#112), but the
+  // prop stays so callers don't lose the contract — and so a future
+  // re-introduction of a per-theme affordance can land without a churned API.
+  current: _current,
   onPrevious,
   onNext,
   onRandom,
 }: ThemeControlsProps) {
-  const [copied, setCopied] = useState(false);
-  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (copyTimer.current) clearTimeout(copyTimer.current);
-    };
-  }, []);
-
-  /** Copy a theme-only link to the clipboard, with brief confirmation. */
-  const copyThemeLink = useCallback(async () => {
-    const url = `${location.origin}${location.pathname}?theme=${current.slug}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      if (copyTimer.current) clearTimeout(copyTimer.current);
-      copyTimer.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard API unavailable or denied — fall back to a prompt so the
-      // user can still copy the link manually.
-      window.prompt('Copy this theme link:', url);
-    }
-  }, [current.slug]);
-
-  const bodyContrast = current.contrastRatio.toFixed(1);
-  const accentContrast = current.contrast.accentOnBg.toFixed(1);
-  const isSafe = current.contrastRatio >= RESUME_SAFE_MIN_CONTRAST;
-  const bodyLevel = wcagLevel(current.contrastRatio);
-  const accentLevel = wcagLevel(current.contrast.accentOnBg);
-
-  /* Full sentences used for both the visual `title` tooltip and the
-     `aria-label`, so the bare "15.8:1" figure is never the only context a
-     reader (sighted or screen-reader) gets. */
-  const bodyLabel = `Body text contrast ${bodyContrast}:1 — WCAG ${bodyLevel}${
-    isSafe ? '' : ', below the resume-safe threshold'
-  }`;
-  const accentLabel = `Accent contrast ${accentContrast}:1 — WCAG ${accentLevel}`;
-
   return (
     <div className="theme-controls">
       <div className="theme-controls__nav" role="group" aria-label="Step through themes">

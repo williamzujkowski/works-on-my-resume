@@ -14,7 +14,12 @@
  * preference starts at its default (true).
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, loadSampleResume } from './helpers';
+import {
+  clearAppStorage,
+  expandMobileEditor,
+  loadSampleResume,
+  waitForThemesReady,
+} from './helpers';
 
 /** Read the document-level CSS var so a "theme changed" assertion is honest. */
 async function readBgVar(page: import('@playwright/test').Page): Promise<string> {
@@ -27,6 +32,12 @@ test.beforeEach(async ({ page }) => {
   await clearAppStorage(page);
   await page.goto('');
   await loadSampleResume(page);
+  // After #80 the theme dataset loads lazily on idle. Several tests below
+  // snapshot `--resume-bg` and assert it does NOT change — but if the
+  // dataset's post-load re-resolve fires mid-test (swapping the boot
+  // fallback for a curated light theme), the snapshot would flip. Wait for
+  // the dataset to be in place before anyone reads CSS variables.
+  await waitForThemesReady(page);
   // Move focus to the document body via the skip-link sink — body is
   // non-editable, so global shortcuts are eligible to fire and the keydown's
   // `event.target` is not a button that might intercept Escape itself.
@@ -37,6 +48,7 @@ test.beforeEach(async ({ page }) => {
 
 test('? opens the help dialog, Escape closes it and restores focus to the help trigger', async ({
   page,
+  isMobile,
 }) => {
   await page.keyboard.press('?');
   const dialog = page.getByRole('dialog', { name: /keyboard shortcuts/i });
@@ -46,20 +58,26 @@ test('? opens the help dialog, Escape closes it and restores focus to the help t
 
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
-  // ResumeStudio restores focus to its `helpTriggerRef` — the icon-only
-  // "Keyboard shortcuts" button in the toolbar — on close. That is the
-  // documented contract regardless of who pressed `?`.
-  await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeFocused();
+  // After the #128 consolidation the dedicated "Keyboard shortcuts"
+  // toolbar icon is gone — the dialog opens either from inside the
+  // Settings drawer or via the global `?` shortcut. Focus restore falls
+  // back to the Settings gear, the closest sensible target — when it is
+  // visible. On mobile (#131) the gear collapses behind the More menu,
+  // so the focus restore is best-effort: the dialog is gone and the
+  // user is back on the toolbar's keyboard-accessible surface.
+  if (isMobile !== true) {
+    await expect(page.getByRole('button', { name: /open settings/i })).toBeFocused();
+  }
 });
 
 test('with single-key shortcuts disabled, r does NOT shuffle the theme', async ({ page }) => {
-  // Open the help dialog, uncheck the master toggle, close.
-  await page.getByRole('button', { name: /all shortcuts/i }).click();
+  // Open the help dialog via the `?` keyboard shortcut, uncheck the master
+  // toggle, close. The legacy "All shortcuts" chip was absorbed into the
+  // Settings drawer's Help section (#128); the dialog is still the
+  // canonical entry point for the master toggle.
+  await page.keyboard.press('?');
   await page.getByRole('checkbox', { name: /single-key shortcuts enabled/i }).uncheck();
   await page.keyboard.press('Escape');
-
-  // Confirm the legend reflects the off state — discoverable signal #1.
-  await expect(page.getByText(/single-key shortcuts are off/i)).toBeVisible();
 
   const before = await readBgVar(page);
 
@@ -84,11 +102,17 @@ test('arrow keys shuffle the theme when shortcuts are enabled and focus is non-e
      of the dataset; stepping forward lands on something different. */
   await page.goto('?theme=dracula');
   await loadSampleResume(page);
+  // The dataset is lazy-loaded on idle (#80); wait until it's in place
+  // before asserting that the URL slug has been resolved to a real theme.
+  await waitForThemesReady(page);
   await expect(page.locator('.theme-picker__trigger-name').first()).toHaveText('Dracula');
 
   // Park focus on a non-editable, focusable element so `event.target` in the
-  // global keydown handler is definitely outside any text field.
-  await page.getByRole('button', { name: /random theme/i }).focus();
+  // global keydown handler is definitely outside any text field. #128: the
+  // Random theme button moved into the Settings drawer; the Save-as-PDF
+  // button is a stable always-visible toolbar peer that serves the same
+  // role for parking focus here.
+  await page.getByRole('button', { name: /^save as pdf$/i }).focus();
 
   const beforeName = await page.locator('.theme-picker__trigger-name').first().textContent();
   const beforeBg = await readBgVar(page);
@@ -105,6 +129,10 @@ test('arrow keys shuffle the theme when shortcuts are enabled and focus is non-e
 
 test('arrow keys do NOT shuffle the theme when focus is in the editor', async ({ page }) => {
   const before = await readBgVar(page);
+  // On mobile (#100) the editor pane collapses after a resume loads; the
+  // textarea sits inside the collapsed accordion, so expand it before
+  // trying to park focus there.
+  await expandMobileEditor(page);
   // Park focus in the Markdown source textarea.
   await page.getByLabel(/markdown source/i).click();
   await page.keyboard.press('ArrowRight');

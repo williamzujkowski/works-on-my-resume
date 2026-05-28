@@ -9,7 +9,7 @@
  *  - Provide simple search/filter helpers for the theme picker UI.
  *
  * The resume renderer consumes ONLY the eight semantic tokens in
- * `ResumeThemeTokens` — never raw terminal slots — so any of the ~545
+ * `ResumeThemeTokens` — never raw terminal slots — so any of the ~465
  * terminal themes can drive any resume layout.
  *
  * All DOM/browser access is SSR-safe: every `window`/`document`/`localStorage`
@@ -24,18 +24,33 @@ import {
   type RawThemeColors,
   type ResumeTheme,
   type ResumeThemeContrast,
+  type ResumeThemeTag,
   type ResumeThemeTokens,
 } from '../types';
 import { getStoredThemeSlug } from './storage';
 
-import rawThemesData from '../data/themes.json';
-
-/**
- * The dataset is a ~545-entry literal. A direct `as RawTheme[]` would force
- * TypeScript into a slow deep structural check of the whole literal, so we
- * route through `unknown` — the shape is guaranteed by how it was vendored.
- */
-const rawThemes = rawThemesData as unknown as RawTheme[];
+/* ------------------------------------------------------------------ *
+ * Code-split dataset (#78)                                            *
+ *                                                                     *
+ * `src/data/themes.json` is ~600 kB raw (the largest single asset in  *
+ * the bundle). Statically importing it forced Vite to inline it into  *
+ * the main client chunk, blowing past the 500 kB warning threshold    *
+ * even though the dataset is only needed AFTER the user opens the     *
+ * theme picker. We now load it lazily via a dynamic `import()` so     *
+ * Vite emits it as its own chunk, fetched on demand.                  *
+ *                                                                     *
+ * Loading lifecycle:                                                  *
+ *   1. App boots with no themes loaded; `getAllThemes()` returns just *
+ *      the inline `HARDCODED_FALLBACK` so any sync caller still gets  *
+ *      a legible value.                                               *
+ *   2. `loadAllThemesAsync()` (called by `ResumeStudio` on mount)     *
+ *      fetches the JSON chunk, normalizes every entry through the     *
+ *      same OKLCH math + accent-synthesis + surface-derivation        *
+ *      pipeline used by the sync path, and populates the cache.       *
+ *   3. Subsequent sync calls (`getAllThemes`, `findTheme`,            *
+ *      `getFallbackTheme`, `resolveInitialThemeSlug`) transparently   *
+ *      see the full dataset.                                          *
+ * ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------ */
 /* WCAG contrast math (OKLCH → linear sRGB → relative luminance)        */
@@ -51,7 +66,7 @@ const rawThemes = rawThemesData as unknown as RawTheme[];
  *
  * Relative luminance feeds the WCAG 2.x contrast formula. The math is the
  * standard Björn Ottosson OKLab matrices; validated against the dataset's
- * own `fgOnBg` figures (agreement within ~0.04 across all 545 themes).
+ * own `fgOnBg` figures (agreement within ~0.04 across all 465 themes).
  */
 
 /** A parsed OKLCH color: L in [0,1], C ≥ 0, H in degrees. */
@@ -604,6 +619,97 @@ function deriveSurfaces(bgStr: string, fgStr: string, isDark: boolean): SurfaceT
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Facet-tag derivation (#87)                                          */
+/* ------------------------------------------------------------------ */
+/*
+ * Every normalized theme carries a small, closed-vocabulary `tags` array
+ * (`ResumeThemeTag`). The picker exposes these as composable chips above
+ * its search row: `dark`, `light`, `high-contrast`, `vibrant`, `muted`.
+ *
+ * Each tag is derived purely from data already on the `RawTheme` so we
+ * never duplicate hand-curated metadata for ~465 themes:
+ *
+ *  - `dark` / `light` mirror `RawTheme.isDark`.
+ *  - `high-contrast` fires when body text clears 10:1 on the background —
+ *    a clear WCAG AAA-and-then-some bar that selects the legible end of the
+ *    spectrum without overlapping `resume-safe` (which is the 7:1 toggle).
+ *  - `vibrant` / `muted` look at the *average* chroma of the eight ANSI
+ *    slots, the values that actually drive accent selection. Thresholds
+ *    were tuned against the live dataset (see comment below) so the buckets
+ *    are useful filters rather than near-universal or near-empty labels.
+ *
+ * Computed once during `normalizeTheme` and frozen onto the resulting
+ * `ResumeTheme`; the picker just runs `theme.tags.includes(tag)`.
+ */
+
+/** The eight chromatic ANSI slots that drive accent selection. */
+const ANSI_HUE_SLOTS: readonly (keyof RawThemeColors)[] = [
+  'black',
+  'red',
+  'green',
+  'yellow',
+  'blue',
+  'purple',
+  'cyan',
+  'white',
+];
+
+/**
+ * WCAG ratio at which body text is considered comfortably legible — well
+ * beyond `RESUME_SAFE_MIN_CONTRAST` (7:1). Chosen so the chip is meaningful
+ * even after the resume-safe toggle is on: most resume-safe themes are not
+ * also high-contrast, so the chip narrows the list further.
+ */
+const HIGH_CONTRAST_MIN = 10;
+
+/**
+ * Average-ANSI-chroma cutoffs for the palette-character chips. Tuned
+ * against the vendored dataset (#87 spec) so the buckets are useful filters
+ * rather than near-universal or near-empty labels:
+ *
+ *  - `vibrant >= 0.12`  →  ≈34% of themes qualify (target band 25–35%).
+ *    Catches `dracula`, `github-light-default`, `github-dark-default` and
+ *    leaves merely-saturated palettes (`tokyonight` @ 0.106, `catppuccin-
+ *    mocha` @ 0.081) out, which matches how they read on screen.
+ *  - `muted   <  0.04`  →  ≈3% of themes qualify, deliberately a niche bucket
+ *    for near-monochrome palettes (`black-metal-bathory`, the various
+ *    grayscale "paper" themes). Disjoint from `vibrant` by construction.
+ */
+const VIBRANT_AVG_CHROMA_MIN = 0.12;
+const MUTED_AVG_CHROMA_MAX = 0.04;
+
+/**
+ * Mean OKLCH chroma across the eight ANSI hue slots. Slots that fail to
+ * parse contribute zero (and lower the mean) — a deliberate, conservative
+ * choice: an unparseable slot is closer to "no color" than to "very vivid".
+ */
+function averageAnsiChroma(colors: RawThemeColors): number {
+  let sum = 0;
+  for (const slot of ANSI_HUE_SLOTS) {
+    const parsed = parseOklch(colors[slot]);
+    if (parsed) sum += parsed.C;
+  }
+  return sum / ANSI_HUE_SLOTS.length;
+}
+
+/**
+ * Derive the picker's facet-tag array from a raw theme.
+ *
+ * Cheap (one parse per ANSI slot) and pure — fine to call once per theme at
+ * normalization time. Returned as a `readonly` so callers cannot mutate the
+ * canonical theme record.
+ */
+function deriveTags(raw: RawTheme): readonly ResumeThemeTag[] {
+  const tags: ResumeThemeTag[] = [];
+  tags.push(raw.isDark ? 'dark' : 'light');
+  if (raw.contrast.fgOnBg >= HIGH_CONTRAST_MIN) tags.push('high-contrast');
+  const avgChroma = averageAnsiChroma(raw.colors);
+  if (avgChroma >= VIBRANT_AVG_CHROMA_MIN) tags.push('vibrant');
+  else if (avgChroma < MUTED_AVG_CHROMA_MAX) tags.push('muted');
+  return Object.freeze(tags);
+}
+
 /**
  * Normalize one raw terminal theme into resume semantic tokens.
  *
@@ -662,27 +768,69 @@ function normalizeTheme(raw: RawTheme): ResumeTheme {
     // accents are guaranteed ≥ ACCENT_MIN_CONTRAST by construction — so the
     // rule is exactly "is the body text comfortably readable?".
     resumeSafe: contrast.fgOnBg >= RESUME_SAFE_MIN_CONTRAST,
+    // Facet tags for the picker's chip filter (#87) — see `deriveTags`.
+    tags: deriveTags(raw),
   };
 }
 
 /* ------------------------------------------------------------------ */
-/* Memoized normalized dataset                                          */
+/* Memoized normalized dataset (lazy-loaded via dynamic import)        */
 /* ------------------------------------------------------------------ */
 
-/** Lazily-computed, normalized-once cache of every theme. */
+/**
+ * Normalized themes once the dataset has been loaded. `null` until the
+ * dynamic import resolves. Sync callers that need a value before then get
+ * `HARDCODED_FALLBACK` (see `getAllThemes`, `findTheme`, `getFallbackTheme`).
+ */
 let normalizedCache: ResumeTheme[] | null = null;
 
 /** Slug → theme index, built alongside `normalizedCache` for O(1) lookups. */
 let slugIndex: Map<string, ResumeTheme> | null = null;
 
-function ensureNormalized(): ResumeTheme[] {
-  if (normalizedCache && slugIndex) return normalizedCache;
-  const normalized = rawThemes.map(normalizeTheme);
-  const index = new Map<string, ResumeTheme>();
-  for (const theme of normalized) index.set(theme.slug, theme);
-  normalizedCache = normalized;
-  slugIndex = index;
-  return normalized;
+/**
+ * In-flight load promise, so concurrent callers share one fetch rather than
+ * each kicking off their own dynamic import. Resolves to the normalized list.
+ */
+let loadPromise: Promise<ResumeTheme[]> | null = null;
+
+/**
+ * True once the full dataset has been loaded and normalized into the cache.
+ * Drives the picker's "Loading themes…" UX hint.
+ */
+export function themesLoaded(): boolean {
+  return normalizedCache !== null;
+}
+
+/**
+ * Lazily load the full ~465-theme dataset and normalize every entry.
+ *
+ * Returns the cached array on every subsequent call, so it is safe to invoke
+ * repeatedly from React mount effects. The dynamic `import()` triggers Vite
+ * to split `src/data/themes.json` into its own chunk (#78) — the main client
+ * chunk no longer carries the ~600 kB literal.
+ */
+export async function loadAllThemesAsync(): Promise<ResumeTheme[]> {
+  if (normalizedCache) return normalizedCache;
+  if (loadPromise) return loadPromise;
+
+  loadPromise = (async () => {
+    // Dynamic import: Vite emits this JSON as its own asset chunk; the
+    // network round-trip happens once, cached by the browser thereafter.
+    const mod = await import('../data/themes.json');
+    // The dataset is a ~465-entry literal. A direct `as RawTheme[]` would
+    // force TypeScript into a slow deep structural check of the whole
+    // literal, so we route through `unknown` — the shape is guaranteed by
+    // how it was vendored.
+    const rawThemes = mod.default as unknown as RawTheme[];
+    const normalized = rawThemes.map(normalizeTheme);
+    const index = new Map<string, ResumeTheme>();
+    for (const theme of normalized) index.set(theme.slug, theme);
+    normalizedCache = normalized;
+    slugIndex = index;
+    return normalized;
+  })();
+
+  return loadPromise;
 }
 
 /* ------------------------------------------------------------------ */
@@ -716,6 +864,12 @@ const HARDCODED_FALLBACK: ResumeTheme = {
   contrast: { fgOnBg: 12, accentOnBg: 6.4, accent2OnBg: 5.8 },
   accentSynthesized: false,
   resumeSafe: true,
+  // Mirrors the runtime derivation: a light theme with ~12:1 body contrast
+  // and a near-neutral palette qualifies as `high-contrast` but not as
+  // `vibrant` or `muted` (its only chromatic slots are the two accents,
+  // which `deriveTags` doesn't consider — and neither would, given a
+  // `RawTheme` shape for this fallback).
+  tags: Object.freeze(['light', 'high-contrast'] as const),
 };
 
 /* ------------------------------------------------------------------ */
@@ -734,9 +888,9 @@ const HARDCODED_FALLBACK: ResumeTheme = {
  * engine guarantees, but we assert anyway as a defense-in-depth check).
  */
 const CURATED_LIGHT_SLUGS = [
-  'github-light-default', // fgOnBg ≈ 15.8 — measured best-in-class light
+  'flexoki-light', //        fgOnBg ≈ 17.5 — warm paper, restrained ink (#183)
+  'github-light-default', // fgOnBg ≈ 15.8 — recognizable, recruiter-neutral
   'atom-one-light', //       fgOnBg ≈ 13.2
-  'github', //               fgOnBg ≈ 9.7  — recognizable, safe
   'gruvbox-light', //        fgOnBg ≈ 10.2
 ] as const;
 
@@ -746,6 +900,34 @@ const CURATED_DARK_SLUGS = [
   'catppuccin-mocha', //     fgOnBg ≈ 11.3
   'tokyonight', //           fgOnBg ≈ 10.6 — recognizable
 ] as const;
+
+/**
+ * Curated "Starting points" — eight hand-picked themes the writer can land
+ * on in one click from the top of the theme picker (#183).
+ *
+ * Order is editorial, not algorithmic: flexoki-light leads (it is the app's
+ * default), then a near-white, then warm light variants, then a crisp slate,
+ * then accessibility-first pure white, then the recruiter-neutral GitHub
+ * light, and finally a single dark companion. The dark item is intentional —
+ * we do NOT apply a light-only filter to this row.
+ *
+ * Each slug here is verified to exist in `src/data/themes.json`. If a slug
+ * is missing at runtime, the picker silently skips the row (see
+ * `ThemePicker.tsx`) rather than rendering a broken swatch.
+ */
+export const CURATED_STARTING_POINTS: ReadonlyArray<{
+  readonly slug: string;
+  readonly caption: string;
+}> = Object.freeze([
+  { slug: 'flexoki-light', caption: 'Warm paper. Default.' },
+  { slug: 'alabaster', caption: 'Near-white, quiet.' },
+  { slug: 'claude-light', caption: 'Warm cream with brick accents.' },
+  { slug: 'pierre-light', caption: "A designer's quiet light." },
+  { slug: 'tailwind-slate-light', caption: 'Crisp modern slate.' },
+  { slug: 'modus-operandi', caption: 'Pure-white, accessibility-first.' },
+  { slug: 'github-light-default', caption: 'Recruiter-neutral.' },
+  { slug: 'flexoki-dark', caption: 'Dark companion.' },
+]);
 
 /**
  * True when a normalized theme passes every contrast check we care about:
@@ -764,15 +946,30 @@ function passesContrastChecks(theme: ResumeTheme): boolean {
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
-/** Every theme, normalized into resume tokens. Computed once, then cached. */
+/**
+ * Every theme that is currently loaded, normalized into resume tokens.
+ *
+ * Synchronous, so it returns whatever the engine has on hand RIGHT NOW:
+ *  - Before the dynamic import resolves: a single-element array holding
+ *    `HARDCODED_FALLBACK`, so any consumer that iterates over the array
+ *    still has a usable theme to display.
+ *  - After `loadAllThemesAsync()` resolves: the full ~465 normalized themes.
+ *
+ * Callers that genuinely need the full dataset should call
+ * `loadAllThemesAsync()` (and gate UX on `themesLoaded()`).
+ */
 export function getAllThemes(): ResumeTheme[] {
-  return ensureNormalized();
+  return normalizedCache ?? [HARDCODED_FALLBACK];
 }
 
-/** Look up a single theme by slug. `undefined` when no such slug exists. */
+/**
+ * Look up a single theme by slug. `undefined` when no such slug exists in
+ * the currently-loaded set (i.e. before `loadAllThemesAsync()` resolves,
+ * only `HARDCODED_FALLBACK`'s slug is findable).
+ */
 export function findTheme(slug: string): ResumeTheme | undefined {
-  ensureNormalized();
-  return slugIndex?.get(slug);
+  if (slugIndex) return slugIndex.get(slug);
+  return slug === HARDCODED_FALLBACK.slug ? HARDCODED_FALLBACK : undefined;
 }
 
 /**
@@ -790,12 +987,20 @@ export function findTheme(slug: string): ResumeTheme | undefined {
  * @param prefersDark When true, return a dark theme; otherwise a light one.
  */
 export function getFallbackTheme(prefersDark = false): ResumeTheme {
-  const themes = ensureNormalized();
+  // Dataset not yet loaded → the inline hardcoded theme is the only value
+  // we can return synchronously. It is a light, high-contrast neutral, so
+  // even a user who asked for dark gets a legible first paint; the real
+  // resolved theme swaps in once `loadAllThemesAsync()` finishes.
+  if (!normalizedCache || !slugIndex) {
+    return HARDCODED_FALLBACK;
+  }
+
+  const themes = normalizedCache;
 
   // 1. First curated slug that both exists and passes contrast verification.
   const curated = prefersDark ? CURATED_DARK_SLUGS : CURATED_LIGHT_SLUGS;
   for (const slug of curated) {
-    const theme = slugIndex?.get(slug);
+    const theme = slugIndex.get(slug);
     if (theme && theme.isDark === prefersDark && passesContrastChecks(theme)) {
       return theme;
     }
@@ -834,14 +1039,28 @@ export function getFallbackTheme(prefersDark = false): ResumeTheme {
  * resolves purely against the dataset's curated light fallback.
  */
 export function resolveInitialThemeSlug(): string {
-  ensureNormalized();
+  // URL > storage > curated light fallback. Before the dataset is loaded
+  // we still HONOR the URL / stored slug as the user's expressed intent —
+  // the slug is a primitive, not a theme object — so the caller (which
+  // awaits `loadAllThemesAsync()` and then resolves the slug to a real
+  // `ResumeTheme`) reapplies the requested theme as soon as it's available.
 
-  // 1. URL parameter.
+  // 1. URL parameter — honored verbatim (validated against the dataset
+  //    when the dataset is here; otherwise trusted as the user's intent).
   if (typeof window !== 'undefined' && window.location?.search) {
     try {
       const params = new URLSearchParams(window.location.search);
       const urlSlug = params.get('theme');
-      if (urlSlug && slugIndex?.has(urlSlug)) return urlSlug;
+      if (urlSlug) {
+        if (slugIndex) {
+          if (slugIndex.has(urlSlug)) return urlSlug;
+          // Dataset loaded but the slug is unknown → fall through to storage.
+        } else {
+          // Dataset not yet loaded: trust the URL. The caller validates
+          // post-load and falls back if the slug turns out to be bogus.
+          return urlSlug;
+        }
+      }
     } catch {
       /* malformed query string — ignore and continue */
     }
@@ -849,10 +1068,17 @@ export function resolveInitialThemeSlug(): string {
 
   // 2. Stored preference (this is where a deliberate dark choice persists).
   const stored = getStoredThemeSlug();
-  if (stored && slugIndex?.has(stored)) return stored;
+  if (stored) {
+    if (slugIndex) {
+      if (slugIndex.has(stored)) return stored;
+    } else {
+      return stored;
+    }
+  }
 
   // 3. No signal at all → always a curated light theme, regardless of the
-  //    OS color-scheme preference.
+  //    OS color-scheme preference. Falls back to HARDCODED_FALLBACK's slug
+  //    when the dataset hasn't loaded yet.
   return getFallbackTheme(false).slug;
 }
 
@@ -890,20 +1116,42 @@ export function themeCssVariables(theme: ResumeTheme): string {
 }
 
 /**
- * Filter a list of themes by a free-text query.
+ * Filter a list of themes by a free-text query and an optional set of facet
+ * tags (#87).
  *
- * Case-insensitive substring match against both `name` and `slug`. An empty
- * (or whitespace-only) query matches everything. When `resumeSafeOnly` is
- * true, non-resume-safe themes are dropped regardless of the query.
+ * Composition rules (ANDed together so the user can stack constraints
+ * without the picker quietly losing one of them):
+ *  - `query` : case-insensitive substring match against `name` and `slug`.
+ *              Empty / whitespace-only matches everything.
+ *  - `tags`  : when provided AND non-empty, every listed tag must be present
+ *              on the theme's `tags` array. Passing `undefined` (or an empty
+ *              array) means "no tag filter".
+ *
+ * Note: the "resume-safe only" toggle was retired in #153. Every theme in
+ * the dataset now clears `RESUME_SAFE_MIN_CONTRAST` by construction (the 80
+ * unsafe themes were dropped from `src/data/themes.json`), so the parameter
+ * had nothing left to filter and was removed from the signature.
+ *
+ * Pure and stable: the returned array preserves the input order, so the
+ * picker's existing keyboard-navigation and index-based UI keep working.
  */
 export function filterThemes(
   themes: ResumeTheme[],
   query: string,
-  resumeSafeOnly = false,
+  tags?: readonly string[],
 ): ResumeTheme[] {
   const needle = query.trim().toLowerCase();
+  // Normalize: an undefined or empty list disables the tag filter entirely.
+  // We don't bother dropping duplicates — `every` on a duplicated tag is
+  // still correct.
+  const requiredTags = tags && tags.length > 0 ? tags : null;
   return themes.filter((theme) => {
-    if (resumeSafeOnly && !theme.resumeSafe) return false;
+    if (requiredTags) {
+      const themeTags: readonly string[] = theme.tags;
+      for (const tag of requiredTags) {
+        if (!themeTags.includes(tag)) return false;
+      }
+    }
     if (needle.length === 0) return true;
     return theme.name.toLowerCase().includes(needle) || theme.slug.toLowerCase().includes(needle);
   });

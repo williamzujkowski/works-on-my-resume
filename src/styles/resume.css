@@ -15,9 +15,10 @@
  *     exported `<body>` that has no other CSS.
  *   - For color it consumes ONLY the `--resume-*` semantic variables. In-app
  *     these come from global.css / the theme engine; in an export they are
- *     injected ahead of this file by `themeCssVariables`. The fallback block
- *     just below also defines them locally, so the document is legible even
- *     with no theme at all.
+ *     injected ahead of this file by `themeCssVariables`. Every `var()` use
+ *     site below also carries a literal fallback, so the document is legible
+ *     even with no theme at all (rather than redeclaring the tokens locally,
+ *     which would have to self-reference and is invalid per CSS spec).
  *   - The resume's own type tokens (`--resume-serif`, `--resume-mono`) and a
  *     `box-sizing` reset are declared here rather than relying on global.css,
  *     so an export needs nothing else.
@@ -30,30 +31,21 @@
 /* ------------------------------------------------------------------ */
 /* Export-safe self-sufficiency: color fallbacks + box-sizing reset.    */
 /*                                                                      */
-/* In-app these are harmless: global.css already supplies the same      */
-/* `--resume-*` defaults and a global `box-sizing` reset, so the cascade */
-/* resolves identically and the preview stays pixel-identical. In a bare */
-/* exported document they are what makes the resume render correctly.   */
+/* The `--resume-*` color tokens are NOT redeclared on `.resume-preview`. */
+/* Doing so as `var(--resume-bg, #fff)` would be a self-reference, which */
+/* per CSS spec is invalid at computed-value time — it works only via    */
+/* the unset→inherit fallback and is a brittle idiom. Instead, every     */
+/* `var(--resume-*)` use-site below carries its own literal fallback,    */
+/* so the document is legible in a bare export with no theme applied.   */
+/* In-app, global.css sets the same `--resume-*` values on `:root` and   */
+/* the theme engine overrides them there; the cascade resolves to the    */
+/* same pixels with or without the local redeclaration.                 */
 /* ------------------------------------------------------------------ */
 .resume-preview,
 .resume-preview *,
 .resume-preview *::before,
 .resume-preview *::after {
   box-sizing: border-box;
-}
-
-.resume-preview {
-  /* Sensible light-theme fallbacks so the document is readable even when
-     no theme has been applied (e.g. a stripped export). The theme engine
-     and global.css both override these with the same semantic names. */
-  --resume-bg: var(--resume-bg, #ffffff);
-  --resume-fg: var(--resume-fg, #1f2328);
-  --resume-muted: var(--resume-muted, #57606a);
-  --resume-accent: var(--resume-accent, #0b5cae);
-  --resume-accent-2: var(--resume-accent-2, #8a3ffc);
-  --resume-border: var(--resume-border, #d6dbe1);
-  --resume-card: var(--resume-card, #f6f8fa);
-  --resume-code-bg: var(--resume-code-bg, #f0f2f5);
 }
 
 .resume-preview {
@@ -69,9 +61,9 @@
   width: 100%;
   max-width: 50rem;
   padding: 3rem 3.25rem;
-  background: var(--resume-bg);
-  color: var(--resume-fg);
-  border: 1px solid var(--resume-border);
+  background: var(--resume-bg, #ffffff);
+  color: var(--resume-fg, #1f2328);
+  border: 1px solid var(--resume-border, #d6dbe1);
   border-radius: 6px;
 
   /* A real soft "paper" drop shadow — the sheet floats on the editor desk. */
@@ -81,7 +73,18 @@
     0 24px 60px -24px rgba(15, 17, 21, 0.28);
 
   font-family: var(--resume-serif);
-  font-size: 16px;
+  /* Base body font size. 11pt matches the print stylesheet, so the
+     on-screen preview reads as a true rehearsal of the printed PDF rather
+     than a slightly-larger screen-mode. The shift summand (#186) is the
+     value of `--resume-body-size-shift`, set on `:root` by ResumeStudio
+     when the user clicks the A− / A+ buttons next to the Fit chip; clamped
+     to ±2pt at the source, default 0pt, no persistence. The fallback inside
+     `var(...)` keeps a bare standalone export (no app JS, no `:root` custom
+     property) legible at the default 11pt. */
+  font-size: calc(11pt + var(--resume-body-size-shift, 0pt));
+  /* Proposal 2 (#184): on-screen body line-height stays at 1.6. The matching
+     print-mode bump (1.45 → 1.55) lives in print.css alongside the rest of
+     the print rules. */
   line-height: 1.6;
   font-feature-settings:
     'kern' 1,
@@ -104,22 +107,28 @@
 .resume-preview__contact {
   margin-bottom: 1.75rem;
   padding-bottom: 1.25rem;
-  border-bottom: 2px solid var(--resume-border);
+  border-bottom: 2px solid var(--resume-border, #d6dbe1);
 }
 
 .resume-preview__contact-name {
   font-size: 1.9rem;
   font-weight: 700;
   line-height: 1.15;
-  color: var(--resume-accent);
-  letter-spacing: -0.01em;
+  color: var(--resume-accent, #0b5cae);
+  /* Proposal 5 (#184): -0.01em → -0.012em. The name in the contact card is
+     the rendered "H1" for the resume document (the body's leading <h1> is
+     stripped by ResumePreview to avoid duplicating the name). A hair tighter
+     tracking reads more confident at the display size — paired with the
+     same tweak on .resume-preview h1 below for any edge case where a body
+     <h1> survives. */
+  letter-spacing: -0.012em;
 }
 
 .resume-preview__contact-role {
   margin-top: 0.15rem;
   font-size: 1.05rem;
   font-weight: 600;
-  color: var(--resume-accent-2);
+  color: var(--resume-accent-2, #8a3ffc);
 }
 
 .resume-preview__contact-meta {
@@ -129,11 +138,11 @@
   margin-top: 0.6rem;
   font-family: var(--resume-mono);
   font-size: 0.8rem;
-  color: var(--resume-muted);
+  color: var(--resume-muted, #57606a);
 }
 
 .resume-preview__contact-meta a {
-  color: var(--resume-accent);
+  color: var(--resume-accent, #0b5cae);
   text-decoration: none;
 }
 
@@ -142,7 +151,7 @@
 }
 
 .resume-preview__contact-sep {
-  color: var(--resume-border);
+  color: var(--resume-border, #d6dbe1);
   user-select: none;
 }
 
@@ -158,7 +167,7 @@
 .resume-preview h2,
 .resume-preview h3,
 .resume-preview h4 {
-  color: var(--resume-accent);
+  color: var(--resume-accent, #0b5cae);
   line-height: 1.25;
   font-weight: 700;
 }
@@ -167,15 +176,37 @@
   font-size: 1.8rem;
   margin-top: 0;
   margin-bottom: 0.35rem;
-  letter-spacing: -0.01em;
+  /* Proposal 5 (#184): tightened from -0.01em → -0.012em. At the H1 display
+     size, a hair tighter tracking reads more confident — closer to how a
+     book designer would set the name on a cover. The shift is sub-pixel at
+     the rendered scale but consistently legible on serif faces. */
+  letter-spacing: -0.012em;
 }
 
 .resume-preview h2 {
   font-size: 1.15rem;
-  margin-top: 1.9rem;
+  /* Proposal 4 (#184): +0.25em margin-top for slightly more vertical air
+     between sections. The chrome reads as editorial-stationery after wave
+     4.5; the body wants the same breathing room between sections. */
+  margin-top: 2.15rem;
   margin-bottom: 0.7rem;
   padding-bottom: 0.3rem;
-  border-bottom: 1px solid var(--resume-border);
+  /* Proposal 1 (#184): hairline section rule.
+     Was: 1px solid var(--resume-border) — same weight as borders elsewhere
+          on the page, reads as a structural divider rather than a fine
+          engraving.
+     Now: 1px at 0.5 opacity of --resume-muted, expressed via color-mix()
+          so the rule honors the active theme's quiet-text color without
+          locking to any particular accent. The 0.5 alpha delivers the
+          "finer engraving" feel asked for; sub-pixel widths like 0.5px
+          are unreliable across browsers/zoom levels (#184 calls this out
+          as a fallback), and a half-opacity 1px hairline renders
+          consistently on every backing store. The literal fallback is
+          there for bare exports with no theme. The token name in the
+          codebase is `--resume-muted` (not `--resume-fg-muted` per the
+          issue body — verified against src/styles/global.css). */
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--resume-muted, #57606a) 50%, transparent);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -184,7 +215,7 @@
   font-size: 1.02rem;
   margin-top: 1.2rem;
   margin-bottom: 0.2rem;
-  color: var(--resume-fg);
+  color: var(--resume-fg, #1f2328);
 }
 
 .resume-preview h4 {
@@ -204,22 +235,22 @@
   font-family: var(--resume-mono);
   font-size: 0.8rem;
   letter-spacing: -0.01em;
-  color: var(--resume-muted);
+  color: var(--resume-muted, #57606a);
 }
 
 .resume-preview a {
-  color: var(--resume-accent);
+  color: var(--resume-accent, #0b5cae);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .resume-preview strong {
-  color: var(--resume-accent-2);
+  color: var(--resume-accent-2, #8a3ffc);
   font-weight: 700;
 }
 
 .resume-preview em {
-  color: var(--resume-muted);
+  color: var(--resume-muted, #57606a);
 }
 
 .resume-preview ul,
@@ -229,11 +260,17 @@
 }
 
 .resume-preview li {
-  margin: 0.3rem 0;
+  /* Proposal 3 (#184): bump per-item gap to ~0.35em for one more notch of
+     vertical air between bullets. The asymmetric top/bottom matches what
+     a typographer would set: a touch more space below an item than above,
+     to keep the wrap-and-flow of long bullets visually grouped with their
+     own bullet rather than the next one. The previous 0.3rem was tight
+     enough that long, multi-line bullets fused with their neighbors. */
+  margin: 0.3rem 0 0.35rem;
 }
 
 .resume-preview li::marker {
-  color: var(--resume-accent);
+  color: var(--resume-accent, #0b5cae);
 }
 
 .resume-preview ul ul,
@@ -247,15 +284,15 @@
   font-family: var(--resume-mono);
   font-size: 0.85em;
   padding: 0.1rem 0.35rem;
-  background: var(--resume-code-bg);
+  background: var(--resume-code-bg, #f0f2f5);
   border-radius: 4px;
 }
 
 .resume-preview pre {
   margin: 0.8rem 0;
   padding: 0.9rem 1rem;
-  background: var(--resume-code-bg);
-  border: 1px solid var(--resume-border);
+  background: var(--resume-code-bg, #f0f2f5);
+  border: 1px solid var(--resume-border, #d6dbe1);
   border-radius: 6px;
   overflow-x: auto;
 }
@@ -270,10 +307,10 @@
 .resume-preview blockquote {
   margin: 0.9rem 0;
   padding: 0.6rem 1.1rem;
-  background: var(--resume-card);
-  border-left: 3px solid var(--resume-accent);
+  background: var(--resume-card, #f6f8fa);
+  border-left: 3px solid var(--resume-accent, #0b5cae);
   border-radius: 0 4px 4px 0;
-  color: var(--resume-muted);
+  color: var(--resume-muted, #57606a);
   font-style: italic;
 }
 
@@ -284,7 +321,7 @@
 .resume-preview hr {
   margin: 1.8rem 0;
   border: none;
-  border-top: 1px solid var(--resume-border);
+  border-top: 1px solid var(--resume-border, #d6dbe1);
 }
 
 .resume-preview table {
@@ -297,18 +334,18 @@
 .resume-preview th,
 .resume-preview td {
   padding: 0.45rem 0.7rem;
-  border: 1px solid var(--resume-border);
+  border: 1px solid var(--resume-border, #d6dbe1);
   text-align: left;
 }
 
 .resume-preview th {
-  background: var(--resume-card);
-  color: var(--resume-accent);
+  background: var(--resume-card, #f6f8fa);
+  color: var(--resume-accent, #0b5cae);
   font-weight: 700;
 }
 
 .resume-preview tbody tr:nth-child(even) {
-  background: var(--resume-card);
+  background: var(--resume-card, #f6f8fa);
 }
 
 .resume-preview img {
@@ -365,7 +402,7 @@
   font-family: var(--resume-mono);
   font-size: 0.95em;
   line-height: 1;
-  color: var(--resume-fg);
+  color: var(--resume-fg, #1f2328);
   user-select: none;
 }
 
@@ -377,7 +414,7 @@
 
 .resume-preview .task-checkbox[data-checked='true']::before {
   content: '\2611'; /* ☑ — BALLOT BOX WITH CHECK */
-  color: var(--resume-accent);
+  color: var(--resume-accent, #0b5cae);
 }
 
 /* ------------------------------------------------------------------ */
@@ -413,20 +450,20 @@
   margin-top: 2.1rem;
   margin-bottom: 0.55rem;
   padding-bottom: 0.2rem;
-  border-bottom: 1px solid var(--resume-border);
+  border-bottom: 1px solid var(--resume-border, #d6dbe1);
   font-family: var(--resume-mono);
   font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--resume-muted);
+  color: var(--resume-muted, #57606a);
 }
 
 .resume-preview[data-template='modern'] h3 {
   font-size: 1.08rem;
   margin-top: 1.3rem;
   margin-bottom: 0.1rem;
-  color: var(--resume-accent);
+  color: var(--resume-accent, #0b5cae);
   font-weight: 700;
 }
 
@@ -439,13 +476,13 @@
   font-size: 0.74rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--resume-muted);
+  color: var(--resume-muted, #57606a);
 }
 
 /* Quieter identity divider; the mono section labels do enough work. */
 .resume-preview[data-template='modern'] .resume-preview__contact {
   border-bottom-width: 1px;
-  border-bottom-color: var(--resume-border);
+  border-bottom-color: var(--resume-border, #d6dbe1);
 }
 
 .resume-preview[data-template='modern'] .resume-preview__contact-name {
@@ -458,15 +495,18 @@
   font-size: 0.78rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--resume-muted);
+  color: var(--resume-muted, #57606a);
 }
 
 /* --- Compact -------------------------------------------------------- */
 .resume-preview[data-template='compact'] {
   /* Tighter page geometry, smaller body, denser rhythm. The page itself is
-     still scoped — we only adjust *within* the sheet. */
+     still scoped — we only adjust *within* the sheet. The body-size shift
+     (#186) summand keeps the A− / A+ buttons effective in compact mode too;
+     the compact baseline is 9.5pt, so a +2pt shift reaches the default 11.5pt
+     and a −2pt shift bottoms out at 7.5pt. */
   padding: 2.25rem 2.5rem;
-  font-size: 14.5px;
+  font-size: calc(9.5pt + var(--resume-body-size-shift, 0pt));
   line-height: 1.45;
 }
 

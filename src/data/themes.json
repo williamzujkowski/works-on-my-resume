@@ -448,38 +448,6 @@
     }
   },
   {
-    "name": "Alien Blood",
-    "slug": "alien-blood",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 4.131824451082685,
-      "minAnsi": 1.9931186853570928,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.191 0.016 148.9)",
-      "foreground": "oklch(0.567 0.033 174.4)",
-      "cursor": "oklch(0.885 0.186 148.6)",
-      "selection": "oklch(0.34 0.064 149.2)",
-      "black": "oklch(0.246 0.041 150.2)",
-      "red": "oklch(0.414 0.117 26.3)",
-      "green": "oklch(0.525 0.146 141.5)",
-      "yellow": "oklch(0.567 0.115 117.8)",
-      "blue": "oklch(0.494 0.069 224.3)",
-      "purple": "oklch(0.463 0.067 265.8)",
-      "cyan": "oklch(0.547 0.076 185.8)",
-      "white": "oklch(0.567 0.032 173.7)",
-      "brightBlack": "oklch(0.379 0.078 121.1)",
-      "brightRed": "oklch(0.69 0.159 60.9)",
-      "brightGreen": "oklch(0.787 0.266 142.1)",
-      "brightYellow": "oklch(0.851 0.203 120.4)",
-      "brightBlue": "oklch(0.691 0.138 230)",
-      "brightPurple": "oklch(0.51 0.219 260.9)",
-      "brightCyan": "oklch(0.812 0.148 179.4)",
-      "brightWhite": "oklch(0.885 0.186 148.6)"
-    }
-  },
-  {
     "name": "Amber CRT",
     "slug": "amber-crt",
     "isDark": true,
@@ -541,38 +509,6 @@
       "brightPurple": "oklch(0.591 0.213 327.9)",
       "brightCyan": "oklch(0.678 0.123 221.4)",
       "brightWhite": "oklch(0.922 0 0)"
-    }
-  },
-  {
-    "name": "Apple Classic",
-    "slug": "apple-classic",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.048527078431232,
-      "minAnsi": 1.914333565863103,
-      "minAnsiSlot": "blue"
-    },
-    "colors": {
-      "background": "oklch(0.29 0.001 17.2)",
-      "foreground": "oklch(0.74 0.151 85.8)",
-      "cursor": "oklch(0.83 0 0)",
-      "selection": "oklch(0.473 0.097 97.1)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.534 0.207 31.1)",
-      "green": "oklch(0.705 0.24 142.5)",
-      "yellow": "oklch(0.797 0.172 108.6)",
-      "blue": "oklch(0.472 0.244 265.9)",
-      "purple": "oklch(0.605 0.244 329)",
-      "cyan": "oklch(0.746 0.127 196.1)",
-      "white": "oklch(0.83 0 0)",
-      "brightBlack": "oklch(0.517 0 0)",
-      "brightRed": "oklch(0.715 0.179 25.4)",
-      "brightGreen": "oklch(0.873 0.23 144.2)",
-      "brightYellow": "oklch(0.966 0.168 108.1)",
-      "brightBlue": "oklch(0.618 0.208 275.8)",
-      "brightPurple": "oklch(0.776 0.228 327.5)",
-      "brightCyan": "oklch(0.913 0.13 196.3)",
-      "brightWhite": "oklch(1 0 0)"
     }
   },
   {
@@ -832,38 +768,6 @@
     }
   },
   {
-    "name": "Atelier Sulphurpool",
-    "slug": "atelier-sulphurpool",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 5.414841177867144,
-      "minAnsi": 2.0967078405880457,
-      "minAnsiSlot": "brightGreen"
-    },
-    "colors": {
-      "background": "oklch(0.283 0.058 272.6)",
-      "foreground": "oklch(0.699 0.034 273.9)",
-      "cursor": "oklch(0.699 0.034 273.9)",
-      "selection": "oklch(0.517 0.053 273.8)",
-      "black": "oklch(0.283 0.058 272.6)",
-      "red": "oklch(0.576 0.171 36.7)",
-      "green": "oklch(0.677 0.115 96.5)",
-      "yellow": "oklch(0.673 0.122 76.9)",
-      "blue": "oklch(0.63 0.127 246.1)",
-      "purple": "oklch(0.599 0.128 272.3)",
-      "cyan": "oklch(0.664 0.118 224.5)",
-      "white": "oklch(0.699 0.034 273.9)",
-      "brightBlack": "oklch(0.561 0.052 274)",
-      "brightRed": "oklch(0.623 0.14 52.1)",
-      "brightGreen": "oklch(0.468 0.06 273.1)",
-      "brightYellow": "oklch(0.517 0.053 273.8)",
-      "brightBlue": "oklch(0.65 0.033 275.3)",
-      "brightPurple": "oklch(0.915 0.021 276.9)",
-      "brightCyan": "oklch(0.569 0.08 354.1)",
-      "brightWhite": "oklch(0.977 0.011 274.9)"
-    }
-  },
-  {
     "name": "Atom",
     "slug": "atom",
     "isDark": true,
@@ -1088,38 +992,6 @@
     }
   },
   {
-    "name": "Ayu Light",
-    "slug": "ayu-light",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 5.934812759512011,
-      "minAnsi": 1.8233432417765811,
-      "minAnsiSlot": "brightYellow"
-    },
-    "colors": {
-      "background": "oklch(0.982 0.002 247.8)",
-      "foreground": "oklch(0.49 0.01 248)",
-      "cursor": "oklch(0.803 0.159 69.8)",
-      "selection": "oklch(0.507 0.203 259.8)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.683 0.157 21.6)",
-      "green": "oklch(0.726 0.179 136.9)",
-      "yellow": "oklch(0.781 0.139 74)",
-      "blue": "oklch(0.658 0.142 243.9)",
-      "purple": "oklch(0.635 0.127 306.1)",
-      "cyan": "oklch(0.713 0.119 167.9)",
-      "white": "oklch(0.789 0 0)",
-      "brightBlack": "oklch(0.517 0 0)",
-      "brightRed": "oklch(0.699 0.157 22)",
-      "brightGreen": "oklch(0.708 0.179 125.6)",
-      "brightYellow": "oklch(0.798 0.139 73.8)",
-      "brightBlue": "oklch(0.674 0.141 244)",
-      "brightPurple": "oklch(0.652 0.126 306.2)",
-      "brightCyan": "oklch(0.729 0.119 168)",
-      "brightWhite": "oklch(0.861 0 0)"
-    }
-  },
-  {
     "name": "Ayu Mirage",
     "slug": "ayu-mirage",
     "isDark": true,
@@ -1184,70 +1056,6 @@
     }
   },
   {
-    "name": "barbie",
-    "slug": "barbie",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 6.489825216499351,
-      "minAnsi": 1.5349119469395447,
-      "minAnsiSlot": "yellow"
-    },
-    "colors": {
-      "background": "oklch(0.919 0.072 327.6)",
-      "foreground": "oklch(0.445 0.191 342.3)",
-      "cursor": "oklch(0.661 0.182 256.6)",
-      "selection": "oklch(0.919 0.072 327.6)",
-      "black": "oklch(0.493 0 0)",
-      "red": "oklch(0.613 0.304 313.8)",
-      "green": "oklch(0.677 0.238 357.1)",
-      "yellow": "oklch(0.78 0.114 255.8)",
-      "blue": "oklch(0.707 0.168 242)",
-      "purple": "oklch(0.658 0.282 329)",
-      "cyan": "oklch(0.717 0.151 281.1)",
-      "white": "oklch(0.738 0.143 147)",
-      "brightBlack": "oklch(0.493 0 0)",
-      "brightRed": "oklch(0.613 0.304 313.8)",
-      "brightGreen": "oklch(0.677 0.238 357.1)",
-      "brightYellow": "oklch(0.78 0.114 255.8)",
-      "brightBlue": "oklch(0.707 0.168 242)",
-      "brightPurple": "oklch(0.658 0.282 329)",
-      "brightCyan": "oklch(0.717 0.151 281.1)",
-      "brightWhite": "oklch(0.738 0.143 147)"
-    }
-  },
-  {
-    "name": "Batman",
-    "slug": "batman",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 3.367360421928134,
-      "minAnsi": 2.705453770745099,
-      "minAnsiSlot": "cyan"
-    },
-    "colors": {
-      "background": "oklch(0.229 0.004 229)",
-      "foreground": "oklch(0.542 0 0)",
-      "cursor": "oklch(0.933 0.197 105.6)",
-      "selection": "oklch(0.427 0.008 137.8)",
-      "black": "oklch(0.229 0.004 229)",
-      "red": "oklch(0.877 0.165 105.6)",
-      "green": "oklch(0.788 0.139 104.5)",
-      "yellow": "oklch(0.956 0.207 112.4)",
-      "blue": "oklch(0.551 0.005 314.8)",
-      "purple": "oklch(0.554 0.003 48.7)",
-      "cyan": "oklch(0.491 0.003 48.7)",
-      "white": "oklch(0.823 0.008 98.9)",
-      "brightBlack": "oklch(0.44 0.004 219.6)",
-      "brightRed": "oklch(0.961 0.127 104.7)",
-      "brightGreen": "oklch(0.948 0.139 103)",
-      "brightYellow": "oklch(0.935 0.15 101.9)",
-      "brightBlue": "oklch(0.664 0.004 219.5)",
-      "brightPurple": "oklch(0.687 0.004 286.3)",
-      "brightCyan": "oklch(0.716 0.004 286.3)",
-      "brightWhite": "oklch(0.889 0.007 115.7)"
-    }
-  },
-  {
     "name": "Belafonte Day",
     "slug": "belafonte-day",
     "isDark": false,
@@ -1273,38 +1081,6 @@
       "brightRed": "oklch(0.508 0.201 28.7)",
       "brightGreen": "oklch(0.598 0.045 101.5)",
       "brightYellow": "oklch(0.692 0.132 69.1)",
-      "brightBlue": "oklch(0.501 0.051 223.8)",
-      "brightPurple": "oklch(0.513 0.106 47.8)",
-      "brightCyan": "oklch(0.685 0.004 247.9)",
-      "brightWhite": "oklch(0.848 0.026 84.6)"
-    }
-  },
-  {
-    "name": "Belafonte Night",
-    "slug": "belafonte-night",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 5.5086070861374195,
-      "minAnsi": 2.8251493881125196,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.203 0.031 340.1)",
-      "foreground": "oklch(0.646 0.018 64.5)",
-      "cursor": "oklch(0.646 0.018 64.5)",
-      "selection": "oklch(0.354 0.021 354.8)",
-      "black": "oklch(0.203 0.031 340.1)",
-      "red": "oklch(0.508 0.201 28.7)",
-      "green": "oklch(0.598 0.045 101.5)",
-      "yellow": "oklch(0.772 0.134 71.1)",
-      "blue": "oklch(0.501 0.051 223.8)",
-      "purple": "oklch(0.513 0.106 47.8)",
-      "cyan": "oklch(0.685 0.004 247.9)",
-      "white": "oklch(0.646 0.018 64.5)",
-      "brightBlack": "oklch(0.45 0.016 17.8)",
-      "brightRed": "oklch(0.508 0.201 28.7)",
-      "brightGreen": "oklch(0.598 0.045 101.5)",
-      "brightYellow": "oklch(0.772 0.134 71.1)",
       "brightBlue": "oklch(0.501 0.051 223.8)",
       "brightPurple": "oklch(0.513 0.106 47.8)",
       "brightCyan": "oklch(0.685 0.004 247.9)",
@@ -1757,70 +1533,6 @@
       "brightPurple": "oklch(0.715 0.068 330.5)",
       "brightCyan": "oklch(0.494 0.027 280.1)",
       "brightWhite": "oklch(0.49 0.084 215)"
-    }
-  },
-  {
-    "name": "Blue Dolphin",
-    "slug": "blue-dolphin",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 5.223572571709242,
-      "minAnsi": 2.624043838476951,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.484 0.091 223.5)",
-      "foreground": "oklch(0.934 0.049 217.2)",
-      "cursor": "oklch(0.865 0.177 90.4)",
-      "selection": "oklch(0.695 0.114 216.2)",
-      "black": "oklch(0.301 0.031 274.1)",
-      "red": "oklch(0.749 0.152 18.4)",
-      "green": "oklch(0.874 0.131 132.8)",
-      "yellow": "oklch(0.888 0.078 82.4)",
-      "blue": "oklch(0.744 0.131 264.3)",
-      "purple": "oklch(0.866 0.094 313.4)",
-      "cyan": "oklch(0.887 0.096 212.3)",
-      "white": "oklch(0.858 0 0)",
-      "brightBlack": "oklch(0.669 0.024 274.6)",
-      "brightRed": "oklch(0.765 0.141 17.1)",
-      "brightGreen": "oklch(0.956 0.118 125.7)",
-      "brightYellow": "oklch(0.923 0.12 94.7)",
-      "brightBlue": "oklch(0.813 0.094 258)",
-      "brightPurple": "oklch(0.821 0.107 313.2)",
-      "brightCyan": "oklch(0.925 0.082 203.5)",
-      "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "Blue Matrix",
-    "slug": "blue-matrix",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.834399264935834,
-      "minAnsi": 4.843488536888253,
-      "minAnsiSlot": "brightBlue"
-    },
-    "colors": {
-      "background": "oklch(0.179 0.01 276.4)",
-      "foreground": "oklch(0.689 0.175 245.4)",
-      "cursor": "oklch(0.9 0.179 151)",
-      "selection": "oklch(0.89 0.055 251.8)",
-      "black": "oklch(0.179 0.01 276.4)",
-      "red": "oklch(0.692 0.205 9.4)",
-      "green": "oklch(0.88 0.211 156.6)",
-      "yellow": "oklch(0.965 0.178 108.3)",
-      "blue": "oklch(0.721 0.163 239.3)",
-      "purple": "oklch(0.732 0.201 314)",
-      "cyan": "oklch(0.786 0.116 245)",
-      "white": "oklch(0.83 0 0)",
-      "brightBlack": "oklch(0.517 0 0)",
-      "brightRed": "oklch(0.715 0.179 25.4)",
-      "brightGreen": "oklch(0.873 0.23 144.2)",
-      "brightYellow": "oklch(0.966 0.168 108.1)",
-      "brightBlue": "oklch(0.618 0.208 275.8)",
-      "brightPurple": "oklch(0.734 0.171 319.1)",
-      "brightCyan": "oklch(0.913 0.13 196.3)",
-      "brightWhite": "oklch(1 0 0)"
     }
   },
   {
@@ -2304,38 +2016,6 @@
     }
   },
   {
-    "name": "C64",
-    "slug": "c64",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 2.2607656244342924,
-      "minAnsi": 1.7528273106950094,
-      "minAnsiSlot": "blue"
-    },
-    "colors": {
-      "background": "oklch(0.387 0.146 284.8)",
-      "foreground": "oklch(0.577 0.137 289)",
-      "cursor": "oklch(0.577 0.137 289)",
-      "selection": "oklch(0.577 0.137 289)",
-      "black": "oklch(0.109 0.024 66.2)",
-      "red": "oklch(0.535 0.107 25.7)",
-      "green": "oklch(0.637 0.144 141)",
-      "yellow": "oklch(0.82 0.118 116.7)",
-      "blue": "oklch(0.517 0.141 287.9)",
-      "purple": "oklch(0.544 0.152 322.4)",
-      "cyan": "oklch(0.728 0.078 203)",
-      "white": "oklch(1 0 0)",
-      "brightBlack": "oklch(0 0 0)",
-      "brightRed": "oklch(0.535 0.107 25.7)",
-      "brightGreen": "oklch(0.637 0.144 141)",
-      "brightYellow": "oklch(0.82 0.118 116.7)",
-      "brightBlue": "oklch(0.517 0.141 287.9)",
-      "brightPurple": "oklch(0.544 0.152 322.4)",
-      "brightCyan": "oklch(0.728 0.078 203)",
-      "brightWhite": "oklch(0.976 0 0)"
-    }
-  },
-  {
     "name": "Calamity",
     "slug": "calamity",
     "isDark": true,
@@ -2685,38 +2365,6 @@
       "brightPurple": "oklch(0.611 0.191 351.7)",
       "brightCyan": "oklch(0.818 0.134 194.9)",
       "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "Ciapre",
-    "slug": "ciapre",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.784768448344223,
-      "minAnsi": 1.7944955850844855,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.229 0.022 272.7)",
-      "foreground": "oklch(0.717 0.059 96.3)",
-      "cursor": "oklch(0.607 0.057 84.8)",
-      "selection": "oklch(0.262 0.043 257.3)",
-      "black": "oklch(0.209 0 0)",
-      "red": "oklch(0.413 0.16 25.7)",
-      "green": "oklch(0.42 0.037 126)",
-      "yellow": "oklch(0.688 0.121 67.4)",
-      "blue": "oklch(0.529 0.056 257)",
-      "purple": "oklch(0.479 0.086 318.9)",
-      "cyan": "oklch(0.439 0.019 37.8)",
-      "white": "oklch(0.718 0.052 94.7)",
-      "brightBlack": "oklch(0.45 0 0)",
-      "brightRed": "oklch(0.509 0.152 25.6)",
-      "brightGreen": "oklch(0.711 0.097 109.3)",
-      "brightYellow": "oklch(0.88 0.123 110.2)",
-      "brightBlue": "oklch(0.639 0.115 232.8)",
-      "brightPurple": "oklch(0.578 0.199 8.8)",
-      "brightCyan": "oklch(0.901 0.06 81)",
-      "brightWhite": "oklch(0.967 0 0)"
     }
   },
   {
@@ -3168,38 +2816,6 @@
     }
   },
   {
-    "name": "Crayon Pony Fish",
-    "slug": "crayon-pony-fish",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 2.762639595886461,
-      "minAnsi": 1.992869950464761,
-      "minAnsiSlot": "purple"
-    },
-    "colors": {
-      "background": "oklch(0.152 0.026 20.6)",
-      "foreground": "oklch(0.464 0.032 354.6)",
-      "cursor": "oklch(0.464 0.032 354.6)",
-      "selection": "oklch(0.243 0.026 10.9)",
-      "black": "oklch(0.243 0.026 10.9)",
-      "red": "oklch(0.417 0.167 16.2)",
-      "green": "oklch(0.605 0.157 134.3)",
-      "yellow": "oklch(0.497 0.162 32.5)",
-      "blue": "oklch(0.643 0.061 290.2)",
-      "purple": "oklch(0.395 0.093 347)",
-      "cyan": "oklch(0.779 0.112 65.7)",
-      "white": "oklch(0.464 0.032 354.6)",
-      "brightBlack": "oklch(0.362 0.026 7.3)",
-      "brightRed": "oklch(0.545 0.196 6.6)",
-      "brightGreen": "oklch(0.9 0.228 137.3)",
-      "brightYellow": "oklch(0.555 0.185 32.7)",
-      "brightBlue": "oklch(0.859 0.075 289.8)",
-      "brightPurple": "oklch(0.73 0.193 349.3)",
-      "brightCyan": "oklch(0.886 0.069 53.9)",
-      "brightWhite": "oklch(0.695 0.036 356.8)"
-    }
-  },
-  {
     "name": "Cursor Dark",
     "slug": "cursor-dark",
     "isDark": true,
@@ -3424,38 +3040,6 @@
     }
   },
   {
-    "name": "Cyberpunk Scarlet Protocol",
-    "slug": "cyberpunk-scarlet-protocol",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 4.091109353200948,
-      "minAnsi": 3.62733294554639,
-      "minAnsiSlot": "blue"
-    },
-    "colors": {
-      "background": "oklch(0.179 0.01 276.4)",
-      "foreground": "oklch(0.591 0.227 14.7)",
-      "cursor": "oklch(0.9 0.179 151)",
-      "selection": "oklch(0.89 0.055 251.8)",
-      "black": "oklch(0.179 0.01 276.4)",
-      "red": "oklch(0.635 0.254 16.6)",
-      "green": "oklch(0.787 0.19 156.1)",
-      "yellow": "oklch(0.954 0.188 109.2)",
-      "blue": "oklch(0.532 0.137 246.2)",
-      "purple": "oklch(0.604 0.244 328.7)",
-      "cyan": "oklch(0.746 0.127 196.1)",
-      "white": "oklch(0.83 0 0)",
-      "brightBlack": "oklch(0.517 0 0)",
-      "brightRed": "oklch(0.715 0.179 25.4)",
-      "brightGreen": "oklch(0.873 0.229 144.1)",
-      "brightYellow": "oklch(0.966 0.168 108.1)",
-      "brightBlue": "oklch(0.618 0.208 275.8)",
-      "brightPurple": "oklch(0.614 0.263 315.4)",
-      "brightCyan": "oklch(0.913 0.13 196.3)",
-      "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
     "name": "Dalton Dark",
     "slug": "dalton-dark",
     "isDark": true,
@@ -3584,70 +3168,6 @@
     }
   },
   {
-    "name": "Darkermatrix",
-    "slug": "darkermatrix",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 1.8891474483742787,
-      "minAnsi": 1.4835861328218996,
-      "minAnsiSlot": "brightWhite"
-    },
-    "colors": {
-      "background": "oklch(0.15 0.01 222.9)",
-      "foreground": "oklch(0.366 0.069 126.6)",
-      "cursor": "oklch(0.389 0.033 114.9)",
-      "selection": "oklch(0.205 0.016 218.3)",
-      "black": "oklch(0.167 0.013 226.1)",
-      "red": "oklch(0.363 0.065 158.8)",
-      "green": "oklch(0.666 0.135 134.7)",
-      "yellow": "oklch(0.449 0.098 109.8)",
-      "blue": "oklch(0.738 0.192 152.5)",
-      "purple": "oklch(0.378 0.065 313.5)",
-      "cyan": "oklch(0.409 0.063 202.6)",
-      "white": "oklch(0.363 0.063 161)",
-      "brightBlack": "oklch(0.372 0 0)",
-      "brightRed": "oklch(0.347 0.074 157.3)",
-      "brightGreen": "oklch(0.807 0.167 134.6)",
-      "brightYellow": "oklch(0.89 0.195 110.7)",
-      "brightBlue": "oklch(0.876 0.229 152.4)",
-      "brightPurple": "oklch(0.378 0.065 313.5)",
-      "brightCyan": "oklch(0.487 0.076 203.4)",
-      "brightWhite": "oklch(0.3 0.072 156.4)"
-    }
-  },
-  {
-    "name": "Darkmatrix",
-    "slug": "darkmatrix",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 2.4148124528679924,
-      "minAnsi": 1.9971603474964532,
-      "minAnsiSlot": "purple"
-    },
-    "colors": {
-      "background": "oklch(0.15 0.01 222.9)",
-      "foreground": "oklch(0.422 0.096 128.1)",
-      "cursor": "oklch(0.71 0.08 115.6)",
-      "selection": "oklch(0.205 0.016 218.3)",
-      "black": "oklch(0.167 0.013 226.1)",
-      "red": "oklch(0.445 0.112 154.3)",
-      "green": "oklch(0.666 0.135 134.7)",
-      "yellow": "oklch(0.579 0.127 110.9)",
-      "blue": "oklch(0.62 0.103 176.3)",
-      "purple": "oklch(0.392 0.069 312.4)",
-      "cyan": "oklch(0.386 0.059 204.9)",
-      "white": "oklch(0.445 0.112 154.3)",
-      "brightBlack": "oklch(0.372 0 0)",
-      "brightRed": "oklch(0.487 0.124 153.7)",
-      "brightGreen": "oklch(0.807 0.167 134.6)",
-      "brightYellow": "oklch(0.89 0.195 110.7)",
-      "brightBlue": "oklch(0.797 0.131 175)",
-      "brightPurple": "oklch(0.406 0.074 312.5)",
-      "brightCyan": "oklch(0.409 0.063 204.1)",
-      "brightWhite": "oklch(0.445 0.112 154.3)"
-    }
-  },
-  {
     "name": "Darkside",
     "slug": "darkside",
     "isDark": true,
@@ -3677,38 +3197,6 @@
       "brightPurple": "oklch(0.633 0.102 301.4)",
       "brightCyan": "oklch(0.657 0.141 247.3)",
       "brightWhite": "oklch(0.789 0 0)"
-    }
-  },
-  {
-    "name": "Dawnfox",
-    "slug": "dawnfox",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 6.657280748896968,
-      "minAnsi": 1.8622861946636253,
-      "minAnsiSlot": "brightYellow"
-    },
-    "colors": {
-      "background": "oklch(0.97 0.011 71.9)",
-      "foreground": "oklch(0.46 0.063 289.6)",
-      "cursor": "oklch(0.46 0.063 289.6)",
-      "selection": "oklch(0.876 0.009 197)",
-      "black": "oklch(0.46 0.063 289.6)",
-      "red": "oklch(0.599 0.107 2.7)",
-      "green": "oklch(0.589 0.052 162.6)",
-      "yellow": "oklch(0.756 0.146 69.7)",
-      "blue": "oklch(0.491 0.077 228)",
-      "purple": "oklch(0.617 0.074 305.7)",
-      "cyan": "oklch(0.629 0.066 210.1)",
-      "white": "oklch(0.775 0.011 261.8)",
-      "brightBlack": "oklch(0.49 0.099 288.8)",
-      "brightRed": "oklch(0.637 0.111 2.6)",
-      "brightGreen": "oklch(0.652 0.078 161.8)",
-      "brightYellow": "oklch(0.782 0.139 72.1)",
-      "brightBlue": "oklch(0.568 0.094 229)",
-      "brightPurple": "oklch(0.645 0.088 304.9)",
-      "brightCyan": "oklch(0.685 0.077 210)",
-      "brightWhite": "oklch(0.939 0.012 259.8)"
     }
   },
   {
@@ -4416,38 +3904,6 @@
     }
   },
   {
-    "name": "Elemental",
-    "slug": "elemental",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 3.80099836701166,
-      "minAnsi": 2.040322350568522,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.247 0.008 95.4)",
-      "foreground": "oklch(0.583 0.012 67.6)",
-      "cursor": "oklch(0.867 0.107 78.3)",
-      "selection": "oklch(0.346 0.028 80.3)",
-      "black": "oklch(0.352 0.02 107.4)",
-      "red": "oklch(0.453 0.151 33.9)",
-      "green": "oklch(0.614 0.148 142.7)",
-      "yellow": "oklch(0.545 0.108 100.2)",
-      "blue": "oklch(0.559 0.058 192.6)",
-      "purple": "oklch(0.473 0.08 52)",
-      "cyan": "oklch(0.54 0.095 157)",
-      "white": "oklch(0.581 0.012 58.1)",
-      "brightBlack": "oklch(0.442 0.024 104.2)",
-      "brightRed": "oklch(0.622 0.187 35.4)",
-      "brightGreen": "oklch(0.81 0.19 145.8)",
-      "brightYellow": "oklch(0.724 0.14 77.5)",
-      "brightBlue": "oklch(0.827 0.091 195.5)",
-      "brightPurple": "oklch(0.665 0.115 46.4)",
-      "brightCyan": "oklch(0.787 0.141 159.4)",
-      "brightWhite": "oklch(0.967 0.019 52)"
-    }
-  },
-  {
     "name": "Elementary",
     "slug": "elementary",
     "isDark": true,
@@ -4512,38 +3968,6 @@
     }
   },
   {
-    "name": "Embers Dark",
-    "slug": "embers-dark",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.685352943486375,
-      "minAnsi": 1.8100227598035976,
-      "minAnsiSlot": "brightGreen"
-    },
-    "colors": {
-      "background": "oklch(0.189 0.009 75.1)",
-      "foreground": "oklch(0.691 0.018 70.4)",
-      "cursor": "oklch(0.691 0.018 70.4)",
-      "selection": "oklch(0.358 0.019 70.5)",
-      "black": "oklch(0.189 0.009 75.1)",
-      "red": "oklch(0.549 0.042 68.1)",
-      "green": "oklch(0.569 0.058 162.7)",
-      "yellow": "oklch(0.578 0.068 129.5)",
-      "blue": "oklch(0.496 0.072 307.4)",
-      "purple": "oklch(0.51 0.065 347.6)",
-      "cyan": "oklch(0.525 0.042 247.4)",
-      "white": "oklch(0.691 0.018 70.4)",
-      "brightBlack": "oklch(0.438 0.02 64.3)",
-      "brightRed": "oklch(0.596 0.061 108.1)",
-      "brightGreen": "oklch(0.375 0.014 71.6)",
-      "brightYellow": "oklch(0.407 0.018 70.6)",
-      "brightBlue": "oklch(0.606 0.02 70.1)",
-      "brightPurple": "oklch(0.781 0.014 67.6)",
-      "brightCyan": "oklch(0.503 0.057 19.3)",
-      "brightWhite": "oklch(0.879 0.009 67.7)"
-    }
-  },
-  {
     "name": "Emerald Synth",
     "slug": "emerald-synth",
     "isDark": true,
@@ -4572,38 +3996,6 @@
       "brightBlue": "oklch(0.801 0.097 278.8)",
       "brightPurple": "oklch(0.812 0.13 348.1)",
       "brightCyan": "oklch(0.851 0.094 205.8)",
-      "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "ENCOM",
-    "slug": "encom",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.816038646398305,
-      "minAnsi": 2.444,
-      "minAnsiSlot": "brightBlue"
-    },
-    "colors": {
-      "background": "oklch(0 0 0)",
-      "foreground": "oklch(0.648 0.116 182.9)",
-      "cursor": "oklch(0.792 0 0)",
-      "selection": "oklch(0.643 0.119 177.3)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.441 0.181 29.2)",
-      "green": "oklch(0.552 0.188 142.5)",
-      "yellow": "oklch(0.873 0.179 92.2)",
-      "blue": "oklch(0.617 0.21 255.9)",
-      "purple": "oklch(0.567 0.266 324.5)",
-      "cyan": "oklch(0.577 0.098 194.8)",
-      "white": "oklch(0.792 0 0)",
-      "brightBlack": "oklch(0.45 0 0)",
-      "brightRed": "oklch(0.628 0.258 29.2)",
-      "brightGreen": "oklch(0.822 0.28 142.5)",
-      "brightYellow": "oklch(0.968 0.211 109.8)",
-      "brightBlue": "oklch(0.452 0.313 264.1)",
-      "brightPurple": "oklch(0.702 0.323 328.4)",
-      "brightCyan": "oklch(0.768 0.131 194.8)",
       "brightWhite": "oklch(1 0 0)"
     }
   },
@@ -4637,38 +4029,6 @@
       "brightPurple": "oklch(0.847 0.109 322.4)",
       "brightCyan": "oklch(0.953 0.029 227)",
       "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "Espresso Libre",
-    "slug": "espresso-libre",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.822331199348381,
-      "minAnsi": 2.6767588284314123,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.257 0.017 50.7)",
-      "foreground": "oklch(0.741 0.029 67.4)",
-      "cursor": "oklch(1 0 0)",
-      "selection": "oklch(0.887 0.055 256.8)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.531 0.218 29.2)",
-      "green": "oklch(0.576 0.182 142.9)",
-      "yellow": "oklch(0.903 0.177 105.6)",
-      "blue": "oklch(0.564 0.241 260.8)",
-      "purple": "oklch(0.621 0.122 17.4)",
-      "cyan": "oklch(0.617 0.104 196.5)",
-      "white": "oklch(0.874 0.012 128.6)",
-      "brightBlack": "oklch(0.454 0.007 128.6)",
-      "brightRed": "oklch(0.614 0.23 27.4)",
-      "brightGreen": "oklch(0.911 0.183 140.5)",
-      "brightYellow": "oklch(0.963 0.175 107.9)",
-      "brightBlue": "oklch(0.703 0.137 242.4)",
-      "brightPurple": "oklch(0.748 0.153 17)",
-      "brightCyan": "oklch(0.831 0.133 194.9)",
-      "brightWhite": "oklch(0.949 0.003 106.5)"
     }
   },
   {
@@ -4736,38 +4096,6 @@
     }
   },
   {
-    "name": "Everforest Light Med",
-    "slug": "everforest-light-med",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 4.655789215480987,
-      "minAnsi": 1.7645371424739247,
-      "minAnsiSlot": "cyan"
-    },
-    "colors": {
-      "background": "oklch(0.937 0.031 98.9)",
-      "foreground": "oklch(0.515 0.021 232.9)",
-      "cursor": "oklch(0.715 0.173 50.7)",
-      "selection": "oklch(0.934 0.049 111.1)",
-      "black": "oklch(0.601 0.021 140.5)",
-      "red": "oklch(0.709 0.129 19.6)",
-      "green": "oklch(0.732 0.092 125.9)",
-      "yellow": "oklch(0.727 0.086 83.1)",
-      "blue": "oklch(0.749 0.063 185.5)",
-      "purple": "oklch(0.75 0.082 349.2)",
-      "cyan": "oklch(0.754 0.091 151.4)",
-      "white": "oklch(0.752 0.023 98.2)",
-      "brightBlack": "oklch(0.745 0.025 133.5)",
-      "brightRed": "oklch(0.671 0.2 25.2)",
-      "brightGreen": "oklch(0.67 0.156 118.2)",
-      "brightYellow": "oklch(0.747 0.155 80.3)",
-      "brightBlue": "oklch(0.634 0.112 236.3)",
-      "brightPurple": "oklch(0.687 0.174 341)",
-      "brightCyan": "oklch(0.654 0.121 163.9)",
-      "brightWhite": "oklch(0.988 0.016 91.5)"
-    }
-  },
-  {
     "name": "Fahrenheit",
     "slug": "fahrenheit",
     "isDark": true,
@@ -4797,38 +4125,6 @@
       "brightPurple": "oklch(0.547 0.081 253.4)",
       "brightCyan": "oklch(0.875 0.152 89.1)",
       "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "Fairyfloss",
-    "slug": "fairyfloss",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.656147192335941,
-      "minAnsi": 1.8745525850950375,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.465 0.053 292.5)",
-      "foreground": "oklch(0.978 0.008 106.5)",
-      "cursor": "oklch(0.977 0.011 106.6)",
-      "selection": "oklch(0.596 0.074 292.4)",
-      "black": "oklch(0.1 0.004 17.8)",
-      "red": "oklch(0.642 0.24 7.5)",
-      "green": "oklch(0.95 0.075 161.7)",
-      "yellow": "oklch(0.817 0.168 94.5)",
-      "blue": "oklch(0.95 0.075 161.7)",
-      "purple": "oklch(0.855 0.088 356.2)",
-      "cyan": "oklch(0.78 0.132 300.4)",
-      "white": "oklch(0.977 0.011 106.6)",
-      "brightBlack": "oklch(0.644 0.103 254.2)",
-      "brightRed": "oklch(0.752 0.149 24.2)",
-      "brightGreen": "oklch(0.95 0.075 161.7)",
-      "brightYellow": "oklch(0.925 0.194 102.9)",
-      "brightBlue": "oklch(0.95 0.075 161.7)",
-      "brightPurple": "oklch(0.855 0.088 356.2)",
-      "brightCyan": "oklch(0.78 0.132 300.4)",
-      "brightWhite": "oklch(0.977 0.011 106.6)"
     }
   },
   {
@@ -4957,70 +4253,6 @@
       "brightPurple": "oklch(0.746 0.263 328.1)",
       "brightCyan": "oklch(0.867 0.143 194.8)",
       "brightWhite": "oklch(0.94 0 0)"
-    }
-  },
-  {
-    "name": "Firefox Dev",
-    "slug": "firefox-dev",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 5.7427252530694535,
-      "minAnsi": 2.5351482722551846,
-      "minAnsiSlot": "brightCyan"
-    },
-    "colors": {
-      "background": "oklch(0.171 0.004 229.1)",
-      "foreground": "oklch(0.642 0.038 251)",
-      "cursor": "oklch(0.593 0.021 204.8)",
-      "selection": "oklch(0.349 0.078 250.6)",
-      "black": "oklch(0.255 0.046 216.8)",
-      "red": "oklch(0.614 0.208 17.8)",
-      "green": "oklch(0.701 0.182 138.4)",
-      "yellow": "oklch(0.6 0.122 81.1)",
-      "blue": "oklch(0.667 0.135 241.4)",
-      "purple": "oklch(0.695 0.246 316.8)",
-      "cyan": "oklch(0.547 0.087 253.3)",
-      "white": "oklch(0.895 0 0)",
-      "brightBlack": "oklch(0.367 0.039 219.1)",
-      "brightRed": "oklch(0.576 0.231 18.7)",
-      "brightGreen": "oklch(0.569 0.188 141.2)",
-      "brightYellow": "oklch(0.703 0.144 80.7)",
-      "brightBlue": "oklch(0.534 0.152 250.1)",
-      "brightPurple": "oklch(0.54 0.269 312.7)",
-      "brightCyan": "oklch(0.447 0.122 248.6)",
-      "brightWhite": "oklch(0.913 0 0)"
-    }
-  },
-  {
-    "name": "Firewatch",
-    "slug": "firewatch",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.354799503682964,
-      "minAnsi": 3.8883243379757633,
-      "minAnsiSlot": "purple"
-    },
-    "colors": {
-      "background": "oklch(0.245 0.014 272.8)",
-      "foreground": "oklch(0.712 0.025 266.8)",
-      "cursor": "oklch(0.972 0.015 110.9)",
-      "selection": "oklch(0.33 0.017 251.8)",
-      "black": "oklch(0.485 0.024 264.3)",
-      "red": "oklch(0.622 0.168 17.7)",
-      "green": "oklch(0.711 0.133 151.6)",
-      "yellow": "oklch(0.794 0.112 82.6)",
-      "blue": "oklch(0.615 0.11 249.7)",
-      "purple": "oklch(0.605 0.178 40)",
-      "cyan": "oklch(0.679 0.094 208)",
-      "white": "oklch(0.931 0.035 287.5)",
-      "brightBlack": "oklch(0.485 0.024 264.3)",
-      "brightRed": "oklch(0.622 0.168 17.7)",
-      "brightGreen": "oklch(0.711 0.133 151.6)",
-      "brightYellow": "oklch(0.794 0.112 82.6)",
-      "brightBlue": "oklch(0.616 0.112 249.7)",
-      "brightPurple": "oklch(0.605 0.178 40)",
-      "brightCyan": "oklch(0.679 0.094 208)",
-      "brightWhite": "oklch(0.931 0.035 287.5)"
     }
   },
   {
@@ -5248,38 +4480,6 @@
     }
   },
   {
-    "name": "Framer",
-    "slug": "framer",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 4.216767253166575,
-      "minAnsi": 6.0089274371800805,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.178 0 0)",
-      "foreground": "oklch(0.569 0 0)",
-      "cursor": "oklch(0.894 0.184 98.5)",
-      "selection": "oklch(0.51 0 0)",
-      "black": "oklch(0.191 0 0)",
-      "red": "oklch(0.682 0.206 24.4)",
-      "green": "oklch(0.861 0.188 135.3)",
-      "yellow": "oklch(0.867 0.165 88.7)",
-      "blue": "oklch(0.707 0.168 242)",
-      "purple": "oklch(0.709 0.17 294.8)",
-      "cyan": "oklch(0.856 0.095 225.6)",
-      "white": "oklch(0.845 0 0)",
-      "brightBlack": "oklch(0.375 0 0)",
-      "brightRed": "oklch(0.758 0.145 21)",
-      "brightGreen": "oklch(0.898 0.139 134.5)",
-      "brightYellow": "oklch(0.896 0.139 91.1)",
-      "brightBlue": "oklch(0.751 0.148 236.3)",
-      "brightPurple": "oklch(0.831 0.096 297.1)",
-      "brightCyan": "oklch(0.915 0.057 223.6)",
-      "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
     "name": "Front End Delight",
     "slug": "front-end-delight",
     "isDark": true,
@@ -5468,38 +4668,6 @@
       "brightBlue": "oklch(0.531 0.138 255.7)",
       "brightPurple": "oklch(0.765 0.113 22)",
       "brightCyan": "oklch(0.753 0.128 197.4)",
-      "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "GitHub Dark",
-    "slug": "github-dark",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.095203207234266,
-      "minAnsi": 3.5371506775963657,
-      "minAnsiSlot": "cyan"
-    },
-    "colors": {
-      "background": "oklch(0.182 0.009 264.3)",
-      "foreground": "oklch(0.663 0.018 250.9)",
-      "cursor": "oklch(0.857 0.014 248)",
-      "selection": "oklch(0.428 0.06 258.6)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.73 0.15 34.1)",
-      "green": "oklch(0.772 0.188 145.5)",
-      "yellow": "oklch(0.79 0.139 85.2)",
-      "blue": "oklch(0.716 0.137 258.3)",
-      "purple": "oklch(0.662 0.168 349.5)",
-      "cyan": "oklch(0.523 0.078 220.3)",
-      "white": "oklch(1 0 0)",
-      "brightBlack": "oklch(0.42 0 0)",
-      "brightRed": "oklch(0.73 0.15 34.1)",
-      "brightGreen": "oklch(0.772 0.188 145.5)",
-      "brightYellow": "oklch(0.79 0.139 85.2)",
-      "brightBlue": "oklch(0.716 0.137 258.3)",
-      "brightPurple": "oklch(0.662 0.168 349.5)",
-      "brightCyan": "oklch(0.523 0.078 220.3)",
       "brightWhite": "oklch(1 0 0)"
     }
   },
@@ -5949,70 +5117,6 @@
       "brightPurple": "oklch(0.859 0.133 327.1)",
       "brightCyan": "oklch(0.931 0.032 283.8)",
       "brightWhite": "oklch(0.999 0.001 197.1)"
-    }
-  },
-  {
-    "name": "Grape",
-    "slug": "grape",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.847286081822569,
-      "minAnsi": 3.0025008281247483,
-      "minAnsiSlot": "purple"
-    },
-    "colors": {
-      "background": "oklch(0.203 0.03 292.7)",
-      "foreground": "oklch(0.703 0.003 286.3)",
-      "cursor": "oklch(0.698 0.16 292.6)",
-      "selection": "oklch(0.397 0.085 293)",
-      "black": "oklch(0.293 0.042 293.6)",
-      "red": "oklch(0.615 0.231 11.2)",
-      "green": "oklch(0.64 0.206 142.5)",
-      "yellow": "oklch(0.812 0.215 131.4)",
-      "blue": "oklch(0.616 0.188 263.7)",
-      "purple": "oklch(0.526 0.218 307.5)",
-      "cyan": "oklch(0.826 0.129 204.4)",
-      "white": "oklch(0.7 0.003 286.3)",
-      "brightBlack": "oklch(0.452 0.041 299.4)",
-      "brightRed": "oklch(0.711 0.16 2)",
-      "brightGreen": "oklch(0.665 0.139 146.4)",
-      "brightYellow": "oklch(0.845 0.12 130)",
-      "brightBlue": "oklch(0.798 0.072 267.9)",
-      "brightPurple": "oklch(0.669 0.105 314.5)",
-      "brightCyan": "oklch(0.872 0.071 204.9)",
-      "brightWhite": "oklch(0.698 0.16 292.6)"
-    }
-  },
-  {
-    "name": "Grass",
-    "slug": "grass",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 4.890282728037497,
-      "minAnsi": 1.8163650295143616,
-      "minAnsiSlot": "purple"
-    },
-    "colors": {
-      "background": "oklch(0.501 0.125 151.7)",
-      "foreground": "oklch(0.95 0.095 98.2)",
-      "cursor": "oklch(0.666 0.138 41.7)",
-      "selection": "oklch(0.546 0.15 37.8)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.687 0.202 24.1)",
-      "green": "oklch(0.686 0.234 142.5)",
-      "yellow": "oklch(0.786 0.161 85.9)",
-      "blue": "oklch(0.323 0.224 264.1)",
-      "purple": "oklch(0.689 0.21 343.7)",
-      "cyan": "oklch(0.717 0.122 194.8)",
-      "white": "oklch(0.792 0 0)",
-      "brightBlack": "oklch(0.67 0 0)",
-      "brightRed": "oklch(0.687 0.202 24.1)",
-      "brightGreen": "oklch(0.686 0.234 142.5)",
-      "brightYellow": "oklch(0.786 0.161 85.9)",
-      "brightBlue": "oklch(0.358 0.248 264.1)",
-      "brightPurple": "oklch(0.74 0.272 327.9)",
-      "brightCyan": "oklch(0.915 0.137 195)",
-      "brightWhite": "oklch(1 0 0)"
     }
   },
   {
@@ -6528,70 +5632,6 @@
     }
   },
   {
-    "name": "HaX0R Gr33N",
-    "slug": "hax0r-gr33n",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.841199156356613,
-      "minAnsi": 9.390074925552794,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.149 0.043 140.9)",
-      "foreground": "oklch(0.661 0.219 142.3)",
-      "cursor": "oklch(0.745 0.249 142.4)",
-      "selection": "oklch(0.954 0.093 136.2)",
-      "black": "oklch(0.21 0.055 152.5)",
-      "red": "oklch(0.745 0.249 142.4)",
-      "green": "oklch(0.745 0.249 142.4)",
-      "yellow": "oklch(0.745 0.249 142.4)",
-      "blue": "oklch(0.745 0.249 142.4)",
-      "purple": "oklch(0.745 0.249 142.4)",
-      "cyan": "oklch(0.745 0.249 142.4)",
-      "white": "oklch(0.985 0 0)",
-      "brightBlack": "oklch(0.382 0.028 178.4)",
-      "brightRed": "oklch(0.792 0.265 142.3)",
-      "brightGreen": "oklch(0.792 0.265 142.3)",
-      "brightYellow": "oklch(0.792 0.265 142.3)",
-      "brightBlue": "oklch(0.792 0.265 142.3)",
-      "brightPurple": "oklch(0.792 0.265 142.3)",
-      "brightCyan": "oklch(0.792 0.265 142.3)",
-      "brightWhite": "oklch(0.997 0 0)"
-    }
-  },
-  {
-    "name": "HaX0R R3D",
-    "slug": "hax0r-r3d",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 2.756135861744877,
-      "minAnsi": 2.7287710521046282,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.156 0.06 27.7)",
-      "foreground": "oklch(0.482 0.191 28.5)",
-      "cursor": "oklch(0.48 0.191 28.5)",
-      "selection": "oklch(0.867 0.095 314.7)",
-      "black": "oklch(0.15 0.062 29.2)",
-      "red": "oklch(0.48 0.191 28.5)",
-      "green": "oklch(0.48 0.191 28.5)",
-      "yellow": "oklch(0.48 0.191 28.5)",
-      "blue": "oklch(0.48 0.191 28.5)",
-      "purple": "oklch(0.48 0.191 28.5)",
-      "cyan": "oklch(0.48 0.191 28.5)",
-      "white": "oklch(0.985 0 0)",
-      "brightBlack": "oklch(0.394 0.029 18.5)",
-      "brightRed": "oklch(0.632 0.254 28.8)",
-      "brightGreen": "oklch(0.631 0.254 28.8)",
-      "brightYellow": "oklch(0.631 0.254 28.8)",
-      "brightBlue": "oklch(0.631 0.254 28.8)",
-      "brightPurple": "oklch(0.631 0.254 28.8)",
-      "brightCyan": "oklch(0.631 0.254 28.8)",
-      "brightWhite": "oklch(0.997 0 0)"
-    }
-  },
-  {
     "name": "Heeler",
     "slug": "heeler",
     "isDark": true,
@@ -6784,70 +5824,6 @@
     }
   },
   {
-    "name": "Hopscotch",
-    "slug": "hopscotch",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.922862329946787,
-      "minAnsi": 1.9198229617709017,
-      "minAnsiSlot": "brightYellow"
-    },
-    "colors": {
-      "background": "oklch(0.294 0.019 329.7)",
-      "foreground": "oklch(0.777 0.006 334)",
-      "cursor": "oklch(0.777 0.006 334)",
-      "selection": "oklch(0.456 0.015 329.8)",
-      "black": "oklch(0.294 0.019 329.7)",
-      "red": "oklch(0.61 0.187 22.5)",
-      "green": "oklch(0.75 0.167 128)",
-      "yellow": "oklch(0.867 0.142 85.8)",
-      "blue": "oklch(0.614 0.12 231.2)",
-      "purple": "oklch(0.619 0.138 4.1)",
-      "cyan": "oklch(0.623 0.105 188.2)",
-      "white": "oklch(0.777 0.006 334)",
-      "brightBlack": "oklch(0.563 0.012 325.7)",
-      "brightRed": "oklch(0.747 0.175 56.9)",
-      "brightGreen": "oklch(0.456 0.016 325.8)",
-      "brightYellow": "oklch(0.456 0.015 329.8)",
-      "brightBlue": "oklch(0.671 0.007 325.7)",
-      "brightPurple": "oklch(0.869 0.004 325.6)",
-      "brightCyan": "oklch(0.514 0.169 36.6)",
-      "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "Hopscotch.256",
-    "slug": "hopscotch-256",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.922862329946787,
-      "minAnsi": 3.3763238959414608,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.294 0.019 329.7)",
-      "foreground": "oklch(0.777 0.006 334)",
-      "cursor": "oklch(0.777 0.006 334)",
-      "selection": "oklch(0.456 0.015 329.8)",
-      "black": "oklch(0.294 0.019 329.7)",
-      "red": "oklch(0.61 0.187 22.5)",
-      "green": "oklch(0.75 0.167 128)",
-      "yellow": "oklch(0.867 0.142 85.8)",
-      "blue": "oklch(0.614 0.12 231.2)",
-      "purple": "oklch(0.619 0.138 4.1)",
-      "cyan": "oklch(0.623 0.105 188.2)",
-      "white": "oklch(0.777 0.006 334)",
-      "brightBlack": "oklch(0.563 0.012 325.7)",
-      "brightRed": "oklch(0.61 0.187 22.5)",
-      "brightGreen": "oklch(0.75 0.167 128)",
-      "brightYellow": "oklch(0.867 0.142 85.8)",
-      "brightBlue": "oklch(0.614 0.12 231.2)",
-      "brightPurple": "oklch(0.619 0.138 4.1)",
-      "brightCyan": "oklch(0.623 0.105 188.2)",
-      "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
     "name": "Horizon",
     "slug": "horizon",
     "isDark": true,
@@ -6909,38 +5885,6 @@
       "brightPurple": "oklch(0.734 0.196 350)",
       "brightCyan": "oklch(0.74 0.126 194.1)",
       "brightWhite": "oklch(0.971 0.015 33.1)"
-    }
-  },
-  {
-    "name": "Hot Dog Stand",
-    "slug": "hot-dog-stand",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 4.203122533935382,
-      "minAnsi": 3.9397305912370046,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.611 0.22 29.8)",
-      "foreground": "oklch(1 0 0)",
-      "cursor": "oklch(0.971 0.184 109.4)",
-      "selection": "oklch(0.971 0.184 109.4)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.971 0.184 109.4)",
-      "green": "oklch(0.971 0.184 109.4)",
-      "yellow": "oklch(0.971 0.184 109.4)",
-      "blue": "oklch(0 0 0)",
-      "purple": "oklch(0.971 0.184 109.4)",
-      "cyan": "oklch(1 0 0)",
-      "white": "oklch(0.827 0 0)",
-      "brightBlack": "oklch(0 0 0)",
-      "brightRed": "oklch(0.971 0.184 109.4)",
-      "brightGreen": "oklch(0.971 0.184 109.4)",
-      "brightYellow": "oklch(0.971 0.184 109.4)",
-      "brightBlue": "oklch(0 0 0)",
-      "brightPurple": "oklch(0.971 0.184 109.4)",
-      "brightCyan": "oklch(1 0 0)",
-      "brightWhite": "oklch(0.827 0 0)"
     }
   },
   {
@@ -7616,70 +6560,6 @@
     }
   },
   {
-    "name": "iTerm2 Solarized Dark",
-    "slug": "iterm2-solarized-dark",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 4.747877839876171,
-      "minAnsi": 2.789627547583178,
-      "minAnsiSlot": "brightGreen"
-    },
-    "colors": {
-      "background": "oklch(0.267 0.049 219.8)",
-      "foreground": "oklch(0.654 0.02 205.3)",
-      "cursor": "oklch(0.654 0.02 205.3)",
-      "selection": "oklch(0.309 0.052 219.7)",
-      "black": "oklch(0.309 0.052 219.7)",
-      "red": "oklch(0.586 0.206 27.1)",
-      "green": "oklch(0.644 0.151 118.6)",
-      "yellow": "oklch(0.655 0.134 85.7)",
-      "blue": "oklch(0.615 0.139 244.9)",
-      "purple": "oklch(0.592 0.203 355.9)",
-      "cyan": "oklch(0.644 0.102 187.4)",
-      "white": "oklch(0.931 0.026 92.4)",
-      "brightBlack": "oklch(0.455 0.051 216.2)",
-      "brightRed": "oklch(0.581 0.173 39.5)",
-      "brightGreen": "oklch(0.523 0.028 219.1)",
-      "brightYellow": "oklch(0.568 0.029 221.9)",
-      "brightBlue": "oklch(0.654 0.02 205.3)",
-      "brightPurple": "oklch(0.582 0.126 279.1)",
-      "brightCyan": "oklch(0.698 0.016 196.8)",
-      "brightWhite": "oklch(0.974 0.026 90.1)"
-    }
-  },
-  {
-    "name": "iTerm2 Solarized Light",
-    "slug": "iterm2-solarized-light",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 4.129605890896795,
-      "minAnsi": 2.4789959188576267,
-      "minAnsiSlot": "brightCyan"
-    },
-    "colors": {
-      "background": "oklch(0.974 0.026 90.1)",
-      "foreground": "oklch(0.568 0.029 221.9)",
-      "cursor": "oklch(0.568 0.029 221.9)",
-      "selection": "oklch(0.931 0.026 92.4)",
-      "black": "oklch(0.309 0.052 219.7)",
-      "red": "oklch(0.586 0.206 27.1)",
-      "green": "oklch(0.644 0.151 118.6)",
-      "yellow": "oklch(0.655 0.134 85.7)",
-      "blue": "oklch(0.615 0.139 244.9)",
-      "purple": "oklch(0.592 0.203 355.9)",
-      "cyan": "oklch(0.644 0.102 187.4)",
-      "white": "oklch(0.773 0.027 92.5)",
-      "brightBlack": "oklch(0.267 0.049 219.8)",
-      "brightRed": "oklch(0.581 0.173 39.5)",
-      "brightGreen": "oklch(0.523 0.028 219.1)",
-      "brightYellow": "oklch(0.568 0.029 221.9)",
-      "brightBlue": "oklch(0.654 0.02 205.3)",
-      "brightPurple": "oklch(0.582 0.126 279.1)",
-      "brightCyan": "oklch(0.698 0.016 196.8)",
-      "brightWhite": "oklch(0.974 0.026 90.1)"
-    }
-  },
-  {
     "name": "iTerm2 Tango Dark",
     "slug": "iterm2-tango-dark",
     "isDark": true,
@@ -8029,70 +6909,6 @@
       "brightPurple": "oklch(0.652 0.047 298.4)",
       "brightCyan": "oklch(0.696 0.051 181.3)",
       "brightWhite": "oklch(0.832 0.007 145.5)"
-    }
-  },
-  {
-    "name": "Kanagawa Lotus",
-    "slug": "kanagawa-lotus",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 6.18561286722523,
-      "minAnsi": 2.6961088191135745,
-      "minAnsiSlot": "brightBlue"
-    },
-    "colors": {
-      "background": "oklch(0.936 0.063 101.6)",
-      "foreground": "oklch(0.452 0.026 285.3)",
-      "cursor": "oklch(0.402 0.068 282.9)",
-      "selection": "oklch(0.452 0.026 285.3)",
-      "black": "oklch(0.243 0.017 285.1)",
-      "red": "oklch(0.571 0.172 16.5)",
-      "green": "oklch(0.595 0.089 128.3)",
-      "yellow": "oklch(0.542 0.07 102.4)",
-      "blue": "oklch(0.521 0.086 261.5)",
-      "purple": "oklch(0.585 0.119 359.8)",
-      "cyan": "oklch(0.555 0.04 182.7)",
-      "white": "oklch(0.452 0.026 285.3)",
-      "brightBlack": "oklch(0.628 0.013 101.6)",
-      "brightRed": "oklch(0.601 0.18 22.9)",
-      "brightGreen": "oklch(0.617 0.083 136.6)",
-      "brightYellow": "oklch(0.552 0.058 82.3)",
-      "brightBlue": "oklch(0.648 0.083 248.7)",
-      "brightPurple": "oklch(0.463 0.09 301.4)",
-      "brightCyan": "oklch(0.584 0.047 175.2)",
-      "brightWhite": "oklch(0.402 0.068 282.9)"
-    }
-  },
-  {
-    "name": "Kanagawa Paper Canvas",
-    "slug": "kanagawa-paper-canvas",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 3.4014085185478664,
-      "minAnsi": 1.7517263688075004,
-      "minAnsiSlot": "brightBlue"
-    },
-    "colors": {
-      "background": "oklch(0.909 0.004 106.5)",
-      "foreground": "oklch(0.57 0.01 248)",
-      "cursor": "oklch(0.648 0.052 263)",
-      "selection": "oklch(0.856 0.012 325.7)",
-      "black": "oklch(0.634 0.015 88.7)",
-      "red": "oklch(0.647 0.096 23.3)",
-      "green": "oklch(0.648 0.031 177.2)",
-      "yellow": "oklch(0.675 0.063 87.9)",
-      "blue": "oklch(0.673 0.035 226.6)",
-      "purple": "oklch(0.632 0.054 332.7)",
-      "cyan": "oklch(0.648 0.052 263)",
-      "white": "oklch(0.749 0.011 106.7)",
-      "brightBlack": "oklch(0.67 0.017 90.3)",
-      "brightRed": "oklch(0.682 0.081 22.3)",
-      "brightGreen": "oklch(0.682 0.033 176.1)",
-      "brightYellow": "oklch(0.708 0.066 88.1)",
-      "brightBlue": "oklch(0.738 0.039 225.2)",
-      "brightPurple": "oklch(0.668 0.053 332.6)",
-      "brightCyan": "oklch(0.684 0.048 263)",
-      "brightWhite": "oklch(0.774 0.011 106.7)"
     }
   },
   {
@@ -8704,102 +7520,6 @@
     }
   },
   {
-    "name": "Laser",
-    "slug": "laser",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 5.467379042591636,
-      "minAnsi": 5.266182758914931,
-      "minAnsiSlot": "brightBlue"
-    },
-    "colors": {
-      "background": "oklch(0.155 0.03 247.7)",
-      "foreground": "oklch(0.665 0.299 331.6)",
-      "cursor": "oklch(0.88 0.211 156.6)",
-      "selection": "oklch(0.31 0.123 285.5)",
-      "black": "oklch(0.496 0 0)",
-      "red": "oklch(0.746 0.154 28.8)",
-      "green": "oklch(0.913 0.182 132)",
-      "yellow": "oklch(0.701 0.118 201.2)",
-      "blue": "oklch(0.878 0.18 93.9)",
-      "purple": "oklch(0.808 0.188 327.5)",
-      "cyan": "oklch(0.875 0.062 285.1)",
-      "white": "oklch(0.958 0 0)",
-      "brightBlack": "oklch(0.65 0 0)",
-      "brightRed": "oklch(0.872 0.069 25.2)",
-      "brightGreen": "oklch(0.948 0.095 132.3)",
-      "brightYellow": "oklch(0.988 0.053 106.2)",
-      "brightBlue": "oklch(0.647 0.243 1.9)",
-      "brightPurple": "oklch(0.86 0.132 327.1)",
-      "brightCyan": "oklch(0.934 0.031 283.8)",
-      "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "Later This Evening",
-    "slug": "later-this-evening",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 5.311567916009271,
-      "minAnsi": 1.7892578426663424,
-      "minAnsiSlot": "white"
-    },
-    "colors": {
-      "background": "oklch(0.252 0 0)",
-      "foreground": "oklch(0.67 0 0)",
-      "cursor": "oklch(0.428 0 0)",
-      "selection": "oklch(0.379 0 0)",
-      "black": "oklch(0.289 0 0)",
-      "red": "oklch(0.624 0.154 19.7)",
-      "green": "oklch(0.762 0.108 115.2)",
-      "yellow": "oklch(0.863 0.095 95.3)",
-      "blue": "oklch(0.779 0.049 250.4)",
-      "purple": "oklch(0.727 0.108 314.5)",
-      "cyan": "oklch(0.77 0.05 183.1)",
-      "white": "oklch(0.408 0.001 197.1)",
-      "brightBlack": "oklch(0.444 0.003 197.1)",
-      "brightRed": "oklch(0.56 0.208 24.6)",
-      "brightGreen": "oklch(0.755 0.152 116.6)",
-      "brightYellow": "oklch(0.814 0.149 91.8)",
-      "brightBlue": "oklch(0.672 0.106 253.6)",
-      "brightPurple": "oklch(0.606 0.202 312.9)",
-      "brightCyan": "oklch(0.744 0.096 179.8)",
-      "brightWhite": "oklch(0.813 0.001 197.1)"
-    }
-  },
-  {
-    "name": "Lavandula",
-    "slug": "lavandula",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 4.186173978306482,
-      "minAnsi": 1.9806839109135272,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.102 0.056 294)",
-      "foreground": "oklch(0.548 0.024 300.8)",
-      "cursor": "oklch(0.699 0.152 279.6)",
-      "selection": "oklch(0.326 0.019 307.8)",
-      "black": "oklch(0.216 0.116 298.8)",
-      "red": "oklch(0.387 0.136 19.2)",
-      "green": "oklch(0.542 0.078 177.9)",
-      "yellow": "oklch(0.547 0.058 87.6)",
-      "blue": "oklch(0.439 0.086 286.6)",
-      "purple": "oklch(0.428 0.106 301.6)",
-      "cyan": "oklch(0.548 0.038 215.4)",
-      "white": "oklch(0.548 0.024 300.8)",
-      "brightBlack": "oklch(0.369 0.044 302.6)",
-      "brightRed": "oklch(0.632 0.178 14.7)",
-      "brightGreen": "oklch(0.823 0.128 177.3)",
-      "brightYellow": "oklch(0.828 0.085 85.2)",
-      "brightBlue": "oklch(0.667 0.13 285.9)",
-      "brightPurple": "oklch(0.659 0.159 303.7)",
-      "brightCyan": "oklch(0.834 0.062 211.8)",
-      "brightWhite": "oklch(0.699 0.152 279.6)"
-    }
-  },
-  {
     "name": "Light Owl",
     "slug": "light-owl",
     "isDark": false,
@@ -9184,38 +7904,6 @@
     }
   },
   {
-    "name": "Material Ocean",
-    "slug": "material-ocean",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.153036408356529,
-      "minAnsi": 6.027638935261423,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.18 0.019 274.6)",
-      "foreground": "oklch(0.665 0.023 273.9)",
-      "cursor": "oklch(0.865 0.177 90.4)",
-      "selection": "oklch(0.257 0.032 276.2)",
-      "black": "oklch(0.522 0.036 227.9)",
-      "red": "oklch(0.685 0.207 14.8)",
-      "green": "oklch(0.884 0.124 126.8)",
-      "yellow": "oklch(0.869 0.128 81.1)",
-      "blue": "oklch(0.744 0.131 264.3)",
-      "purple": "oklch(0.743 0.135 311.1)",
-      "cyan": "oklch(0.856 0.094 225.9)",
-      "white": "oklch(1 0 0)",
-      "brightBlack": "oklch(0.522 0.036 227.9)",
-      "brightRed": "oklch(0.685 0.207 14.8)",
-      "brightGreen": "oklch(0.884 0.124 126.8)",
-      "brightYellow": "oklch(0.869 0.128 81.1)",
-      "brightBlue": "oklch(0.744 0.131 264.3)",
-      "brightPurple": "oklch(0.743 0.135 311.1)",
-      "brightCyan": "oklch(0.856 0.094 225.9)",
-      "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
     "name": "Mathias",
     "slug": "mathias",
     "isDark": true,
@@ -9245,38 +7933,6 @@
       "brightPurple": "oklch(0.74 0.272 327.9)",
       "brightCyan": "oklch(0.915 0.137 195)",
       "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "Matrix",
-    "slug": "matrix",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 2.7341061213046127,
-      "minAnsi": 2.1230093292775423,
-      "minAnsiSlot": "blue"
-    },
-    "colors": {
-      "background": "oklch(0.205 0.016 218.3)",
-      "foreground": "oklch(0.473 0.068 145.7)",
-      "cursor": "oklch(0.379 0.017 196.5)",
-      "selection": "oklch(0.265 0.024 223.5)",
-      "black": "oklch(0.205 0.016 218.3)",
-      "red": "oklch(0.506 0.09 167)",
-      "green": "oklch(0.805 0.172 138.8)",
-      "yellow": "oklch(0.887 0.182 95.3)",
-      "blue": "oklch(0.417 0.035 149.3)",
-      "purple": "oklch(0.607 0.164 140.9)",
-      "cyan": "oklch(0.689 0.158 145.5)",
-      "white": "oklch(0.519 0.068 144.5)",
-      "brightBlack": "oklch(0.572 0.056 138)",
-      "brightRed": "oklch(0.716 0.158 156.4)",
-      "brightGreen": "oklch(0.807 0.167 134.6)",
-      "brightYellow": "oklch(0.964 0.212 111.2)",
-      "brightBlue": "oklch(0.56 0.051 195.8)",
-      "brightPurple": "oklch(0.868 0.288 143)",
-      "brightCyan": "oklch(0.933 0.16 131.7)",
-      "brightWhite": "oklch(0.601 0.076 141.1)"
     }
   },
   {
@@ -9532,38 +8188,6 @@
       "brightBlue": "oklch(0.624 0.206 255.5)",
       "brightPurple": "oklch(0.656 0.227 312.4)",
       "brightCyan": "oklch(0.789 0.123 230.8)",
-      "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "Mirage",
-    "slug": "mirage",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.995198775446447,
-      "minAnsi": 7.030176879732231,
-      "minAnsiSlot": "cyan"
-    },
-    "colors": {
-      "background": "oklch(0.27 0.036 257.1)",
-      "foreground": "oklch(0.759 0.024 252.2)",
-      "cursor": "oklch(0.83 0.113 309.3)",
-      "selection": "oklch(0.341 0.049 255.9)",
-      "black": "oklch(0.193 0.045 244)",
-      "red": "oklch(0.788 0.123 20.2)",
-      "green": "oklch(0.784 0.106 150.5)",
-      "yellow": "oklch(0.887 0.182 95.3)",
-      "blue": "oklch(0.765 0.121 256.5)",
-      "purple": "oklch(0.83 0.113 309.3)",
-      "cyan": "oklch(0.744 0.134 175.6)",
-      "white": "oklch(1 0 0)",
-      "brightBlack": "oklch(0.454 0.001 17.2)",
-      "brightRed": "oklch(0.788 0.123 20.2)",
-      "brightGreen": "oklch(0.784 0.106 150.5)",
-      "brightYellow": "oklch(0.887 0.182 95.3)",
-      "brightBlue": "oklch(0.765 0.121 256.5)",
-      "brightPurple": "oklch(0.83 0.113 309.3)",
-      "brightCyan": "oklch(0.784 0.106 150.5)",
       "brightWhite": "oklch(1 0 0)"
     }
   },
@@ -10400,38 +9024,6 @@
     }
   },
   {
-    "name": "N0Tch2K",
-    "slug": "n0tch2k",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.084168958953755,
-      "minAnsi": 2.7708877609388116,
-      "minAnsiSlot": "green"
-    },
-    "colors": {
-      "background": "oklch(0.252 0 0)",
-      "foreground": "oklch(0.706 0 0)",
-      "cursor": "oklch(0.672 0.05 70)",
-      "selection": "oklch(0.42 0 0)",
-      "black": "oklch(0.341 0 0)",
-      "red": "oklch(0.551 0.111 24.2)",
-      "green": "oklch(0.51 0 0)",
-      "yellow": "oklch(0.629 0.081 69.3)",
-      "blue": "oklch(0.556 0.093 126.4)",
-      "purple": "oklch(0.566 0 0)",
-      "cyan": "oklch(0.836 0 0)",
-      "white": "oklch(0.798 0.04 63.4)",
-      "brightBlack": "oklch(0.446 0 0)",
-      "brightRed": "oklch(0.619 0.063 21.6)",
-      "brightGreen": "oklch(0.64 0 0)",
-      "brightYellow": "oklch(0.671 0.049 71.1)",
-      "brightBlue": "oklch(0.75 0.13 126.9)",
-      "brightPurple": "oklch(0.716 0 0)",
-      "brightCyan": "oklch(0.895 0 0)",
-      "brightWhite": "oklch(0.842 0.025 61.6)"
-    }
-  },
-  {
     "name": "Neobones Dark",
     "slug": "neobones-dark",
     "isDark": true,
@@ -11264,38 +9856,6 @@
     }
   },
   {
-    "name": "Ollie",
-    "slug": "ollie",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 4.954611624675583,
-      "minAnsi": 2.3398842060925027,
-      "minAnsiSlot": "blue"
-    },
-    "colors": {
-      "background": "oklch(0.251 0.008 297.3)",
-      "foreground": "oklch(0.653 0.049 280.9)",
-      "cursor": "oklch(0.548 0.092 269.2)",
-      "selection": "oklch(0.351 0.084 259.1)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.498 0.162 24.2)",
-      "green": "oklch(0.66 0.154 152.1)",
-      "yellow": "oklch(0.519 0.151 43.9)",
-      "blue": "oklch(0.475 0.144 262.5)",
-      "purple": "oklch(0.642 0.118 82.4)",
-      "cyan": "oklch(0.662 0.107 199.7)",
-      "white": "oklch(0.654 0.045 279.1)",
-      "brightBlack": "oklch(0.423 0.058 47.3)",
-      "brightRed": "oklch(0.658 0.228 23.5)",
-      "brightGreen": "oklch(0.884 0.206 154.5)",
-      "brightYellow": "oklch(0.687 0.208 38.9)",
-      "brightBlue": "oklch(0.645 0.19 260.7)",
-      "brightPurple": "oklch(0.847 0.169 84.8)",
-      "brightCyan": "oklch(0.895 0.149 197.5)",
-      "brightWhite": "oklch(0.548 0.092 269.2)"
-    }
-  },
-  {
     "name": "One Dark Two",
     "slug": "one-dark-two",
     "isDark": true,
@@ -11680,38 +10240,6 @@
     }
   },
   {
-    "name": "Pale Night Hc",
-    "slug": "pale-night-hc",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.218254940110127,
-      "minAnsi": 3.4895700916505707,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.381 0.026 273.4)",
-      "foreground": "oklch(0.845 0 0)",
-      "cursor": "oklch(0.869 0.128 81.1)",
-      "selection": "oklch(0.6 0.087 275)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.701 0.157 18.6)",
-      "green": "oklch(0.884 0.124 126.8)",
-      "yellow": "oklch(0.869 0.128 81.1)",
-      "blue": "oklch(0.744 0.131 264.3)",
-      "purple": "oklch(0.743 0.135 311.1)",
-      "cyan": "oklch(0.856 0.094 225.9)",
-      "white": "oklch(1 0 0)",
-      "brightBlack": "oklch(0.556 0 0)",
-      "brightRed": "oklch(0.81 0.091 15)",
-      "brightGreen": "oklch(0.928 0.076 125.6)",
-      "brightYellow": "oklch(0.917 0.081 81.7)",
-      "brightBlue": "oklch(0.845 0.076 265.1)",
-      "brightPurple": "oklch(0.843 0.08 311.8)",
-      "brightCyan": "oklch(0.909 0.059 225.5)",
-      "brightWhite": "oklch(0.683 0 0)"
-    }
-  },
-  {
     "name": "Pandora",
     "slug": "pandora",
     "isDark": true,
@@ -11741,38 +10269,6 @@
       "brightPurple": "oklch(0.718 0.3 328.2)",
       "brightCyan": "oklch(0.853 0.148 188.3)",
       "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "Paraiso Dark",
-    "slug": "paraiso-dark",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 5.884989370345183,
-      "minAnsi": 2.946392098596513,
-      "minAnsiSlot": "purple"
-    },
-    "colors": {
-      "background": "oklch(0.263 0.038 328.6)",
-      "foreground": "oklch(0.703 0.007 53.4)",
-      "cursor": "oklch(0.703 0.007 53.4)",
-      "selection": "oklch(0.396 0.024 334.1)",
-      "black": "oklch(0.263 0.038 328.6)",
-      "red": "oklch(0.671 0.178 27.6)",
-      "green": "oklch(0.7 0.125 161.2)",
-      "yellow": "oklch(0.849 0.17 86.4)",
-      "blue": "oklch(0.727 0.144 229.9)",
-      "purple": "oklch(0.542 0.117 306.9)",
-      "cyan": "oklch(0.757 0.097 191.1)",
-      "white": "oklch(0.703 0.007 53.4)",
-      "brightBlack": "oklch(0.547 0.012 355.2)",
-      "brightRed": "oklch(0.671 0.178 27.6)",
-      "brightGreen": "oklch(0.7 0.125 161.2)",
-      "brightYellow": "oklch(0.849 0.17 86.4)",
-      "brightBlue": "oklch(0.727 0.144 229.9)",
-      "brightPurple": "oklch(0.542 0.117 306.9)",
-      "brightCyan": "oklch(0.757 0.097 191.1)",
-      "brightWhite": "oklch(0.929 0.019 113.4)"
     }
   },
   {
@@ -12125,70 +10621,6 @@
       "brightPurple": "oklch(0.944 0.04 323.3)",
       "brightCyan": "oklch(0.856 0.094 225.9)",
       "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "Poimandres Storm",
-    "slug": "poimandres-storm",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.356688691112879,
-      "minAnsi": 4.129391604797894,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.289 0.024 264.1)",
-      "foreground": "oklch(0.751 0.048 277.1)",
-      "cursor": "oklch(1 0 0)",
-      "selection": "oklch(0.751 0.048 277.1)",
-      "black": "oklch(0.289 0.024 264.1)",
-      "red": "oklch(0.654 0.146 349.8)",
-      "green": "oklch(0.837 0.125 176.5)",
-      "yellow": "oklch(0.976 0.072 103.4)",
-      "blue": "oklch(0.856 0.094 225.9)",
-      "purple": "oklch(0.752 0.142 348.9)",
-      "cyan": "oklch(0.856 0.094 225.9)",
-      "white": "oklch(1 0 0)",
-      "brightBlack": "oklch(0.751 0.048 277.1)",
-      "brightRed": "oklch(0.654 0.146 349.8)",
-      "brightGreen": "oklch(0.837 0.125 176.5)",
-      "brightYellow": "oklch(0.976 0.072 103.4)",
-      "brightBlue": "oklch(0.863 0.071 247.4)",
-      "brightPurple": "oklch(0.752 0.142 348.9)",
-      "brightCyan": "oklch(0.863 0.071 247.4)",
-      "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "Poimandres White",
-    "slug": "poimandres-white",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 2.6755931412786236,
-      "minAnsi": 1,
-      "minAnsiSlot": "black"
-    },
-    "colors": {
-      "background": "oklch(0.997 0.001 286.4)",
-      "foreground": "oklch(0.699 0.049 277)",
-      "cursor": "oklch(0.699 0.049 277)",
-      "selection": "oklch(0.699 0.049 277)",
-      "black": "oklch(0.997 0.001 286.4)",
-      "red": "oklch(0.658 0.255 358.3)",
-      "green": "oklch(0.792 0.152 173.1)",
-      "yellow": "oklch(0.807 0.134 87.1)",
-      "blue": "oklch(0.762 0.058 224.3)",
-      "purple": "oklch(0.728 0.128 10.3)",
-      "cyan": "oklch(0.762 0.058 224.3)",
-      "white": "oklch(0 0 0)",
-      "brightBlack": "oklch(0.699 0.049 277)",
-      "brightRed": "oklch(0.658 0.255 358.3)",
-      "brightGreen": "oklch(0.792 0.152 173.1)",
-      "brightYellow": "oklch(0.807 0.134 87.1)",
-      "brightBlue": "oklch(0.756 0.152 231.9)",
-      "brightPurple": "oklch(0.728 0.128 10.3)",
-      "brightCyan": "oklch(0.756 0.152 231.9)",
-      "brightWhite": "oklch(0 0 0)"
     }
   },
   {
@@ -12672,38 +11104,6 @@
     }
   },
   {
-    "name": "Red Sands",
-    "slug": "red-sands",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.064777615087849,
-      "minAnsi": 1.8146520910097659,
-      "minAnsiSlot": "purple"
-    },
-    "colors": {
-      "background": "oklch(0.396 0.12 28.4)",
-      "foreground": "oklch(0.839 0.048 88.3)",
-      "cursor": "oklch(1 0 0)",
-      "selection": "oklch(0.711 0.027 104.6)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.655 0.234 34.4)",
-      "green": "oklch(0.686 0.234 142.5)",
-      "yellow": "oklch(0.786 0.161 85.9)",
-      "blue": "oklch(0.587 0.227 259)",
-      "purple": "oklch(0.556 0.255 328.4)",
-      "cyan": "oklch(0.717 0.122 194.8)",
-      "white": "oklch(0.792 0 0)",
-      "brightBlack": "oklch(0.538 0 0)",
-      "brightRed": "oklch(0.555 0.215 28.1)",
-      "brightGreen": "oklch(0.686 0.234 142.5)",
-      "brightYellow": "oklch(0.786 0.161 85.9)",
-      "brightBlue": "oklch(0.53 0.127 242.4)",
-      "brightPurple": "oklch(0.74 0.272 327.9)",
-      "brightCyan": "oklch(0.915 0.137 195)",
-      "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
     "name": "Relaxed",
     "slug": "relaxed",
     "isDark": true,
@@ -12733,38 +11133,6 @@
       "brightPurple": "oklch(0.609 0.114 340.3)",
       "brightCyan": "oklch(0.787 0.034 256.8)",
       "brightWhite": "oklch(0.976 0 0)"
-    }
-  },
-  {
-    "name": "Retro",
-    "slug": "retro",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.131978314215707,
-      "minAnsi": 6.131978314215707,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0 0 0)",
-      "foreground": "oklch(0.616 0.204 142.4)",
-      "cursor": "oklch(0.616 0.204 142.4)",
-      "selection": "oklch(1 0 0)",
-      "black": "oklch(0.616 0.204 142.4)",
-      "red": "oklch(0.616 0.204 142.4)",
-      "green": "oklch(0.616 0.204 142.4)",
-      "yellow": "oklch(0.616 0.204 142.4)",
-      "blue": "oklch(0.616 0.204 142.4)",
-      "purple": "oklch(0.616 0.204 142.4)",
-      "cyan": "oklch(0.616 0.204 142.4)",
-      "white": "oklch(0.616 0.204 142.4)",
-      "brightBlack": "oklch(0.685 0.228 142.4)",
-      "brightRed": "oklch(0.685 0.228 142.4)",
-      "brightGreen": "oklch(0.685 0.228 142.4)",
-      "brightYellow": "oklch(0.685 0.228 142.4)",
-      "brightBlue": "oklch(0.685 0.228 142.4)",
-      "brightPurple": "oklch(0.685 0.228 142.4)",
-      "brightCyan": "oklch(0.685 0.228 142.4)",
-      "brightWhite": "oklch(0.685 0.228 142.4)"
     }
   },
   {
@@ -12864,38 +11232,6 @@
     }
   },
   {
-    "name": "Rose Pine Dawn",
-    "slug": "rose-pine-dawn",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 6.657280748896968,
-      "minAnsi": 1.0975949529306095,
-      "minAnsiSlot": "black"
-    },
-    "colors": {
-      "background": "oklch(0.97 0.011 71.9)",
-      "foreground": "oklch(0.46 0.063 289.6)",
-      "cursor": "oklch(0.46 0.063 289.6)",
-      "selection": "oklch(0.892 0.006 31.1)",
-      "black": "oklch(0.939 0.015 64.3)",
-      "red": "oklch(0.599 0.107 2.7)",
-      "green": "oklch(0.491 0.077 228)",
-      "yellow": "oklch(0.756 0.146 69.7)",
-      "blue": "oklch(0.629 0.066 210.1)",
-      "purple": "oklch(0.617 0.074 305.7)",
-      "cyan": "oklch(0.696 0.106 23)",
-      "white": "oklch(0.46 0.063 289.6)",
-      "brightBlack": "oklch(0.673 0.027 298.4)",
-      "brightRed": "oklch(0.599 0.107 2.7)",
-      "brightGreen": "oklch(0.491 0.077 228)",
-      "brightYellow": "oklch(0.756 0.146 69.7)",
-      "brightBlue": "oklch(0.629 0.066 210.1)",
-      "brightPurple": "oklch(0.617 0.074 305.7)",
-      "brightCyan": "oklch(0.696 0.106 23)",
-      "brightWhite": "oklch(0.46 0.063 289.6)"
-    }
-  },
-  {
     "name": "Rose Pine Moon",
     "slug": "rose-pine-moon",
     "isDark": true,
@@ -12928,70 +11264,6 @@
     }
   },
   {
-    "name": "Rouge 2",
-    "slug": "rouge-2",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.951602240413291,
-      "minAnsi": 2.2199150694626915,
-      "minAnsiSlot": "purple"
-    },
-    "colors": {
-      "background": "oklch(0.218 0.037 280.5)",
-      "foreground": "oklch(0.717 0.01 279.6)",
-      "cursor": "oklch(0.689 0.02 135)",
-      "selection": "oklch(0.483 0.022 285.5)",
-      "black": "oklch(0.483 0.022 285.5)",
-      "red": "oklch(0.66 0.097 15.8)",
-      "green": "oklch(0.689 0.02 135)",
-      "yellow": "oklch(0.851 0.048 88.3)",
-      "blue": "oklch(0.653 0.07 248.3)",
-      "purple": "oklch(0.441 0.069 281.1)",
-      "cyan": "oklch(0.748 0.049 214.8)",
-      "white": "oklch(0.932 0.003 286.3)",
-      "brightBlack": "oklch(0.502 0.029 282.8)",
-      "brightRed": "oklch(0.66 0.097 15.8)",
-      "brightGreen": "oklch(0.896 0.034 88.1)",
-      "brightYellow": "oklch(0.896 0.034 88.1)",
-      "brightBlue": "oklch(0.755 0.048 247.5)",
-      "brightPurple": "oklch(0.62 0.045 283.5)",
-      "brightCyan": "oklch(0.821 0.036 214.5)",
-      "brightWhite": "oklch(0.932 0.003 286.3)"
-    }
-  },
-  {
-    "name": "Royal",
-    "slug": "royal",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 2.344317840825611,
-      "minAnsi": 2.3451310575567703,
-      "minAnsiSlot": "white"
-    },
-    "colors": {
-      "background": "oklch(0.153 0.03 311.7)",
-      "foreground": "oklch(0.426 0.052 296)",
-      "cursor": "oklch(0.426 0.049 298.6)",
-      "selection": "oklch(0.24 0.027 290.8)",
-      "black": "oklch(0.25 0.023 303.7)",
-      "red": "oklch(0.451 0.142 4.1)",
-      "green": "oklch(0.526 0.159 142.1)",
-      "yellow": "oklch(0.697 0.132 97.5)",
-      "blue": "oklch(0.598 0.08 261.6)",
-      "purple": "oklch(0.481 0.116 298.4)",
-      "cyan": "oklch(0.721 0.046 235.7)",
-      "white": "oklch(0.426 0.049 298.6)",
-      "brightBlack": "oklch(0.359 0.028 296.4)",
-      "brightRed": "oklch(0.588 0.198 5.3)",
-      "brightGreen": "oklch(0.774 0.231 144.7)",
-      "brightYellow": "oklch(0.921 0.178 102)",
-      "brightBlue": "oklch(0.783 0.101 258.3)",
-      "brightPurple": "oklch(0.663 0.157 300.9)",
-      "brightCyan": "oklch(0.849 0.053 233.4)",
-      "brightWhite": "oklch(0.674 0.074 301.3)"
-    }
-  },
-  {
     "name": "Ryuuko",
     "slug": "ryuuko",
     "isDark": true,
@@ -13021,70 +11293,6 @@
       "brightPurple": "oklch(0.665 0.058 51.9)",
       "brightCyan": "oklch(0.731 0.046 185.4)",
       "brightWhite": "oklch(0.943 0 0)"
-    }
-  },
-  {
-    "name": "Sakura",
-    "slug": "sakura",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.900875593125184,
-      "minAnsi": 3.4860996084218416,
-      "minAnsiSlot": "blue"
-    },
-    "colors": {
-      "background": "oklch(0.198 0.023 305.1)",
-      "foreground": "oklch(0.724 0.171 327.5)",
-      "cursor": "oklch(0.755 0.251 328.2)",
-      "selection": "oklch(0.632 0.177 327.8)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.577 0.214 1.8)",
-      "green": "oklch(0.665 0.202 139.6)",
-      "yellow": "oklch(0.622 0.105 41.5)",
-      "blue": "oklch(0.54 0.109 285.3)",
-      "purple": "oklch(0.586 0.25 330.5)",
-      "cyan": "oklch(0.663 0 0)",
-      "white": "oklch(0.667 0.045 301.9)",
-      "brightBlack": "oklch(0.544 0.015 41.1)",
-      "brightRed": "oklch(0.641 0.253 353.2)",
-      "brightGreen": "oklch(0.802 0.26 142.9)",
-      "brightYellow": "oklch(0.762 0.125 39.7)",
-      "brightBlue": "oklch(0.705 0.137 285.2)",
-      "brightPurple": "oklch(0.65 0.291 331.2)",
-      "brightCyan": "oklch(0.949 0 0)",
-      "brightWhite": "oklch(0.82 0.103 297.3)"
-    }
-  },
-  {
-    "name": "Scarlet Protocol",
-    "slug": "scarlet-protocol",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 3.722686705931152,
-      "minAnsi": 3.3006754326442884,
-      "minAnsiSlot": "blue"
-    },
-    "colors": {
-      "background": "oklch(0.23 0.074 287.2)",
-      "foreground": "oklch(0.591 0.227 14.7)",
-      "cursor": "oklch(0.9 0.179 151)",
-      "selection": "oklch(0.89 0.055 251.8)",
-      "black": "oklch(0.179 0.01 276.4)",
-      "red": "oklch(0.635 0.254 16.6)",
-      "green": "oklch(0.787 0.19 156.1)",
-      "yellow": "oklch(0.954 0.188 109.2)",
-      "blue": "oklch(0.532 0.137 246.2)",
-      "purple": "oklch(0.605 0.244 329)",
-      "cyan": "oklch(0.746 0.127 196.1)",
-      "white": "oklch(0.83 0 0)",
-      "brightBlack": "oklch(0.517 0 0)",
-      "brightRed": "oklch(0.715 0.179 25.4)",
-      "brightGreen": "oklch(0.873 0.23 144.2)",
-      "brightYellow": "oklch(0.966 0.168 108.1)",
-      "brightBlue": "oklch(0.618 0.208 275.8)",
-      "brightPurple": "oklch(0.614 0.263 315.4)",
-      "brightCyan": "oklch(0.913 0.13 196.3)",
-      "brightWhite": "oklch(1 0 0)"
     }
   },
   {
@@ -13664,134 +11872,6 @@
     }
   },
   {
-    "name": "Selenized Dark",
-    "slug": "selenized-dark",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.070714842078603,
-      "minAnsi": 3.714015544132306,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.332 0.051 219.6)",
-      "foreground": "oklch(0.784 0.017 196.8)",
-      "cursor": "oklch(0.784 0.017 196.8)",
-      "selection": "oklch(0.379 0.056 218.6)",
-      "black": "oklch(0.379 0.056 218.6)",
-      "red": "oklch(0.676 0.2 26.4)",
-      "green": "oklch(0.715 0.174 133.3)",
-      "yellow": "oklch(0.781 0.148 90.9)",
-      "blue": "oklch(0.668 0.165 255.3)",
-      "purple": "oklch(0.73 0.173 346.2)",
-      "cyan": "oklch(0.755 0.116 185.1)",
-      "white": "oklch(0.784 0.017 196.8)",
-      "brightBlack": "oklch(0.614 0.028 215.3)",
-      "brightRed": "oklch(0.703 0.189 26.8)",
-      "brightGreen": "oklch(0.759 0.174 132.7)",
-      "brightYellow": "oklch(0.826 0.15 90.4)",
-      "brightBlue": "oklch(0.709 0.155 254.7)",
-      "brightPurple": "oklch(0.772 0.17 345.2)",
-      "brightCyan": "oklch(0.8 0.116 184.7)",
-      "brightWhite": "oklch(0.872 0.015 202)"
-    }
-  },
-  {
-    "name": "Selenized Light",
-    "slug": "selenized-light",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 5.368789066610502,
-      "minAnsi": 1.1533436464304379,
-      "minAnsiSlot": "black"
-    },
-    "colors": {
-      "background": "oklch(0.964 0.033 91.7)",
-      "foreground": "oklch(0.5 0.026 217.9)",
-      "cursor": "oklch(0.5 0.026 217.9)",
-      "selection": "oklch(0.917 0.032 89.1)",
-      "black": "oklch(0.917 0.032 89.1)",
-      "red": "oklch(0.557 0.208 24.8)",
-      "green": "oklch(0.586 0.173 135.5)",
-      "yellow": "oklch(0.646 0.132 90)",
-      "blue": "oklch(0.554 0.173 253.4)",
-      "purple": "oklch(0.604 0.185 346.1)",
-      "cyan": "oklch(0.623 0.11 184.5)",
-      "white": "oklch(0.5 0.026 217.9)",
-      "brightBlack": "oklch(0.674 0.012 167.6)",
-      "brightRed": "oklch(0.54 0.209 24.5)",
-      "brightGreen": "oklch(0.567 0.169 136)",
-      "brightYellow": "oklch(0.627 0.128 89.2)",
-      "brightBlue": "oklch(0.539 0.171 254)",
-      "brightPurple": "oklch(0.587 0.183 346.5)",
-      "brightCyan": "oklch(0.608 0.108 184.2)",
-      "brightWhite": "oklch(0.407 0.026 219.1)"
-    }
-  },
-  {
-    "name": "Seoulbones Dark",
-    "slug": "seoulbones-dark",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.4228523951217955,
-      "minAnsi": 3.454928793150346,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.413 0 0)",
-      "foreground": "oklch(0.898 0 0)",
-      "cursor": "oklch(0.913 0 0)",
-      "selection": "oklch(0.569 0 0)",
-      "black": "oklch(0.413 0 0)",
-      "red": "oklch(0.73 0.115 1.2)",
-      "green": "oklch(0.761 0.065 145.6)",
-      "yellow": "oklch(0.915 0.093 85.4)",
-      "blue": "oklch(0.782 0.063 244.9)",
-      "purple": "oklch(0.735 0.045 283.8)",
-      "cyan": "oklch(0.749 0.077 196.7)",
-      "white": "oklch(0.898 0 0)",
-      "brightBlack": "oklch(0.556 0.01 8.8)",
-      "brightRed": "oklch(0.772 0.102 0.8)",
-      "brightGreen": "oklch(0.791 0.104 145.7)",
-      "brightYellow": "oklch(0.931 0.07 83.6)",
-      "brightBlue": "oklch(0.817 0.062 244.9)",
-      "brightPurple": "oklch(0.779 0.055 283.9)",
-      "brightCyan": "oklch(0.782 0.09 196.4)",
-      "brightWhite": "oklch(0.732 0 0)"
-    }
-  },
-  {
-    "name": "Seoulbones Light",
-    "slug": "seoulbones-light",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 5.75486124007544,
-      "minAnsi": 1,
-      "minAnsiSlot": "black"
-    },
-    "colors": {
-      "background": "oklch(0.913 0 0)",
-      "foreground": "oklch(0.45 0 0)",
-      "cursor": "oklch(0.45 0 0)",
-      "selection": "oklch(0.845 0 0)",
-      "black": "oklch(0.913 0 0)",
-      "red": "oklch(0.635 0.178 1.1)",
-      "green": "oklch(0.58 0.066 144.7)",
-      "yellow": "oklch(0.673 0.092 49.7)",
-      "blue": "oklch(0.569 0.105 222)",
-      "purple": "oklch(0.559 0.065 327.4)",
-      "cyan": "oklch(0.559 0.095 195.7)",
-      "white": "oklch(0.45 0 0)",
-      "brightBlack": "oklch(0.71 0.006 3.4)",
-      "brightRed": "oklch(0.557 0.17 1.3)",
-      "brightGreen": "oklch(0.51 0.079 144.8)",
-      "brightYellow": "oklch(0.584 0.091 50.5)",
-      "brightBlue": "oklch(0.502 0.092 221.5)",
-      "brightPurple": "oklch(0.494 0.098 327.6)",
-      "brightCyan": "oklch(0.491 0.084 195.9)",
-      "brightWhite": "oklch(0.569 0 0)"
-    }
-  },
-  {
     "name": "Seti",
     "slug": "seti",
     "isDark": true,
@@ -13856,38 +11936,6 @@
     }
   },
   {
-    "name": "Shaman",
-    "slug": "shaman",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 2.4412048193974893,
-      "minAnsi": 2.4412048193974893,
-      "minAnsiSlot": "white"
-    },
-    "colors": {
-      "background": "oklch(0.16 0.029 216.7)",
-      "foreground": "oklch(0.432 0.026 196.2)",
-      "cursor": "oklch(0.893 0.151 175)",
-      "selection": "oklch(0.433 0.025 196.3)",
-      "black": "oklch(0.224 0.038 212.8)",
-      "red": "oklch(0.51 0.167 26.5)",
-      "green": "oklch(0.641 0.187 147.7)",
-      "yellow": "oklch(0.616 0.068 239.4)",
-      "blue": "oklch(0.628 0.089 175.7)",
-      "purple": "oklch(0.458 0.131 250.5)",
-      "cyan": "oklch(0.548 0.13 126.7)",
-      "white": "oklch(0.432 0.026 196.2)",
-      "brightBlack": "oklch(0.381 0.027 250.6)",
-      "brightRed": "oklch(0.662 0.225 25.9)",
-      "brightGreen": "oklch(0.82 0.234 146.9)",
-      "brightYellow": "oklch(0.838 0.091 235.1)",
-      "brightBlue": "oklch(0.798 0.113 175.7)",
-      "brightPurple": "oklch(0.668 0.183 249.8)",
-      "brightCyan": "oklch(0.79 0.193 127.4)",
-      "brightWhite": "oklch(0.894 0.145 174.7)"
-    }
-  },
-  {
     "name": "SilkCircuit",
     "slug": "silkcircuit",
     "isDark": true,
@@ -13917,70 +11965,6 @@
       "brightPurple": "oklch(0.755 0.183 346.8)",
       "brightCyan": "oklch(0.917 0.132 195.1)",
       "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "Slate",
-    "slug": "slate",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.341918037634301,
-      "minAnsi": 2.02361972704601,
-      "minAnsiSlot": "blue"
-    },
-    "colors": {
-      "background": "oklch(0.252 0 0)",
-      "foreground": "oklch(0.708 0.115 219.9)",
-      "cursor": "oklch(0.813 0.079 180.3)",
-      "selection": "oklch(0.325 0.068 244.3)",
-      "black": "oklch(0.252 0 0)",
-      "red": "oklch(0.792 0.074 353.3)",
-      "green": "oklch(0.802 0.154 142)",
-      "yellow": "oklch(0.829 0.014 130.8)",
-      "blue": "oklch(0.432 0.043 191.3)",
-      "purple": "oklch(0.668 0.123 302.9)",
-      "cyan": "oklch(0.667 0.115 183.7)",
-      "white": "oklch(0.756 0.132 212)",
-      "brightBlack": "oklch(1 0 0)",
-      "brightRed": "oklch(0.895 0.058 2.3)",
-      "brightGreen": "oklch(0.936 0.131 138)",
-      "brightYellow": "oklch(0.848 0.005 48.7)",
-      "brightBlue": "oklch(0.732 0.075 236.8)",
-      "brightPurple": "oklch(0.771 0.077 311.6)",
-      "brightCyan": "oklch(0.851 0.081 196.7)",
-      "brightWhite": "oklch(0.907 0 0)"
-    }
-  },
-  {
-    "name": "Sleepy Hollow",
-    "slug": "sleepy-hollow",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.997767716208966,
-      "minAnsi": 3.3168617734467447,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.183 0.004 286)",
-      "foreground": "oklch(0.702 0.028 44.6)",
-      "cursor": "oklch(0.702 0.028 44.6)",
-      "selection": "oklch(0.445 0.009 332.3)",
-      "black": "oklch(0.323 0.09 46.5)",
-      "red": "oklch(0.534 0.166 26.6)",
-      "green": "oklch(0.582 0.081 84.9)",
-      "yellow": "oklch(0.561 0.146 51.3)",
-      "blue": "oklch(0.535 0.125 279.1)",
-      "purple": "oklch(0.622 0.046 20.3)",
-      "cyan": "oklch(0.726 0.035 184.5)",
-      "white": "oklch(0.702 0.028 44.6)",
-      "brightBlack": "oklch(0.424 0.036 291)",
-      "brightRed": "oklch(0.6 0.187 26.4)",
-      "brightGreen": "oklch(0.773 0.124 87.9)",
-      "brightYellow": "oklch(0.685 0.193 44.3)",
-      "brightBlue": "oklch(0.663 0.154 278.8)",
-      "brightPurple": "oklch(0.84 0.038 32.4)",
-      "brightCyan": "oklch(0.86 0.059 211)",
-      "brightWhite": "oklch(0.831 0.042 90.3)"
     }
   },
   {
@@ -14080,38 +12064,6 @@
     }
   },
   {
-    "name": "Soft Server",
-    "slug": "soft-server",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 5.879429518296938,
-      "minAnsi": 3.2630057380542925,
-      "minAnsiSlot": "purple"
-    },
-    "colors": {
-      "background": "oklch(0.267 0.003 197)",
-      "foreground": "oklch(0.707 0.012 189.7)",
-      "cursor": "oklch(0.896 0.015 186.7)",
-      "selection": "oklch(0.617 0.01 188)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.58 0.075 17.4)",
-      "green": "oklch(0.699 0.081 117.2)",
-      "yellow": "oklch(0.661 0.057 84.3)",
-      "blue": "oklch(0.63 0.05 232.9)",
-      "purple": "oklch(0.563 0.078 277.5)",
-      "cyan": "oklch(0.675 0.069 168.4)",
-      "white": "oklch(0.707 0.012 189.7)",
-      "brightBlack": "oklch(0.526 0.007 196.9)",
-      "brightRed": "oklch(0.64 0.162 21)",
-      "brightGreen": "oklch(0.854 0.166 121.1)",
-      "brightYellow": "oklch(0.789 0.113 82.3)",
-      "brightBlue": "oklch(0.728 0.103 236.1)",
-      "brightPurple": "oklch(0.585 0.171 274.5)",
-      "brightCyan": "oklch(0.826 0.152 156.2)",
-      "brightWhite": "oklch(0.896 0.015 186.7)"
-    }
-  },
-  {
     "name": "Solarized Darcula",
     "slug": "solarized-darcula",
     "isDark": true,
@@ -14172,38 +12124,6 @@
       "brightBlue": "oklch(0.614 0.129 237.5)",
       "brightPurple": "oklch(0.642 0.193 357.1)",
       "brightCyan": "oklch(0.687 0.124 180.4)",
-      "brightWhite": "oklch(0.967 0.033 91.7)"
-    }
-  },
-  {
-    "name": "Solarized Dark Patched",
-    "slug": "solarized-dark-patched",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 4.292316518586955,
-      "minAnsi": 2.4203347306846625,
-      "minAnsiSlot": "brightGreen"
-    },
-    "colors": {
-      "background": "oklch(0.218 0.04 221.1)",
-      "foreground": "oklch(0.593 0.021 204.8)",
-      "cursor": "oklch(0.593 0.021 204.8)",
-      "selection": "oklch(0.255 0.046 216.8)",
-      "black": "oklch(0.255 0.046 216.8)",
-      "red": "oklch(0.551 0.211 26.3)",
-      "green": "oklch(0.594 0.141 120.8)",
-      "yellow": "oklch(0.6 0.122 81.1)",
-      "blue": "oklch(0.559 0.148 251.7)",
-      "purple": "oklch(0.547 0.208 358.4)",
-      "cyan": "oklch(0.598 0.096 184)",
-      "white": "oklch(0.915 0.033 93.5)",
-      "brightBlack": "oklch(0.457 0.027 221.2)",
-      "brightRed": "oklch(0.533 0.177 34.6)",
-      "brightGreen": "oklch(0.457 0.027 221.2)",
-      "brightYellow": "oklch(0.503 0.028 223)",
-      "brightBlue": "oklch(0.593 0.021 204.8)",
-      "brightPurple": "oklch(0.509 0.153 280.8)",
-      "brightCyan": "oklch(0.641 0.017 196.7)",
       "brightWhite": "oklch(0.967 0.033 91.7)"
     }
   },
@@ -14528,38 +12448,6 @@
     }
   },
   {
-    "name": "Squirrelsong Dark",
-    "slug": "squirrelsong-dark",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 5.2777803385124376,
-      "minAnsi": 2.5998690630068184,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.294 0.026 54.2)",
-      "foreground": "oklch(0.704 0.037 61.5)",
-      "cursor": "oklch(0.704 0.037 61.5)",
-      "selection": "oklch(0.397 0.047 54.6)",
-      "black": "oklch(0.294 0.026 54.2)",
-      "red": "oklch(0.544 0.158 27.7)",
-      "green": "oklch(0.551 0.128 139.5)",
-      "yellow": "oklch(0.771 0.139 92.1)",
-      "blue": "oklch(0.64 0.108 238)",
-      "purple": "oklch(0.564 0.137 301.9)",
-      "cyan": "oklch(0.618 0.093 192.2)",
-      "white": "oklch(0.802 0.043 63.7)",
-      "brightBlack": "oklch(0.458 0.056 54.5)",
-      "brightRed": "oklch(0.62 0.184 27.6)",
-      "brightGreen": "oklch(0.63 0.123 136.5)",
-      "brightYellow": "oklch(0.825 0.149 92.2)",
-      "brightBlue": "oklch(0.688 0.117 239.1)",
-      "brightPurple": "oklch(0.636 0.158 301.7)",
-      "brightCyan": "oklch(0.695 0.076 192.2)",
-      "brightWhite": "oklch(0.889 0.047 62)"
-    }
-  },
-  {
     "name": "Srcery",
     "slug": "srcery",
     "isDark": true,
@@ -14685,38 +12573,6 @@
       "brightPurple": "oklch(0.797 0.09 14.1)",
       "brightCyan": "oklch(0.714 0.082 195.5)",
       "brightWhite": "oklch(0.87 0 0)"
-    }
-  },
-  {
-    "name": "Sugarplum",
-    "slug": "sugarplum",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.685816665804914,
-      "minAnsi": 5.0298091929605615,
-      "minAnsiSlot": "white"
-    },
-    "colors": {
-      "background": "oklch(0.222 0.098 275)",
-      "foreground": "oklch(0.725 0.167 326.4)",
-      "cursor": "oklch(0.701 0.101 171.6)",
-      "selection": "oklch(0.704 0.108 240.5)",
-      "black": "oklch(0.222 0.098 275)",
-      "red": "oklch(0.704 0.108 240.5)",
-      "green": "oklch(0.701 0.101 171.6)",
-      "yellow": "oklch(0.618 0.106 176.8)",
-      "blue": "oklch(0.725 0.167 326.4)",
-      "purple": "oklch(0.832 0.069 302)",
-      "cyan": "oklch(0.971 0.01 325.7)",
-      "white": "oklch(0.645 0.144 304)",
-      "brightBlack": "oklch(0.413 0.089 281.8)",
-      "brightRed": "oklch(0.733 0.102 229)",
-      "brightGreen": "oklch(0.814 0.135 170.1)",
-      "brightYellow": "oklch(0.865 0.167 172.5)",
-      "brightBlue": "oklch(0.74 0.258 327)",
-      "brightPurple": "oklch(0.784 0.127 300.8)",
-      "brightCyan": "oklch(1 0 0)",
-      "brightWhite": "oklch(0.691 0.195 303)"
     }
   },
   {
@@ -15392,70 +13248,6 @@
     }
   },
   {
-    "name": "Thorn Light Cold",
-    "slug": "thorn-light-cold",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 4.822460779890551,
-      "minAnsi": 1,
-      "minAnsiSlot": "black"
-    },
-    "colors": {
-      "background": "oklch(0.895 0.036 159.6)",
-      "foreground": "oklch(0.473 0.072 150.4)",
-      "cursor": "oklch(0.473 0.072 150.4)",
-      "selection": "oklch(0.867 0.06 158.5)",
-      "black": "oklch(0.895 0.036 159.6)",
-      "red": "oklch(0.432 0.167 26.7)",
-      "green": "oklch(0.554 0.137 126.4)",
-      "yellow": "oklch(0.62 0.133 59.9)",
-      "blue": "oklch(0.614 0.071 218.1)",
-      "purple": "oklch(0.47 0.144 347.8)",
-      "cyan": "oklch(0.5 0.165 142.8)",
-      "white": "oklch(0.604 0.012 219.7)",
-      "brightBlack": "oklch(0.668 0.056 166.7)",
-      "brightRed": "oklch(0.432 0.167 26.7)",
-      "brightGreen": "oklch(0.554 0.137 126.4)",
-      "brightYellow": "oklch(0.62 0.133 59.9)",
-      "brightBlue": "oklch(0.614 0.071 218.1)",
-      "brightPurple": "oklch(0.47 0.144 347.8)",
-      "brightCyan": "oklch(0.605 0.128 164.3)",
-      "brightWhite": "oklch(0.379 0.084 147.9)"
-    }
-  },
-  {
-    "name": "Thorn Light Warm",
-    "slug": "thorn-light-warm",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 4.787043199139463,
-      "minAnsi": 1,
-      "minAnsiSlot": "black"
-    },
-    "colors": {
-      "background": "oklch(0.892 0.043 139.9)",
-      "foreground": "oklch(0.473 0.072 150.4)",
-      "cursor": "oklch(0.473 0.072 150.4)",
-      "selection": "oklch(0.866 0.079 143.8)",
-      "black": "oklch(0.892 0.043 139.9)",
-      "red": "oklch(0.432 0.167 26.7)",
-      "green": "oklch(0.554 0.137 126.4)",
-      "yellow": "oklch(0.62 0.133 59.9)",
-      "blue": "oklch(0.614 0.071 218.1)",
-      "purple": "oklch(0.47 0.144 347.8)",
-      "cyan": "oklch(0.5 0.165 142.8)",
-      "white": "oklch(0.604 0.012 219.7)",
-      "brightBlack": "oklch(0.668 0.056 166.7)",
-      "brightRed": "oklch(0.432 0.167 26.7)",
-      "brightGreen": "oklch(0.554 0.137 126.4)",
-      "brightYellow": "oklch(0.62 0.133 59.9)",
-      "brightBlue": "oklch(0.614 0.071 218.1)",
-      "brightPurple": "oklch(0.47 0.144 347.8)",
-      "brightCyan": "oklch(0.605 0.128 164.3)",
-      "brightWhite": "oklch(0.379 0.084 147.9)"
-    }
-  },
-  {
     "name": "Tinacious Design Dark",
     "slug": "tinacious-design-dark",
     "isDark": true,
@@ -15613,38 +13405,6 @@
       "brightPurple": "oklch(0.752 0.134 299.5)",
       "brightCyan": "oklch(0.82 0.105 235.7)",
       "brightWhite": "oklch(0.846 0.061 274.8)"
-    }
-  },
-  {
-    "name": "TokyoNight Day",
-    "slug": "tokyonight-day",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 4.524626461068713,
-      "minAnsi": 1.0683271955280342,
-      "minAnsiSlot": "black"
-    },
-    "colors": {
-      "background": "oklch(0.914 0.007 277.2)",
-      "foreground": "oklch(0.512 0.156 264.1)",
-      "cursor": "oklch(0.512 0.156 264.1)",
-      "selection": "oklch(0.738 0.083 273.4)",
-      "black": "oklch(0.935 0.005 286.3)",
-      "red": "oklch(0.634 0.233 11.6)",
-      "green": "oklch(0.525 0.093 130.3)",
-      "yellow": "oklch(0.553 0.075 75.2)",
-      "blue": "oklch(0.6 0.18 257.5)",
-      "purple": "oklch(0.604 0.225 299.5)",
-      "cyan": "oklch(0.514 0.103 230.5)",
-      "white": "oklch(0.565 0.098 271.3)",
-      "brightBlack": "oklch(0.732 0.045 278)",
-      "brightRed": "oklch(0.634 0.233 11.6)",
-      "brightGreen": "oklch(0.525 0.093 130.3)",
-      "brightYellow": "oklch(0.553 0.075 75.2)",
-      "brightBlue": "oklch(0.6 0.18 257.5)",
-      "brightPurple": "oklch(0.604 0.225 299.5)",
-      "brightCyan": "oklch(0.514 0.103 230.5)",
-      "brightWhite": "oklch(0.512 0.156 264.1)"
     }
   },
   {
@@ -15968,38 +13728,6 @@
     }
   },
   {
-    "name": "Toy Chest",
-    "slug": "toy-chest",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.12514029490876,
-      "minAnsi": 1.843454967804912,
-      "minAnsiSlot": "blue"
-    },
-    "colors": {
-      "background": "oklch(0.327 0.044 252.9)",
-      "foreground": "oklch(0.759 0.177 154.1)",
-      "cursor": "oklch(0.873 0 0)",
-      "selection": "oklch(0.385 0.149 313.6)",
-      "black": "oklch(0.363 0.05 255.6)",
-      "red": "oklch(0.528 0.183 28.1)",
-      "green": "oklch(0.587 0.11 169.8)",
-      "yellow": "oklch(0.71 0.143 68.1)",
-      "blue": "oklch(0.476 0.104 256.1)",
-      "purple": "oklch(0.59 0.185 296.4)",
-      "cyan": "oklch(0.641 0.1 180.3)",
-      "white": "oklch(0.761 0.174 157)",
-      "brightBlack": "oklch(0.496 0.077 238.4)",
-      "brightRed": "oklch(0.631 0.17 31.3)",
-      "brightGreen": "oklch(0.759 0.177 154.1)",
-      "brightYellow": "oklch(0.87 0.157 103.2)",
-      "brightBlue": "oklch(0.685 0.125 233)",
-      "brightPurple": "oklch(0.647 0.173 309.8)",
-      "brightCyan": "oklch(0.742 0.116 180)",
-      "brightWhite": "oklch(0.873 0 0)"
-    }
-  },
-  {
     "name": "traffic",
     "slug": "traffic",
     "isDark": true,
@@ -16061,38 +13789,6 @@
       "brightPurple": "oklch(0.753 0.16 1.4)",
       "brightCyan": "oklch(0.796 0.034 220.6)",
       "brightWhite": "oklch(0.972 0.03 85.6)"
-    }
-  },
-  {
-    "name": "Treehouse",
-    "slug": "treehouse",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 3.3711625379246564,
-      "minAnsi": 2.437084401192714,
-      "minAnsiSlot": "purple"
-    },
-    "colors": {
-      "background": "oklch(0.213 0 0)",
-      "foreground": "oklch(0.533 0.039 82.7)",
-      "cursor": "oklch(0.853 0.172 90)",
-      "selection": "oklch(0.533 0.039 82.7)",
-      "black": "oklch(0.231 0.06 51.6)",
-      "red": "oklch(0.499 0.179 32.2)",
-      "green": "oklch(0.649 0.201 138.1)",
-      "yellow": "oklch(0.628 0.126 86.3)",
-      "blue": "oklch(0.592 0.059 229)",
-      "purple": "oklch(0.473 0.13 19.4)",
-      "cyan": "oklch(0.565 0.134 50.1)",
-      "white": "oklch(0.533 0.039 82.7)",
-      "brightBlack": "oklch(0.392 0.031 72.5)",
-      "brightRed": "oklch(0.658 0.191 40.2)",
-      "brightGreen": "oklch(0.846 0.254 141)",
-      "brightYellow": "oklch(0.813 0.154 82.6)",
-      "brightBlue": "oklch(0.817 0.085 225.7)",
-      "brightPurple": "oklch(0.626 0.184 18.9)",
-      "brightCyan": "oklch(0.707 0.172 54)",
-      "brightWhite": "oklch(0.858 0.175 88.5)"
     }
   },
   {
@@ -16285,70 +13981,6 @@
       "brightPurple": "oklch(0.969 0.027 325.8)",
       "brightCyan": "oklch(0.931 0.103 183.5)",
       "brightWhite": "oklch(0.977 0.019 328.3)"
-    }
-  },
-  {
-    "name": "urban",
-    "slug": "urban",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 5.843439340558473,
-      "minAnsi": 1.819986830276663,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.309 0.02 297.7)",
-      "foreground": "oklch(0.747 0.035 49.2)",
-      "cursor": "oklch(0.747 0.035 49.2)",
-      "selection": "oklch(0.747 0.035 49.2)",
-      "black": "oklch(0.317 0.02 297.7)",
-      "red": "oklch(0.467 0.098 8.3)",
-      "green": "oklch(0.623 0.102 128.8)",
-      "yellow": "oklch(0.642 0.077 64.4)",
-      "blue": "oklch(0.477 0.044 301.7)",
-      "purple": "oklch(0.489 0.085 353.4)",
-      "cyan": "oklch(0.465 0.031 322.1)",
-      "white": "oklch(0.747 0.035 49.2)",
-      "brightBlack": "oklch(0.469 0.021 299.6)",
-      "brightRed": "oklch(0.467 0.098 8.3)",
-      "brightGreen": "oklch(0.623 0.102 128.8)",
-      "brightYellow": "oklch(0.642 0.077 64.4)",
-      "brightBlue": "oklch(0.477 0.044 301.7)",
-      "brightPurple": "oklch(0.489 0.085 353.4)",
-      "brightCyan": "oklch(0.465 0.031 322.1)",
-      "brightWhite": "oklch(0.747 0.035 49.2)"
-    }
-  },
-  {
-    "name": "Urple",
-    "slug": "urple",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 4.306866255422723,
-      "minAnsi": 2.279660237886026,
-      "minAnsiSlot": "purple"
-    },
-    "colors": {
-      "background": "oklch(0.226 0.015 285.1)",
-      "foreground": "oklch(0.603 0.052 302.8)",
-      "cursor": "oklch(0.629 0.199 301.6)",
-      "selection": "oklch(0.629 0.199 301.6)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.536 0.144 9.5)",
-      "green": "oklch(0.632 0.196 140.1)",
-      "yellow": "oklch(0.565 0.113 38.5)",
-      "blue": "oklch(0.468 0.123 285.9)",
-      "purple": "oklch(0.466 0.158 302.6)",
-      "cyan": "oklch(0.6 0 0)",
-      "white": "oklch(0.601 0.055 303)",
-      "brightBlack": "oklch(0.416 0.064 37.6)",
-      "brightRed": "oklch(0.708 0.191 8.9)",
-      "brightGreen": "oklch(0.805 0.263 142.3)",
-      "brightYellow": "oklch(0.72 0.144 36.9)",
-      "brightBlue": "oklch(0.644 0.167 285.4)",
-      "brightPurple": "oklch(0.624 0.209 301.7)",
-      "brightCyan": "oklch(0.937 0 0)",
-      "brightWhite": "oklch(0.775 0.131 297.2)"
     }
   },
   {
@@ -16576,70 +14208,6 @@
     }
   },
   {
-    "name": "Violet Dark",
-    "slug": "violet-dark",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 4.189220737359681,
-      "minAnsi": 2.9727791091037665,
-      "minAnsiSlot": "brightRed"
-    },
-    "colors": {
-      "background": "oklch(0.231 0.004 264.5)",
-      "foreground": "oklch(0.593 0.021 204.8)",
-      "cursor": "oklch(0.593 0.021 204.8)",
-      "selection": "oklch(0.515 0.143 279.6)",
-      "black": "oklch(0.462 0.006 248)",
-      "red": "oklch(0.58 0.168 37.9)",
-      "green": "oklch(0.643 0.142 118.6)",
-      "yellow": "oklch(0.652 0.126 83.8)",
-      "blue": "oklch(0.615 0.133 244.6)",
-      "purple": "oklch(0.593 0.197 355.9)",
-      "cyan": "oklch(0.646 0.099 187.2)",
-      "white": "oklch(0.826 0.013 91.5)",
-      "brightBlack": "oklch(0.4 0.006 248)",
-      "brightRed": "oklch(0.533 0.177 34.6)",
-      "brightGreen": "oklch(0.594 0.141 120.7)",
-      "brightYellow": "oklch(0.6 0.123 81.2)",
-      "brightBlue": "oklch(0.559 0.148 251.7)",
-      "brightPurple": "oklch(0.547 0.208 358.4)",
-      "brightCyan": "oklch(0.598 0.096 184)",
-      "brightWhite": "oklch(0.826 0.013 91.5)"
-    }
-  },
-  {
-    "name": "Violet Light",
-    "slug": "violet-light",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 5.335951445041022,
-      "minAnsi": 2.858219229105977,
-      "minAnsiSlot": "cyan"
-    },
-    "colors": {
-      "background": "oklch(0.967 0.033 91.7)",
-      "foreground": "oklch(0.503 0.028 223)",
-      "cursor": "oklch(0.503 0.028 223)",
-      "selection": "oklch(0.515 0.143 279.6)",
-      "black": "oklch(0.462 0.006 248)",
-      "red": "oklch(0.58 0.168 37.9)",
-      "green": "oklch(0.643 0.142 118.6)",
-      "yellow": "oklch(0.652 0.126 83.8)",
-      "blue": "oklch(0.615 0.133 244.6)",
-      "purple": "oklch(0.593 0.197 355.9)",
-      "cyan": "oklch(0.646 0.099 187.2)",
-      "white": "oklch(0.777 0.01 87.5)",
-      "brightBlack": "oklch(0.4 0.006 248)",
-      "brightRed": "oklch(0.533 0.177 34.6)",
-      "brightGreen": "oklch(0.594 0.141 120.7)",
-      "brightYellow": "oklch(0.6 0.123 81.2)",
-      "brightBlue": "oklch(0.559 0.148 251.7)",
-      "brightPurple": "oklch(0.547 0.208 358.4)",
-      "brightCyan": "oklch(0.598 0.096 184)",
-      "brightWhite": "oklch(0.826 0.013 91.5)"
-    }
-  },
-  {
     "name": "Violite",
     "slug": "violite",
     "isDark": true,
@@ -16736,38 +14304,6 @@
     }
   },
   {
-    "name": "Warm Neon",
-    "slug": "warm-neon",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.678634147244857,
-      "minAnsi": 1.85039566330447,
-      "minAnsiSlot": "blue"
-    },
-    "colors": {
-      "background": "oklch(0.372 0 0)",
-      "foreground": "oklch(0.848 0.067 149.6)",
-      "cursor": "oklch(0.871 0.284 142.3)",
-      "selection": "oklch(0.727 0.149 108.3)",
-      "black": "oklch(0 0 0)",
-      "red": "oklch(0.615 0.196 24.1)",
-      "green": "oklch(0.67 0.19 143.2)",
-      "yellow": "oklch(0.877 0.171 112)",
-      "blue": "oklch(0.524 0.16 267.6)",
-      "purple": "oklch(0.697 0.309 327.8)",
-      "cyan": "oklch(0.731 0.119 212.6)",
-      "white": "oklch(0.798 0.04 63.4)",
-      "brightBlack": "oklch(0.993 0.002 17.2)",
-      "brightRed": "oklch(0.688 0.15 21.3)",
-      "brightGreen": "oklch(0.769 0.077 138)",
-      "brightYellow": "oklch(0.87 0.119 107)",
-      "brightBlue": "oklch(0.668 0.106 269.9)",
-      "brightPurple": "oklch(0.732 0.176 348.8)",
-      "brightCyan": "oklch(0.802 0.107 210.6)",
-      "brightWhite": "oklch(0.842 0.025 61.6)"
-    }
-  },
-  {
     "name": "Wez",
     "slug": "wez",
     "isDark": true,
@@ -16796,38 +14332,6 @@
       "brightBlue": "oklch(0.56 0.244 275.1)",
       "brightPurple": "oklch(0.74 0.272 327.9)",
       "brightCyan": "oklch(0.915 0.137 195)",
-      "brightWhite": "oklch(1 0 0)"
-    }
-  },
-  {
-    "name": "Whimsy",
-    "slug": "whimsy",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.911844163669688,
-      "minAnsi": 4.683836383729729,
-      "minAnsiSlot": "red"
-    },
-    "colors": {
-      "background": "oklch(0.287 0.035 286.4)",
-      "foreground": "oklch(0.772 0.054 288.7)",
-      "cursor": "oklch(0.772 0.054 288.7)",
-      "selection": "oklch(0.37 0.048 285.4)",
-      "black": "oklch(0.454 0.063 285.9)",
-      "red": "oklch(0.686 0.173 7.2)",
-      "green": "oklch(0.758 0.138 154.8)",
-      "yellow": "oklch(0.894 0.123 88.9)",
-      "blue": "oklch(0.734 0.13 250)",
-      "purple": "oklch(0.686 0.165 299.6)",
-      "cyan": "oklch(0.742 0.109 192.8)",
-      "white": "oklch(1 0 0)",
-      "brightBlack": "oklch(0.454 0.063 285.9)",
-      "brightRed": "oklch(0.686 0.173 7.2)",
-      "brightGreen": "oklch(0.758 0.138 154.8)",
-      "brightYellow": "oklch(0.894 0.123 88.9)",
-      "brightBlue": "oklch(0.734 0.13 250)",
-      "brightPurple": "oklch(0.686 0.165 299.6)",
-      "brightCyan": "oklch(0.742 0.109 192.8)",
       "brightWhite": "oklch(1 0 0)"
     }
   },
@@ -16893,38 +14397,6 @@
       "brightPurple": "oklch(0.89 0.076 316.3)",
       "brightCyan": "oklch(0.707 0.077 225.2)",
       "brightWhite": "oklch(0.867 0 0)"
-    }
-  },
-  {
-    "name": "winter",
-    "slug": "winter",
-    "isDark": false,
-    "contrast": {
-      "fgOnBg": 5.702239638971337,
-      "minAnsi": 1,
-      "minAnsiSlot": "black"
-    },
-    "colors": {
-      "background": "oklch(0.985 0 0)",
-      "foreground": "oklch(0.502 0.019 262.7)",
-      "cursor": "oklch(0.621 0.094 260.1)",
-      "selection": "oklch(0.985 0 0)",
-      "black": "oklch(0.985 0 0)",
-      "red": "oklch(0.669 0.134 21.3)",
-      "green": "oklch(0.657 0.119 128)",
-      "yellow": "oklch(0.722 0.142 77.4)",
-      "blue": "oklch(0.621 0.094 260.1)",
-      "purple": "oklch(0.658 0.154 317.9)",
-      "cyan": "oklch(0.641 0.077 185.4)",
-      "white": "oklch(0.502 0.019 262.7)",
-      "brightBlack": "oklch(0.502 0.019 262.7)",
-      "brightRed": "oklch(0.669 0.134 21.3)",
-      "brightGreen": "oklch(0.657 0.119 128)",
-      "brightYellow": "oklch(0.722 0.142 77.4)",
-      "brightBlue": "oklch(0.621 0.094 260.1)",
-      "brightPurple": "oklch(0.658 0.154 317.9)",
-      "brightCyan": "oklch(0.641 0.077 185.4)",
-      "brightWhite": "oklch(0.502 0.019 262.7)"
     }
   },
   {
@@ -17021,38 +14493,6 @@
       "brightPurple": "oklch(0.679 0.118 346.3)",
       "brightCyan": "oklch(0.735 0.117 236.2)",
       "brightWhite": "oklch(0.907 0 0)"
-    }
-  },
-  {
-    "name": "Wryan",
-    "slug": "wryan",
-    "isDark": true,
-    "contrast": {
-      "fgOnBg": 6.6437742847642784,
-      "minAnsi": 2.4654380362095925,
-      "minAnsiSlot": "blue"
-    },
-    "colors": {
-      "background": "oklch(0.173 0 0)",
-      "foreground": "oklch(0.681 0.009 106.6)",
-      "cursor": "oklch(0.715 0.065 284.6)",
-      "selection": "oklch(0.42 0 0)",
-      "black": "oklch(0.321 0 0)",
-      "red": "oklch(0.491 0.102 353.6)",
-      "green": "oklch(0.51 0.072 195.1)",
-      "yellow": "oklch(0.597 0.044 285)",
-      "blue": "oklch(0.441 0.06 251)",
-      "purple": "oklch(0.453 0.113 297.6)",
-      "cyan": "oklch(0.489 0.084 243.4)",
-      "white": "oklch(0.68 0.023 215.3)",
-      "brightBlack": "oklch(0.36 0 0)",
-      "brightRed": "oklch(0.584 0.155 355.1)",
-      "brightGreen": "oklch(0.674 0.081 195.4)",
-      "brightYellow": "oklch(0.715 0.065 284.6)",
-      "brightBlue": "oklch(0.57 0.105 252.5)",
-      "brightPurple": "oklch(0.559 0.125 298.2)",
-      "brightCyan": "oklch(0.652 0.084 242.4)",
-      "brightWhite": "oklch(0.808 0 0)"
     }
   },
   {
