@@ -32,6 +32,10 @@ interface AppHeroProps {
   layoutCount: number;
   /** Number of starter templates in `public/templates/*.md`. */
   templateCount: number;
+  /** Opens the Markdown-format reference dialog (#198) — surfaced here so a
+      brand-new writer can find the frontmatter/section contract before the
+      Settings gear (its other home) exists in the loaded workbench. */
+  onOpenFormatDocs: () => void;
 }
 
 /** True when the user has NOT asked for reduced motion (matches Toast.tsx). */
@@ -118,7 +122,12 @@ function HeroStat({ value, label, delayMs }: HeroStatProps) {
   );
 }
 
-export default function AppHero({ themeCount, layoutCount, templateCount }: AppHeroProps) {
+export default function AppHero({
+  themeCount,
+  layoutCount,
+  templateCount,
+  onOpenFormatDocs,
+}: AppHeroProps) {
   // Static at mount (matches Toast.tsx): when reduced-motion is on, omit
   // the entrance modifier so the check renders fully visible from frame 0.
   const reduced = typeof window !== 'undefined' && !motionOk();
@@ -158,6 +167,22 @@ export default function AppHero({ themeCount, layoutCount, templateCount }: AppH
           <span>Save as PDF. It never leaves your browser.</span>
         </li>
       </ol>
+
+      {/* The Markdown format reference (frontmatter contract, section
+          vocabulary, LLM-handoff prompt) — the one doc a first-time writer
+          needs, surfaced here because its other home (the Settings gear) only
+          appears once a resume is already loaded (#198). */}
+      <p className="app-hero__format-link">
+        New to the format?{' '}
+        <button
+          type="button"
+          className="app-hero__format-trigger"
+          aria-haspopup="dialog"
+          onClick={onOpenFormatDocs}
+        >
+          See the Markdown format reference
+        </button>
+      </p>
 
       <div className="app-hero__stats" role="list" aria-label="At a glance">
         <HeroStat value={themeCount} label="Themes" delayMs={0} />

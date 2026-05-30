@@ -498,6 +498,34 @@ a {
   max-width: 60ch;
 }
 
+/* Quiet link to the Markdown format reference (#198). */
+.app-hero__format-link {
+  margin: calc(-1 * var(--space-1)) 0 0;
+  font-size: 0.9rem;
+  color: var(--ui-fg-muted);
+}
+
+.app-hero__format-trigger {
+  font: inherit;
+  color: var(--ui-accent);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.app-hero__format-trigger:hover {
+  text-decoration-thickness: 2px;
+}
+
+.app-hero__format-trigger:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .app-hero__step {
   display: flex;
   align-items: baseline;
