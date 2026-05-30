@@ -5625,14 +5625,12 @@ details.studio__pane--editor {
  * ±2pt clamp around the 11pt default. Per-session, not persisted.
  *
  * Visual silhouette:
- *   [A−] [ • 1.4p ]·[ CONSERVATIVE ▾ ] [A+]
- *
- * The buttons sit inside `.page-fit__size-control`, a flex row that wraps
- * the existing chip. The buttons read as quiet utility chrome (muted
- * glyph, no border), brightening to `--ui-fg` on hover; the disabled
- * state at the clamp boundary drops the glyph to half-opacity. The
- * current shift value isn't shown in the toolbar — the chip already
- * shows the consequence (Fit X pages), which is the loaded signal here.
+ * The A− / A+ body-font nudges moved into the Fit popover in #204 (they're
+ * a fit-tuning control, not a primary toolbar action). `.page-fit__size-
+ * control` now simply wraps the chip; the buttons live in the popover's
+ * `.page-fit__size-row` with a visible shift readout. The buttons read as
+ * quiet utility chrome (muted glyph, no border), brightening to `--ui-fg`
+ * on hover; the disabled state at the clamp boundary halves the glyph.
  * ------------------------------------------------------------------ */
 .page-fit__size-control {
   display: inline-flex;
@@ -5690,6 +5688,39 @@ details.studio__pane--editor {
   font-weight: 700;
   vertical-align: super;
   line-height: 1;
+}
+
+/* "Body text size" row inside the Fit popover (#204) — label on the left, a
+   [A−  value  A+] stepper on the right with a visible shift readout the bare
+   toolbar pair never had. */
+.page-fit__size-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--ui-border);
+}
+
+.page-fit__size-label {
+  font-size: 0.82rem;
+  color: var(--ui-fg);
+}
+
+.page-fit__size-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.page-fit__size-value {
+  min-width: 4ch;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--ui-fg-muted);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 /* Combined chip (#139): the Fit pill and the print-mode dropdown live
