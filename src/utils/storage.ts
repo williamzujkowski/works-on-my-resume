@@ -479,22 +479,3 @@ export function deleteSnapshot(id: string): void {
     /* no-op */
   }
 }
-
-/**
- * Remove ALL snapshots. Used by the draft-opt-out path so a user who turns
- * "Remember this resume on this device" off also has their snapshots purged
- * — the privacy mental model is "I turned it off → it's gone".
- *
- * Intentionally NOT gated on `isDraftPersistenceEnabled()`: when the user
- * is opting OUT the flag may already be `false` by the time we reach here,
- * and we still want the body removed.
- */
-export function clearSnapshots(): void {
-  const store = safeLocalStorage();
-  if (!store) return;
-  try {
-    store.removeItem(SNAPSHOTS_KEY);
-  } catch {
-    /* no-op */
-  }
-}

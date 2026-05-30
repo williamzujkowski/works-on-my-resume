@@ -15,17 +15,19 @@ import ResumeStudio from '../components/ResumeStudio.tsx';
   <a class="skip-link" href="#studio">Skip to the resume workbench</a>
   <div class="app-shell">
     {
-      /* Each direct child carries a --i index that drives the staggered
-        page-load reveal in global.css. Collapses to the final state
-        instantly under prefers-reduced-motion. */
+      /* The three direct children fade + rise in sequence — the stagger is
+        driven by `:nth-child` animation-delays in global.css (NOT inline
+        `style="--i"`, which would need `style-src-attr 'unsafe-inline'` and
+        trip the strict CSP, #243). Collapses to the final state instantly
+        under prefers-reduced-motion. */
     }
-    <div class="reveal" style="--i: 0">
+    <div class="reveal">
       <AppHeader />
     </div>
-    <div class="reveal" style="--i: 1">
+    <div class="reveal">
       <PrivacyNotice />
     </div>
-    <main id="studio" class="reveal" style="--i: 2">
+    <main id="studio" class="reveal">
       <ResumeStudio client:load />
     </main>
   </div>
