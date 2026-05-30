@@ -221,13 +221,13 @@ export default function ResumeStudio() {
      legend). Opens from the gear icon at the rightmost toolbar slot. */
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsTriggerRef = useRef<HTMLButtonElement>(null);
+  const formatDocsTriggerRef = useRef<HTMLElement | null>(null);
 
-  /* ----- Markdown format reference dialog (#157) -----
+  /* ----- Markdown format reference dialog (#157, #198) -----
      Static "what shape does this app expect" reference: frontmatter contract,
      canonical sections, an LLM-handoff prompt with a copy-to-clipboard
      affordance, and the privacy reminder. Opened from the Settings drawer's
-     Help group (the drawer closes itself first so the modal lands on a
-     clean stage; same handoff the keyboard-shortcuts dialog uses). */
+     Help group in Phase 2, and from the empty-state hero in Phase 1. */
   const [formatDocsOpen, setFormatDocsOpen] = useState(false);
 
   /* ----- "Open an example" dialog (#120) -----
@@ -985,14 +985,19 @@ export default function ResumeStudio() {
     }, 0);
   }, []);
 
-  /* Close the Markdown-format reference dialog (#157) and return focus to
-     the Settings gear — that's the only trigger that opens it (the drawer
-     closes itself first, so the gear is the natural landing spot for
-     keyboard users). */
+  const openFormatDocs = useCallback((trigger?: HTMLElement | null) => {
+    formatDocsTriggerRef.current = trigger ?? settingsTriggerRef.current;
+    setFormatDocsOpen(true);
+  }, []);
+
+  /* Close the Markdown-format reference dialog (#157, #198) and return
+     focus to the control that opened it. Settings still falls back to the
+     gear because the drawer closes before this modal appears. */
   const closeFormatDocs = useCallback(() => {
     setFormatDocsOpen(false);
     window.setTimeout(() => {
-      settingsTriggerRef.current?.focus();
+      (formatDocsTriggerRef.current ?? settingsTriggerRef.current)?.focus();
+      formatDocsTriggerRef.current = null;
     }, 0);
   }, []);
 
@@ -1263,6 +1268,7 @@ export default function ResumeStudio() {
           themeCount={themes.length}
           layoutCount={RESUME_TEMPLATES.length}
           templateCount={STARTER_TEMPLATE_COUNT}
+          onOpenFormatDocs={openFormatDocs}
         />
       )}
 
@@ -1806,7 +1812,7 @@ export default function ResumeStudio() {
           onDeleteSnapshot={handleDeleteSnapshot}
           shortcutsEnabled={shortcutsEnabled}
           onOpenKeyboardHelp={() => setHelpOpen(true)}
-          onOpenFormatDocs={() => setFormatDocsOpen(true)}
+          onOpenFormatDocs={() => openFormatDocs(settingsTriggerRef.current)}
           onPreviousTheme={() => stepTheme(-1)}
           onNextTheme={() => stepTheme(1)}
           onRandomTheme={randomTheme}

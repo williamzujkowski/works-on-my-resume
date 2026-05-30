@@ -32,6 +32,8 @@ interface AppHeroProps {
   layoutCount: number;
   /** Number of starter templates in `public/templates/*.md`. */
   templateCount: number;
+  /** Open the Markdown format reference dialog from the empty state. */
+  onOpenFormatDocs: (trigger: HTMLButtonElement) => void;
 }
 
 /** True when the user has NOT asked for reduced motion (matches Toast.tsx). */
@@ -118,7 +120,12 @@ function HeroStat({ value, label, delayMs }: HeroStatProps) {
   );
 }
 
-export default function AppHero({ themeCount, layoutCount, templateCount }: AppHeroProps) {
+export default function AppHero({
+  themeCount,
+  layoutCount,
+  templateCount,
+  onOpenFormatDocs,
+}: AppHeroProps) {
   // Static at mount (matches Toast.tsx): when reduced-motion is on, omit
   // the entrance modifier so the check renders fully visible from frame 0.
   const reduced = typeof window !== 'undefined' && !motionOk();
@@ -158,6 +165,17 @@ export default function AppHero({ themeCount, layoutCount, templateCount }: AppH
           <span>Save as PDF. It never leaves your browser.</span>
         </li>
       </ol>
+
+      <p className="app-hero__format-hint">
+        <button
+          type="button"
+          className="app-hero__format-link"
+          aria-haspopup="dialog"
+          onClick={(event) => onOpenFormatDocs(event.currentTarget)}
+        >
+          Markdown format
+        </button>
+      </p>
 
       <div className="app-hero__stats" role="list" aria-label="At a glance">
         <HeroStat value={themeCount} label="Themes" delayMs={0} />

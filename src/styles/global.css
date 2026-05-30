@@ -476,6 +476,30 @@ a {
   flex-shrink: 0;
 }
 
+.app-hero__format-hint {
+  margin: calc(var(--space-1) * -1) 0 0;
+}
+
+.app-hero__format-link {
+  padding: 0;
+  color: var(--ui-accent);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid color-mix(in oklch, var(--ui-accent) 45%, transparent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.app-hero__format-link:hover {
+  color: var(--ui-fg);
+  border-bottom-color: var(--ui-fg);
+}
+
+.app-hero__format-link:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 3px;
+}
+
 /* Stat counter row: Themes 465 · Layouts 4 · Templates 4 · Offline-ready.
    The number is the eye-catch (serif, heavy, ochre); the label is the
    small-caps kicker (mono). The em-style separators read as printed

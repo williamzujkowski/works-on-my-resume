@@ -48,6 +48,24 @@ test('the hero is rendered on Phase 1 with title, kbd-chip tagline, and stat cou
   await expect(page.locator('.app-header')).toBeHidden();
 });
 
+test('#198 the empty-state hero opens the Markdown format reference', async ({ page }) => {
+  const hero = page.locator('.app-hero');
+  const trigger = hero.getByRole('button', { name: /^markdown format$/i });
+
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+
+  const dialog = page.getByRole('dialog', { name: /^markdown format$/i });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: /^frontmatter$/i })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: /^sections$/i })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: /^llm handoff$/i })).toBeVisible();
+
+  await dialog.getByRole('button', { name: /close/i }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+});
+
 test('#173 the hero carries a 3-step "How it works" list with the dynamic theme count', async ({
   page,
 }) => {
