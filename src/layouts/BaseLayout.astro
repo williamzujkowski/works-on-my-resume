@@ -59,6 +59,18 @@ const base = import.meta.env.BASE_URL;
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="color-scheme" content="light dark" />
+    {
+      /*
+      Chrome light/dark mode (#192) is applied by the React island at
+      hydration (ChromeModeToggle), which sets `data-chrome-mode` on <html>
+      when the user has forced a mode. A pre-paint inline <script> would
+      avoid the brief first-load flash for forced-mode users, but Astro's
+      auto-CSP does not hash author `is:inline` scripts and a hand-registered
+      hash would break silently on any edit — not worth the footgun here,
+      since the default ('auto') tracks the OS via the prefers-color-scheme
+      media query with no flash at all.
+      */
+    }
     <link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
 
     <!-- Open Graph: theme-only metadata, never resume content. -->

@@ -32,8 +32,10 @@ interface AppHeroProps {
   layoutCount: number;
   /** Number of starter templates in `public/templates/*.md`. */
   templateCount: number;
-  /** Open the Markdown format reference dialog from the empty state. */
-  onOpenFormatDocs: (trigger: HTMLButtonElement) => void;
+  /** Opens the Markdown-format reference dialog (#198) — surfaced here so a
+      brand-new writer can find the frontmatter/section contract before the
+      Settings gear (its other home) exists in the loaded workbench. */
+  onOpenFormatDocs: (trigger?: HTMLElement | null) => void;
 }
 
 /** True when the user has NOT asked for reduced motion (matches Toast.tsx). */
@@ -136,6 +138,7 @@ export default function AppHero({
   return (
     <section className="app-hero" aria-label="Welcome to Works on My Resume">
       <div className="app-hero__brand">
+        <p className="app-hero__kicker section-kicker">Local-first résumé studio</p>
         <h1 className="app-hero__title">Works on My Resume</h1>
       </div>
 
@@ -166,14 +169,19 @@ export default function AppHero({
         </li>
       </ol>
 
-      <p className="app-hero__format-hint">
+      {/* The Markdown format reference (frontmatter contract, section
+          vocabulary, LLM-handoff prompt) — the one doc a first-time writer
+          needs, surfaced here because its other home (the Settings gear) only
+          appears once a resume is already loaded (#198). */}
+      <p className="app-hero__format-link">
+        New to the format?{' '}
         <button
           type="button"
-          className="app-hero__format-link"
+          className="app-hero__format-trigger"
           aria-haspopup="dialog"
           onClick={(event) => onOpenFormatDocs(event.currentTarget)}
         >
-          Markdown format
+          See the Markdown format reference
         </button>
       </p>
 

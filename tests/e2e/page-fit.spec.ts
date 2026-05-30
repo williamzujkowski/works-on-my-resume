@@ -170,10 +170,12 @@ test('A− / A+ buttons shift the resume body font-size by ±0.5pt (#186)', asyn
   // and the difference must be within 0.05px of that target.
   await loadSampleResume(page);
 
-  // Reveal the chip on mobile (it lives behind the More drawer there); the
-  // A− / A+ buttons are siblings of the chip so the same reveal exposes
-  // them too.
-  await revealPageFitPill(page);
+  // The A− / A+ nudges now live inside the Fit popover (#204) — reveal the
+  // chip (behind the More drawer on mobile) and open the popover.
+  const pill = await revealPageFitPill(page);
+  await pill.click();
+  const popover = page.getByRole('dialog', { name: /page fit details/i });
+  await expect(popover).toBeVisible();
 
   const article = page.locator('.resume-preview').first();
   const getFontPx = () =>
@@ -181,9 +183,12 @@ test('A− / A+ buttons shift the resume body font-size by ±0.5pt (#186)', asyn
 
   const before = await getFontPx();
 
-  const decreaseBtn = page.getByRole('button', { name: 'Decrease body font size' });
+  const decreaseBtn = popover.getByRole('button', { name: 'Decrease body font size' });
   await expect(decreaseBtn).toBeVisible();
   await decreaseBtn.click();
+
+  // The popover now surfaces a live shift readout the toolbar never had (#204).
+  await expect(popover.getByText('-0.5pt')).toBeVisible();
 
   // 0.5pt = 0.5 * 96/72 = 0.6667px. Tolerance is generous (0.1px) so
   // sub-pixel rounding in different browsers doesn't false-fail.
@@ -206,10 +211,12 @@ test('A+ / A− clamp at ±2pt and disable at the boundary (#186)', async ({ pag
   // Four A+ clicks reach the +2pt ceiling; the fifth should be impossible
   // because the button is disabled. Symmetric check on A−.
   await loadSampleResume(page);
-  await revealPageFitPill(page);
+  const pill = await revealPageFitPill(page);
+  await pill.click();
+  const popover = page.getByRole('dialog', { name: /page fit details/i });
 
-  const decreaseBtn = page.getByRole('button', { name: 'Decrease body font size' });
-  const increaseBtn = page.getByRole('button', { name: 'Increase body font size' });
+  const decreaseBtn = popover.getByRole('button', { name: 'Decrease body font size' });
+  const increaseBtn = popover.getByRole('button', { name: 'Increase body font size' });
 
   // Walk to the +2 ceiling.
   for (let i = 0; i < 4; i++) {

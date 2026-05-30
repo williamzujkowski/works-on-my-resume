@@ -35,8 +35,18 @@ import {
  * the More drawer, so open that first when the trigger isn't already
  * visible. Idempotent and a no-op on desktop.
  */
+/**
+ * The toolbar's "Preview" button — scoped to `.studio__toolbar` so it is not
+ * confused with the mobile Edit/Preview view switch (#220), which also has a
+ * "Preview" button but lives in `.studio__view-switch` at the foot of the
+ * studio. On mobile the toolbar trigger sits inside the collapsed More drawer.
+ */
+function toolbarPreviewTrigger(page: Page) {
+  return page.locator('.studio__toolbar').getByRole('button', { name: /^preview$/i });
+}
+
 async function openPrintPreview(page: Page): Promise<void> {
-  const trigger = page.getByRole('button', { name: /^preview$/i });
+  const trigger = toolbarPreviewTrigger(page);
   if (!(await trigger.isVisible())) {
     await openMobileMoreMenu(page);
   }
@@ -83,7 +93,7 @@ test('clicking the toolbar Preview button opens the print-preview modal', async 
   // Esc closes the modal and restores focus to the Preview trigger.
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /^preview$/i })).toBeFocused();
+  await expect(toolbarPreviewTrigger(page)).toBeFocused();
 });
 
 test('the preview iframe loads and contains the resume name', async ({ page }) => {
@@ -226,7 +236,7 @@ test('clicking Save as PDF inside the modal triggers window.print and closes the
     .toBe(1);
 
   // And focus returns to the Preview trigger.
-  await expect(page.getByRole('button', { name: /^preview$/i })).toBeFocused();
+  await expect(toolbarPreviewTrigger(page)).toBeFocused();
 
   // Defensive: also verify the count didn't double-fire (a debounce bug
   // could fire `print()` twice from a single click).

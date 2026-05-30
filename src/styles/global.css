@@ -7,9 +7,10 @@
  * ochre accent. The resume document is a sibling system — its `--resume-*`
  * tokens are untouched here and overridden by the theme engine at runtime.
  *
- * Dark mode is a re-skin via `@media (prefers-color-scheme: dark)`: warm
- * graphite, not slate-cool. There is no JS toggle — the chrome quietly
- * tracks the OS preference.
+ * Light is catppuccin-latte-inspired cool neutrals; dark is warm graphite.
+ * Both clear WCAG AAA for body text. The chrome tracks the OS by default
+ * but a manual light/dark toggle (data-chrome-mode on <html>, #192) can
+ * override it; the resume document is a sibling system, untouched here.
  */
 
 @import './fonts.css';
@@ -23,28 +24,30 @@
 :root {
   color-scheme: light dark;
 
-  /* App chrome surfaces — warm paper. Each step is OKLCH-derived so the
-     light/dark pair lives in the same perceptual space. The chrome reads
-     as cream stationery with ink and a single ochre stamp. */
-  --ui-bg: #fbf8f3;             /* paper           — oklch(0.985 0.008 85) */
-  --ui-bg-elevated: #f6f1e8;    /* card body       — oklch(0.972 0.010 85) */
-  --ui-panel: #ece5d7;          /* toolbar pill bed — oklch(0.945 0.013 85) */
-  --ui-panel-hover: #e2d9c5;    /* hover wash      — derived */
-  --ui-border: #d4cab4;         /* hairline        — oklch(0.88 0.012 80) */
-  --ui-border-strong: #b9ad92;  /* heavier rule    — derived */
+  /* App chrome surfaces — LIGHT (#192): catppuccin-latte-inspired cool
+     neutrals paired with the app's signature warm ochre accent. Every
+     text token clears WCAG AAA (7:1) on the background; muted/accent/
+     status text clear AAA on bg and AA on the panel bed. Verified by
+     tests/contrast.spec.ts. */
+  --ui-bg: #eff1f5;             /* latte base */
+  --ui-bg-elevated: #e6e9ef;    /* latte mantle — card body */
+  --ui-panel: #dce0e8;          /* latte crust — toolbar pill bed */
+  --ui-panel-hover: #ccd0da;    /* latte surface0 — hover wash */
+  --ui-border: #bcc0cc;         /* latte surface1 — hairline */
+  --ui-border-strong: #82879b;  /* heavier rule / control boundary — 3.15:1 */
 
-  --ui-fg: #2a241c;             /* warm near-black ink — oklch(0.22 0.020 70) */
-  --ui-fg-muted: #6b6253;       /* kickers, captions   — oklch(0.46 0.014 70) */
-  --ui-fg-subtle: #8a8170;      /* subtler tint        — derived */
+  --ui-fg: #34374c;             /* ink — 10.3:1 on bg (AAA) */
+  --ui-fg-muted: #434659;       /* kickers, captions — 8.2:1 on bg (AAA) */
+  --ui-fg-subtle: #4f5266;      /* subtler tint — 6.8:1 on bg (near-AAA) */
 
-  --ui-accent: #9b5d28;         /* ochre ink-stamp — oklch(0.50 0.105 55) */
-  --ui-accent-hover: #b16f33;   /* lighter ochre   — derived */
-  --ui-accent-contrast: #fbf8f3;/* on-accent text — paper */
-  --ui-success: #4d6b3a;        /* olive — restrained success */
-  --ui-warning: #b46a1f;        /* sienna — sits next to ochre without clashing */
-  --ui-danger: #a23a2a;         /* terracotta */
+  --ui-accent: #723a16;         /* ochre ink-stamp — 8.0:1 on bg (AAA) */
+  --ui-accent-hover: #8a4b1f;   /* lighter ochre — hover state */
+  --ui-accent-contrast: #eff1f5;/* on-accent text — paper, 8.0:1 on accent */
+  --ui-success: #2f5718;        /* olive — 7.4:1 */
+  --ui-warning: #7c410c;        /* sienna — 7.1:1 */
+  --ui-danger: #921d27;         /* terracotta — 7.7:1 */
 
-  --ui-focus-ring: #9b5d28;
+  --ui-focus-ring: #723a16;
 
   /* No top highlight on paper — printing presses don't catch light. The
      inset-highlight token remains as a near-no-op so call-sites that
@@ -96,45 +99,88 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Dark mode (#163) — warm graphite, NOT slate-cool.                   */
+/* Chrome light / dark mode (#192) — warm graphite dark, NOT slate.    */
 /*                                                                     */
-/* The OS preference drives the switch; there is no in-app toggle. Each */
-/* `--ui-*` token shifts in the same OKLCH chroma direction so the      */
-/* editorial register reads on either side. The `--resume-*` tokens are */
-/* intentionally NOT re-mapped here — the theme engine owns those, and  */
-/* the user's chosen resume theme is independent of the chrome's mood.  */
+/* The LIGHT palette is the :root default above. Two triggers resolve  */
+/* to the DARK palette below:                                          */
+/*   1. the OS prefers dark AND the user has not forced light, or      */
+/*   2. the user explicitly chose dark (data-chrome-mode="dark").      */
+/* Forcing light suppresses trigger 1 via :not([data-chrome-mode=      */
+/* 'light']). A no-flash <script> in BaseLayout.astro resolves the     */
+/* stored preference and sets data-chrome-mode on <html> before first  */
+/* paint; ChromeModeToggle.tsx + storage.ts own the runtime side.      */
+/*                                                                     */
+/* The two dark declaration blocks are intentionally IDENTICAL — KEEP  */
+/* THEM IN SYNC (CSS has no cross-media @apply). The `--resume-*`       */
+/* tokens are NOT re-mapped: the theme engine owns the resume document */
+/* independent of the chrome's mood. Every text token clears AAA on    */
+/* bg; verified by tests/contrast.spec.ts.                             */
 /* ------------------------------------------------------------------ */
 
+/* color-scheme follows an explicit choice so native controls,
+   scrollbars and form widgets match the chosen chrome. The :root
+   default keeps `light dark` for the OS-tracking (auto) case. */
+:root[data-chrome-mode='light'] {
+  color-scheme: light;
+}
+:root[data-chrome-mode='dark'] {
+  color-scheme: dark;
+}
+
+/* Trigger 1 — OS dark, not force-lit. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --ui-bg: #181410;             /* warm ink — oklch(0.18 0.012 60) */
-    --ui-bg-elevated: #221d18;    /* card body — oklch(0.23 0.014 60) */
-    --ui-panel: #2d2620;          /* toolbar pill bed */
+  :root:not([data-chrome-mode='light']) {
+    --ui-bg: #181410;
+    --ui-bg-elevated: #221d18;
+    --ui-panel: #2d2620;
     --ui-panel-hover: #3a3128;
     --ui-border: #3b322a;
-    --ui-border-strong: #574a3e;
+    --ui-border-strong: #786a59; /* heavier rule / control boundary — 3.5:1 */
 
-    --ui-fg: #efe6d6;             /* warm paper text — oklch(0.92 0.012 85) */
-    --ui-fg-muted: #b8ab93;
-    --ui-fg-subtle: #8a7f6a;
+    --ui-fg: #f3ead9; /* warm paper text — 15.3:1 on bg (AAA) */
+    --ui-fg-muted: #c2b59b; /* 9.0:1 on bg (AAA) */
+    --ui-fg-subtle: #9b8f78; /* 5.8:1 on bg */
 
-    --ui-accent: #d18a4f;         /* lifted ochre so it carries on dark paper */
-    --ui-accent-hover: #e09c63;
-    --ui-accent-contrast: #1a1410;
-    --ui-success: #94a872;
-    --ui-warning: #d9a463;
-    --ui-danger: #d97862;
+    --ui-accent: #e3a063; /* lifted ochre — 8.3:1 on bg (AAA) */
+    --ui-accent-hover: #eeb074;
+    --ui-accent-contrast: #1a1410; /* on-accent text — 8.2:1 on accent */
+    --ui-success: #a0b47e; /* 8.1:1 */
+    --ui-warning: #e3b06f; /* 9.3:1 */
+    --ui-danger: #e58a74; /* 7.2:1 */
 
-    --ui-focus-ring: #d18a4f;
+    --ui-focus-ring: #e3a063;
 
-    /* Very faint top highlight reads as candlelight on dark paper. */
     --ui-inset-highlight: inset 0 1px 0 rgba(255, 240, 210, 0.04);
-
-    /* Shadows on dark paper sit closer to the underlying tone — they
-       read as recessed panels rather than floating cards. */
     --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px -8px rgba(0, 0, 0, 0.55);
     --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.6), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
   }
+}
+
+/* Trigger 2 — explicit dark. KEEP IN SYNC with the @media block above. */
+:root[data-chrome-mode='dark'] {
+  --ui-bg: #181410;
+  --ui-bg-elevated: #221d18;
+  --ui-panel: #2d2620;
+  --ui-panel-hover: #3a3128;
+  --ui-border: #3b322a;
+  --ui-border-strong: #786a59;
+
+  --ui-fg: #f3ead9;
+  --ui-fg-muted: #c2b59b;
+  --ui-fg-subtle: #9b8f78;
+
+  --ui-accent: #e3a063;
+  --ui-accent-hover: #eeb074;
+  --ui-accent-contrast: #1a1410;
+  --ui-success: #a0b47e;
+  --ui-warning: #e3b06f;
+  --ui-danger: #e58a74;
+
+  --ui-focus-ring: #e3a063;
+
+  --ui-inset-highlight: inset 0 1px 0 rgba(255, 240, 210, 0.04);
+  --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px -8px rgba(0, 0, 0, 0.55);
+  --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.6), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
 }
 
 /* ------------------------------------------------------------------ */
@@ -209,7 +255,7 @@ a {
 @keyframes reveal-rise {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(7px);
   }
   to {
     opacity: 1;
@@ -225,8 +271,10 @@ a {
  * page simply appears, fully composed, with no flash of hidden content.
  */
 .reveal {
-  animation: reveal-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: calc(var(--i, 0) * 90ms);
+  animation: reveal-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Header + notice arrive close together; the heavier workbench settles a
+     beat later (see #studio override) so the eye lands top-down. */
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
 
 /* The studio reveal wrapper must keep filling the shell like the old
@@ -235,6 +283,9 @@ a {
   display: flex;
   flex-direction: column;
   flex: 1;
+  /* A gentler beat before the workbench so it reads as "settling into
+     place" after the header/notice, not racing them. */
+  animation-delay: 180ms;
 }
 
 /* Theme-change crossfade: a brief, designed opacity dip on the preview
@@ -262,6 +313,35 @@ a {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Chrome light/dark cross-fade (#219).                                */
+/*                                                                     */
+/* Switching the chrome was a hard cut. ChromeModeToggle arms a        */
+/* transient `.chrome-mode-anim` class on <html> for the duration of a */
+/* user toggle only (never on first paint, never on a resume          */
+/* re-theme — those write `--resume-*` and don't touch the chrome).    */
+/* The transition is opted-in per chrome surface (NOT on `*`/`:root`)  */
+/* so it can't catch resume repaints or thrash. Paint-only properties. */
+/* The reduced-motion reset above already neutralizes it.              */
+/* ------------------------------------------------------------------ */
+:root.chrome-mode-anim body,
+:root.chrome-mode-anim .app-header,
+:root.chrome-mode-anim .app-hero,
+:root.chrome-mode-anim .privacy-notice,
+:root.chrome-mode-anim .studio__toolbar,
+:root.chrome-mode-anim .studio__pane,
+:root.chrome-mode-anim .btn,
+:root.chrome-mode-anim .chrome-mode,
+:root.chrome-mode-anim .chrome-mode__option,
+:root.chrome-mode-anim .theme-picker__trigger,
+:root.chrome-mode-anim .toast {
+  transition:
+    background-color 240ms ease,
+    border-color 240ms ease,
+    color 240ms ease,
+    box-shadow 240ms ease;
 }
 
 /* Skip link for keyboard users. */
@@ -386,6 +466,7 @@ a {
 /* ------------------------------------------------------------------ */
 
 .app-hero {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -394,33 +475,84 @@ a {
   border: 1px solid var(--ui-border);
   border-radius: var(--radius-lg);
   text-align: left;
+  overflow: hidden;
+}
+
+/* Paper grain (#218): a faint directional fiber wash under a soft ochre
+   "ink-catch" bloom in the top-left corner. Built from --ui-fg / --ui-accent
+   so it tints correctly in BOTH the latte-light and graphite-dark palettes;
+   visibility is governed by opacity, not a fixed colour. Static gradients
+   only — no asset, no JS. */
+.app-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image:
+    repeating-linear-gradient(
+      115deg,
+      color-mix(in oklch, var(--ui-fg) 3.5%, transparent) 0 1px,
+      transparent 1px 7px
+    ),
+    radial-gradient(
+      120% 80% at 0% 0%,
+      color-mix(in oklch, var(--ui-accent) 7%, transparent),
+      transparent 60%
+    );
+}
+
+/* The hero's real content sits above the texture layer. */
+.app-hero > * {
+  position: relative;
+  z-index: 1;
 }
 
 .app-hero__brand {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
   min-width: 0;
-  flex-wrap: wrap;
+}
+
+/* Mono ochre kicker above the wordmark — an editorial "catalogue header"
+   opening (#218). Reuses .section-kicker (JetBrains Mono small-caps); the
+   short accent rule is the one ochre flourish. */
+.app-hero__kicker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--ui-accent);
+}
+
+.app-hero__kicker::before {
+  content: '';
+  width: 1.6rem;
+  height: 2px;
+  background: var(--ui-accent);
+  flex-shrink: 0;
 }
 
 .app-hero__title {
   font-family: var(--font-serif);
-  /* clamp() keeps the title legible without an explicit media query — it
-     grows from ~2rem on narrow viewports up to ~3rem on wide ones. */
-  font-size: clamp(2rem, 5vw, 3rem);
+  /* clamp() keeps the masthead legible without a media query — it grows
+     from ~2.1rem on narrow viewports up to ~3.25rem on wide ones. */
+  font-size: clamp(2.1rem, 5.2vw, 3.25rem);
   font-weight: 700;
-  letter-spacing: -0.012em;
+  letter-spacing: -0.02em;
   color: var(--ui-fg);
-  line-height: 1.05;
+  line-height: 1.02;
+  text-wrap: balance;
 }
 
 .app-hero__tagline {
   font-family: var(--font-serif);
-  font-size: clamp(0.95rem, 1.4vw, 1.1rem);
-  line-height: 1.55;
+  font-size: clamp(1rem, 1.5vw, 1.18rem);
+  line-height: 1.6;
   color: var(--ui-fg-muted);
-  max-width: 60ch;
+  max-width: 56ch;
 }
 
 /* Keyboard chips stay mono — they're literal keys. Recoloured to sit on
@@ -452,6 +584,34 @@ a {
   max-width: 60ch;
 }
 
+/* Quiet link to the Markdown format reference (#198). */
+.app-hero__format-link {
+  margin: calc(-1 * var(--space-1)) 0 0;
+  font-size: 0.9rem;
+  color: var(--ui-fg-muted);
+}
+
+.app-hero__format-trigger {
+  font: inherit;
+  color: var(--ui-accent);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.app-hero__format-trigger:hover {
+  text-decoration-thickness: 2px;
+}
+
+.app-hero__format-trigger:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .app-hero__step {
   display: flex;
   align-items: baseline;
@@ -476,30 +636,6 @@ a {
   flex-shrink: 0;
 }
 
-.app-hero__format-hint {
-  margin: calc(var(--space-1) * -1) 0 0;
-}
-
-.app-hero__format-link {
-  padding: 0;
-  color: var(--ui-accent);
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid color-mix(in oklch, var(--ui-accent) 45%, transparent);
-  font: inherit;
-  cursor: pointer;
-}
-
-.app-hero__format-link:hover {
-  color: var(--ui-fg);
-  border-bottom-color: var(--ui-fg);
-}
-
-.app-hero__format-link:focus-visible {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: 3px;
-}
-
 /* Stat counter row: Themes 465 · Layouts 4 · Templates 4 · Offline-ready.
    The number is the eye-catch (serif, heavy, ochre); the label is the
    small-caps kicker (mono). The em-style separators read as printed
@@ -508,8 +644,21 @@ a {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-2) var(--space-4);
-  margin-top: var(--space-2);
+  gap: var(--space-2) var(--space-5);
+  margin-top: var(--space-3);
+  padding-top: var(--space-4);
+  /* A printer's rule that ignites ochre at the left margin and fades to
+     nothing — the same accent/border mix the privacy notice uses, so the
+     page speaks one hairline language (#218). */
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--ui-accent) 35%, var(--ui-border)),
+    var(--ui-border) 55%,
+    transparent
+  );
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+  background-position: top left;
 }
 
 .app-hero__stat {
@@ -520,9 +669,9 @@ a {
 
 .app-hero__stat-value {
   font-family: var(--font-serif);
-  font-size: 1.55rem;
+  font-size: 1.7rem;
   font-weight: 700;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.01em;
   color: var(--ui-accent);
   font-variant-numeric: tabular-nums lining-nums;
   line-height: 1;
@@ -575,7 +724,15 @@ a {
   }
 
   .app-hero__stat-value {
-    font-size: 1.25rem;
+    font-size: 1.4rem;
+  }
+}
+
+/* Drop the hero paper-grain when the user prefers reduced transparency —
+   the card falls back to its flat --ui-bg-elevated surface (#218). */
+@media (prefers-reduced-transparency: reduce) {
+  .app-hero::before {
+    display: none;
   }
 }
 
@@ -785,6 +942,12 @@ body[data-app-phase='workbench'] .app-header {
   background: var(--ui-accent-hover);
   border-color: var(--ui-accent-hover);
   color: var(--ui-accent-contrast);
+  /* A hair of lift distinguishes the loud CTA from the quiet buttons; the
+     base .btn:active still depresses it on press (#219). */
+  transform: translateY(-0.5px);
+  box-shadow:
+    var(--ui-inset-highlight),
+    0 2px 6px rgba(0, 0, 0, 0.28);
 }
 
 .btn--ghost {
@@ -810,6 +973,34 @@ body[data-app-phase='workbench'] .app-header {
   }
   .btn--icon {
     padding: 0.6rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  /* Custom-classed interactive controls that bypass `.btn` and stayed
+     ~22–36px on touch (#194). Give each a ≥44px hit area: scrolling-list
+     rows and the accordion summary grow vertically; inline chips and
+     square icon-buttons grow in both axes. WCAG 2.5.8 / comfortable
+     touch floor. */
+  .theme-picker__option,
+  .theme-picker__curated-item,
+  .snapshots-menu__item-load,
+  .studio__pane-header--summary {
+    min-height: 2.75rem;
+  }
+  .theme-picker__tag {
+    min-height: 2.75rem;
+    padding-block: 0.5rem;
+  }
+  .page-fit__size-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+  .page-fit__pill {
+    min-height: 2.75rem;
+  }
+  .page-fit__close,
+  .snapshots-menu__item-delete {
     min-width: 2.75rem;
     min-height: 2.75rem;
   }
@@ -883,6 +1074,84 @@ body[data-app-phase='workbench'] .app-header {
   gap: var(--space-4);
   margin-top: var(--space-4);
   flex: 1;
+}
+
+/* ------------------------------------------------------------------ */
+/* Chrome light/dark toggle (#192).                                    */
+/*                                                                     */
+/* A small Auto / Light / Dark segmented control that sits in normal    */
+/* flow at the top of the studio, right-aligned. It is the studio's     */
+/* first child, so it appears above the hero (empty state) and above    */
+/* the toolbar (workbench) — reachable in both phases WITHOUT floating   */
+/* over and obscuring the toolbar's top-right controls (an earlier      */
+/* `position: fixed` version blocked taps on the More/Export/gear       */
+/* triggers on narrow screens).                                         */
+/* ------------------------------------------------------------------ */
+.chrome-mode {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-panel);
+}
+
+.chrome-mode__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--ui-fg-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color 110ms ease,
+    background-color 110ms ease,
+    transform 110ms ease;
+}
+
+.chrome-mode__option:hover {
+  color: var(--ui-fg);
+}
+
+.chrome-mode__option:active {
+  transform: translateY(0.5px);
+}
+
+.chrome-mode__option--active {
+  color: var(--ui-accent-contrast);
+  background: var(--ui-accent);
+}
+
+/* Mobile / touch: collapse to icon-only (each button keeps an aria-label)
+   and grow the hit area toward the comfortable touch floor. */
+@media (max-width: 640px) {
+  .chrome-mode__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .chrome-mode__option {
+    padding: 0.5rem;
+    min-width: 2.4rem;
+    min-height: 2.4rem;
+    justify-content: center;
+  }
 }
 
 /* Sticky toolbar (#101).
@@ -1458,6 +1727,65 @@ body[data-app-phase='workbench'] .app-header {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Mobile Edit/Preview switch (#220).                                  */
+/*                                                                     */
+/* A sticky, thumb-reachable one-tap toggle between the stacked editor */
+/* and preview. Only meaningful while the panes are single-column, so  */
+/* it's hidden on the side-by-side desktop layout (≥961px). It sits at */
+/* the very bottom; the status line is lifted above it so they stack   */
+/* rather than overlap (both are sticky-bottom).                       */
+/* ------------------------------------------------------------------ */
+.studio__view-switch {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .studio__view-switch {
+    position: sticky;
+    bottom: 0;
+    z-index: 7;
+    display: flex;
+    gap: 2px;
+    margin-top: var(--space-2);
+    padding: var(--space-2);
+    /* Clear the iOS home indicator on notched phones. */
+    padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
+    background: var(--ui-bg-elevated);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-pop);
+  }
+
+  .studio__view-switch-btn {
+    flex: 1;
+    min-height: 2.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--ui-fg-muted);
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition:
+      background-color 110ms ease,
+      color 110ms ease;
+  }
+
+  .studio__view-switch-btn[aria-pressed='true'] {
+    color: var(--ui-accent-contrast);
+    background: var(--ui-accent);
+  }
+
+  /* Lift the status line so it stacks above the switch instead of
+     colliding with it (both pin to the viewport bottom). */
+  .studio__statusline {
+    bottom: 3.75rem;
+  }
+}
+
 /* Each segment carries a trailing `│` separator via `::after`. The last
    one is suppressed below — using `:last-child` keeps the rule honest
    when a segment is conditionally absent (cursor missing, dirty off,
@@ -1538,12 +1866,15 @@ body[data-app-phase='workbench'] .app-header {
 }
 
 .studio__statusline-seg--words-warn .studio__statusline-value {
-  color: #b45309; /* amber-700 — matches .page-fit--warn */
+  /* Tokenised so it stays AAA-legible in dark mode (#208) — the old
+     hard-coded amber dropped to ~3.6:1 on the dark statusline bed. */
+  color: var(--ui-warning);
   font-weight: 600;
 }
 
 .studio__statusline-seg--words-danger .studio__statusline-value {
-  color: #b91c1c; /* red-700 — matches .page-fit--danger */
+  /* Tokenised — the old hard-coded red was ~2.8:1 in dark mode (#208). */
+  color: var(--ui-danger);
   font-weight: 600;
 }
 
@@ -2041,6 +2372,17 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   --editor-pad: var(--space-3);
 }
 
+/* iOS Safari auto-zooms the page (and leaves it zoomed + horizontally
+   pannable) whenever a focused input renders below 16px. The textarea is
+   the primary mobile editing surface, so on the ≤640px layout lift the
+   shared metric to exactly 16px — the gutter and highlight overlay read
+   the same variable, so line numbers stay aligned. (#193) */
+@media (max-width: 640px) {
+  :root {
+    --editor-font-size: 16px;
+  }
+}
+
 .editor {
   display: flex;
   flex-direction: column;
@@ -2179,10 +2521,12 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   }
 }
 
-/* The summary's filename pill is now mobile-only: desktop has the
-   document tab strip below, so we hide the duplicate in the summary
-   above 640px to avoid two file labels stacked one over the other. */
-@media (min-width: 641px) {
+/* The summary's filename pill is shown whenever the editor accordion is
+   active — i.e. across the whole single-column band (≤960px, matching the
+   split-collapse breakpoint, #205). Only the true side-by-side desktop
+   layout (≥961px) has the document tab strip below, so we hide the
+   duplicate summary pill there to avoid two stacked file labels. */
+@media (min-width: 961px) {
   .studio__pane-tab--mobile-only {
     display: none;
   }
@@ -2668,7 +3012,8 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   transition:
     background-color 110ms ease,
     border-color 110ms ease,
-    color 110ms ease;
+    color 110ms ease,
+    transform 110ms ease;
 }
 
 .theme-picker__trigger:hover,
@@ -2677,6 +3022,10 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
      discoverable without restoring the old pill outline. */
   background: var(--ui-panel-hover);
   color: var(--ui-fg);
+}
+
+.theme-picker__trigger:active {
+  transform: translateY(0.5px);
 }
 
 .theme-picker__trigger-label {
@@ -2767,11 +3116,20 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   cursor: pointer;
   text-align: left;
   font-size: 0.82rem;
+  /* Match the tactile baseline of the curated tiles — it was an instant
+     hover before (#219). */
+  transition:
+    background-color 110ms ease,
+    border-color 110ms ease;
 }
 
 .theme-picker__option:hover,
 .theme-picker__option--active {
   background: var(--ui-panel-hover);
+}
+
+.theme-picker__option:active {
+  transform: translateY(0.5px);
 }
 
 .theme-picker__option--selected {
@@ -3015,42 +3373,14 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 
 /* ------------------------------------------------------------------ */
 /* Theme controls                                                      */
+/*                                                                     */
+/* The standalone `ThemeControls` component (and its `.theme-controls*` */
+/* rules) was removed in #197 — its prev/next/random cluster was        */
+/* reimplemented inline in the Settings drawer (`.settings-drawer__     */
+/* theme-nav`), and "Copy theme link" moved into the Export panel in    */
+/* #112. The canonical WCAG signal lives in the preview pane header     */
+/* (#88); the picker still surfaces per-theme `.badge*` chips below.    */
 /* ------------------------------------------------------------------ */
-
-.theme-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-/* The prev / next / random cluster reads as one segmented control. */
-.theme-controls__nav {
-  display: flex;
-  gap: 0;
-}
-
-.theme-controls__nav .btn {
-  border-radius: 0;
-}
-
-.theme-controls__nav .btn:first-child {
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-}
-
-.theme-controls__nav .btn:last-child {
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.theme-controls__nav .btn:not(:first-child) {
-  margin-left: -1px;
-}
-
-/* `.theme-controls__current` and `.theme-controls__accent-dot` were
-   removed in #112 — the toolbar no longer hosts the dark/light + WCAG
-   contrast chips. The canonical WCAG signal lives in the preview pane
-   header (#88) instead. The picker still surfaces per-theme badges in
-   its option list, so `.badge*` rules below are kept intact. */
 
 .badge {
   display: inline-flex;
@@ -3233,28 +3563,18 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   opacity: 0.7;
 }
 
-.export-panel__radio-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  border: 1px solid var(--ui-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2);
+/* Print-mode read-out (#200): the panel no longer edits the mode (the Fit
+   chip is canonical) — it just states which mode the HTML/PDF/ZIP exports
+   will bake and points the user at the control. */
+.export-panel__mode-note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ui-fg-muted);
 }
 
-.export-panel__radio {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-1);
-  font-size: 0.82rem;
-  cursor: pointer;
-}
-
-.export-panel__radio-hint {
-  display: block;
-  font-size: 0.72rem;
-  color: var(--ui-fg-subtle);
+.export-panel__mode-note strong {
+  color: var(--ui-fg);
+  font-weight: 600;
 }
 
 .export-panel__note {
@@ -3475,6 +3795,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   gap: var(--space-3);
   width: min(30rem, 100%);
   max-height: 100%;
+  max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
   overflow-y: auto;
   padding: var(--space-5);
   background: var(--ui-bg-elevated);
@@ -3615,6 +3936,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   gap: var(--space-3);
   width: min(40rem, 100%);
   max-height: 100%;
+  max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
   overflow-y: auto;
   padding: var(--space-5);
   background: var(--ui-bg-elevated);
@@ -3706,6 +4028,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   gap: var(--space-4);
   width: min(40rem, 100%);
   max-height: 100%;
+  max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
   overflow-y: auto;
   padding: var(--space-5) var(--space-6);
   background: var(--ui-bg-elevated);
@@ -3972,6 +4295,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   gap: var(--space-3);
   width: min(60rem, 100%);
   max-height: 100%;
+  max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
   overflow: hidden;
   padding: var(--space-5);
   background: var(--ui-bg-elevated);
@@ -4085,6 +4409,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
     width: 100%;
     height: 100%;
     max-height: 100%;
+    max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
     border-radius: 0;
     padding: var(--space-4);
   }
@@ -4717,6 +5042,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   gap: var(--space-4);
   width: min(54rem, 100%);
   max-height: 100%;
+  max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
   overflow-y: auto;
   padding: var(--space-5);
   background: var(--ui-bg-elevated);
@@ -4904,17 +5230,20 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .faded-sample__overlay {
-  /* Centered above the faded layer. `pointer-events: none` lets clicks
-     pass through to whatever is behind (there is nothing interactive
-     behind anyway, but the rule documents intent and keeps the layer from
-     swallowing accidental drag attempts on touch). */
+  /* Anchored near the TOP of the faded layer — around the sample's
+     title/summary band — rather than dead-centre, where on a tall pane
+     (mobile and desktop) the CTA sat too low to notice. `pointer-events:
+     none` lets clicks pass through to whatever is behind (nothing
+     interactive there, but the rule documents intent and keeps the layer
+     from swallowing accidental drag attempts on touch). */
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   pointer-events: none;
   padding: var(--space-4);
+  padding-top: clamp(3rem, 11vh, 6rem);
 }
 
 .faded-sample__cta {
@@ -4922,6 +5251,8 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
      button inside is clickable. The card itself absorbs the focus ring
      for the button and provides the prominent surface the visitor reads. */
   pointer-events: auto;
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4938,11 +5269,36 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   box-shadow: var(--ui-inset-highlight), var(--shadow-panel);
 }
 
+/* Same paper grain as the hero so the empty-state "ghost resume" sits on
+   matching stationery (#218). Layers under the card's backdrop-blur. */
+.faded-sample__cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image: repeating-linear-gradient(
+    115deg,
+    color-mix(in oklch, var(--ui-fg) 3.5%, transparent) 0 1px,
+    transparent 1px 7px
+  );
+  opacity: 0.8;
+}
+
+.faded-sample__cta > * {
+  position: relative;
+  z-index: 1;
+}
+
 @media (prefers-reduced-transparency: reduce) {
   .faded-sample__cta {
     background: var(--ui-bg-elevated);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+  }
+  .faded-sample__cta::before {
+    display: none;
   }
 }
 
@@ -5207,19 +5563,23 @@ details.studio__pane--editor {
   color: var(--ui-fg-muted);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 960px) {
   .studio__pane-summary-meta {
     display: inline-flex;
     align-items: center;
   }
 }
 
-/* Above 640px the accordion is a no-op: the body is visible regardless
-   of the `open` attribute, and the summary stops behaving as an
-   interactive disclosure. Modern Chromium uses a `::details-content`
-   pseudo-element to control disclosure; older engines simply set
-   `display: none` on non-summary children. We override both. */
-@media (min-width: 641px) {
+/* Only at the true side-by-side desktop layout (≥961px, matching the
+   single-column collapse at 960px, #205) is the accordion a no-op: the
+   body is visible regardless of the `open` attribute, and the summary
+   stops behaving as an interactive disclosure. Below that — including the
+   641–960px band where the panes are already stacked — the accordion is
+   live so the editor collapses above the preview instead of forcing the
+   user to scroll a full-height editor first. Modern Chromium uses a
+   `::details-content` pseudo-element to control disclosure; older engines
+   simply set `display: none` on non-summary children. We override both. */
+@media (min-width: 961px) {
   details.studio__pane--editor:not([open]) > .studio__pane-body {
     /* Force the body back into the flow when the element is "closed".
        This is the desktop pane behavior — `open` is a state we ignore
@@ -5255,14 +5615,12 @@ details.studio__pane--editor {
  * ±2pt clamp around the 11pt default. Per-session, not persisted.
  *
  * Visual silhouette:
- *   [A−] [ • 1.4p ]·[ CONSERVATIVE ▾ ] [A+]
- *
- * The buttons sit inside `.page-fit__size-control`, a flex row that wraps
- * the existing chip. The buttons read as quiet utility chrome (muted
- * glyph, no border), brightening to `--ui-fg` on hover; the disabled
- * state at the clamp boundary drops the glyph to half-opacity. The
- * current shift value isn't shown in the toolbar — the chip already
- * shows the consequence (Fit X pages), which is the loaded signal here.
+ * The A− / A+ body-font nudges moved into the Fit popover in #204 (they're
+ * a fit-tuning control, not a primary toolbar action). `.page-fit__size-
+ * control` now simply wraps the chip; the buttons live in the popover's
+ * `.page-fit__size-row` with a visible shift readout. The buttons read as
+ * quiet utility chrome (muted glyph, no border), brightening to `--ui-fg`
+ * on hover; the disabled state at the clamp boundary halves the glyph.
  * ------------------------------------------------------------------ */
 .page-fit__size-control {
   display: inline-flex;
@@ -5291,11 +5649,19 @@ details.studio__pane--editor {
     background-color 110ms ease;
 }
 
-.page-fit__size-btn:hover:not(:disabled),
+.page-fit__size-btn:hover:not(:disabled) {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+}
+
+/* Keep the global 2px focus ring — the hover background alone is only
+   ~1.1:1 against the toolbar and isn't a perceivable focus indicator
+   for a keyboard user (#194). */
 .page-fit__size-btn:focus-visible:not(:disabled) {
   color: var(--ui-fg);
   background: var(--ui-panel-hover);
-  outline: none;
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
 }
 
 .page-fit__size-btn:disabled {
@@ -5312,6 +5678,39 @@ details.studio__pane--editor {
   font-weight: 700;
   vertical-align: super;
   line-height: 1;
+}
+
+/* "Body text size" row inside the Fit popover (#204) — label on the left, a
+   [A−  value  A+] stepper on the right with a visible shift readout the bare
+   toolbar pair never had. */
+.page-fit__size-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--ui-border);
+}
+
+.page-fit__size-label {
+  font-size: 0.82rem;
+  color: var(--ui-fg);
+}
+
+.page-fit__size-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.page-fit__size-value {
+  min-width: 4ch;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--ui-fg-muted);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 /* Combined chip (#139): the Fit pill and the print-mode dropdown live
@@ -5345,12 +5744,12 @@ details.studio__pane--editor {
 }
 
 .page-fit--warn {
-  color: #b45309; /* amber-700 */
+  color: var(--ui-warning);
   border-color: color-mix(in oklch, #f59e0b 55%, var(--ui-border-strong));
 }
 
 .page-fit--danger {
-  color: #b91c1c; /* red-700 */
+  color: var(--ui-danger);
   border-color: color-mix(in oklch, #ef4444 60%, var(--ui-border-strong));
 }
 
@@ -5397,11 +5796,11 @@ details.studio__pane--editor {
 }
 
 .page-fit__pill--warn {
-  color: #b45309;
+  color: var(--ui-warning);
 }
 
 .page-fit__pill--danger {
-  color: #b91c1c;
+  color: var(--ui-danger);
 }
 
 /* Separator dot between the Fit segment and the mode segment. Sits inline
@@ -5475,11 +5874,11 @@ details.studio__pane--editor {
 }
 
 .page-fit__mode-select--warn {
-  color: #b45309;
+  color: var(--ui-warning);
 }
 
 .page-fit__mode-select--danger {
-  color: #b91c1c;
+  color: var(--ui-danger);
 }
 
 /* Visual chevron, painted to the right of the select text. `pointer-events:
@@ -6101,6 +6500,7 @@ details.studio__pane--editor {
   flex-direction: column;
   width: min(28rem, 100vw);
   max-height: 100vh;
+  max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
   background: var(--ui-bg-elevated);
   border-left: 1px solid var(--ui-border-strong);
   box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
@@ -6138,6 +6538,9 @@ details.studio__pane--editor {
   flex-direction: column;
   gap: var(--space-5);
   padding: var(--space-4);
+  /* Clear the iOS home indicator / bottom browser chrome so the About
+     row at the foot of the scroll region stays tappable (#195). */
+  padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
   overflow-y: auto;
   flex: 1;
 }

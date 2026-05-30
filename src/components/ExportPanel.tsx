@@ -45,9 +45,12 @@ interface ExportPanelProps {
    * and the ZIP bundle so a download faithfully reflects the in-app preview.
    */
   template?: ResumeTemplate;
-  /** Current print mode. */
+  /**
+   * Current print mode — baked into the HTML/ZIP exports so a download
+   * mirrors the chosen appearance. The mode is CHANGED elsewhere now (the
+   * canonical Fit-chip control, #200); the panel only reads it.
+   */
   printMode: PrintMode;
-  onPrintModeChange: (mode: PrintMode) => void;
   /** Request the panel be closed. */
   onClose: () => void;
   /** The trigger button that opened the panel — focus returns here on close. */
@@ -81,13 +84,12 @@ export default function ExportPanel({
   theme,
   template = DEFAULT_RESUME_TEMPLATE,
   printMode,
-  onPrintModeChange,
   onClose,
   triggerRef,
   previewRef,
 }: ExportPanelProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const firstControlRef = useRef<HTMLInputElement>(null);
+  const firstControlRef = useRef<HTMLButtonElement>(null);
   const headingId = useId();
   const hasResume = parsed !== null;
 
@@ -176,59 +178,26 @@ export default function ExportPanel({
            Applies to the in-app print path AND to the HTML/ZIP downloads
            (they bake `data-print-mode` into the exported file). Lives at
            the top because it gates how PDF/HTML render below. */}
-      <div className="export-panel__section">
-        <span className="export-panel__group-label">Mode</span>
-        <fieldset className="export-panel__radio-group">
-          <legend className="visually-hidden">Print mode</legend>
-          <label className="export-panel__radio">
-            <input
-              ref={firstControlRef}
-              type="radio"
-              name="print-mode"
-              checked={printMode === 'conservative'}
-              onChange={() => onPrintModeChange('conservative')}
-            />
-            <span>
-              Conservative
-              <span className="export-panel__radio-hint">
-                White paper, black ink — ATS- and printer-friendly.
-              </span>
-            </span>
-          </label>
-          <label className="export-panel__radio">
-            <input
-              type="radio"
-              name="print-mode"
-              checked={printMode === 'theme'}
-              onChange={() => onPrintModeChange('theme')}
-            />
-            <span>
-              Current theme
-              <span className="export-panel__radio-hint">
-                Print using the “{theme.name}” colors.
-              </span>
-            </span>
-          </label>
-        </fieldset>
-      </div>
+      {/* Print appearance is set by the canonical Fit-chip control (#200) —
+          the panel no longer duplicates the radios, but notes where to change
+          it so the HTML/PDF/ZIP appearance stays discoverable. The {' '}
+          duplicate "Print / Save as PDF" button is gone too (#201): Save as
+          PDF lives once, in the toolbar. */}
+      <p className="export-panel__mode-note">
+        HTML &amp; PDF use the{' '}
+        <strong>{printMode === 'theme' ? 'current theme' : 'conservative'}</strong> print mode —
+        change it in the Fit chip.
+      </p>
 
       {/* ----- DOCUMENT — human-readable resume artifacts -----
-           PDF is the primary action; MD and HTM follow as alternate
-           document formats. Each row leads with a 4ch mono format glyph
-           so the popover reads like a directory listing. */}
+           Alternate document formats (MD / HTM). Each row leads with a 4ch
+           mono format glyph so the popover reads like a directory listing.
+           Save-as-PDF is intentionally NOT here — it's the toolbar's job. */}
       <div className="export-panel__section">
         <span className="export-panel__group-label">Document</span>
         <div className="export-panel__buttons">
           <button
-            type="button"
-            className="btn btn--primary"
-            onClick={() => window.print()}
-            disabled={!hasResume}
-          >
-            <FormatGlyph>PDF</FormatGlyph>
-            <span>Print / Save as PDF</span>
-          </button>
-          <button
+            ref={firstControlRef}
             type="button"
             className="btn"
             disabled={!hasResume}

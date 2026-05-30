@@ -626,16 +626,17 @@ test('Download HTML export defaults to data-print-mode="conservative"', async ({
 test('Download HTML export with print mode "theme" writes data-print-mode="theme"', async ({
   page,
 }) => {
-  await openExportPanel(page);
+  // Set theme print mode via the canonical Fit-chip <select> (#200) — the
+  // export panel's mode radios were removed. The select sets the same React
+  // `printMode` state the HTML export bakes in. Reveal the chip from the
+  // mobile More drawer when it isn't inline.
+  const modeSelect = page.getByLabel(/print mode — affects the save as pdf/i);
+  if (!(await modeSelect.isVisible())) {
+    await openMobileMoreMenu(page);
+  }
+  await modeSelect.selectOption('theme');
 
-  // Flip the radio group to theme print mode. The radio input itself can
-  // report as outside the viewport when the export panel is positioned as
-  // an overflowing popover; dispatch a click on the input via the page
-  // context, which sidesteps Playwright's viewport precheck and exercises
-  // the same change handler a real user click would.
-  const themeRadio = page.getByRole('radio', { name: /current theme/i });
-  await themeRadio.dispatchEvent('click');
-  await expect(themeRadio).toBeChecked();
+  await openExportPanel(page);
 
   const { html } = await downloadHtmlBody(page);
 

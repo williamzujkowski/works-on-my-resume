@@ -48,6 +48,7 @@ import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor';
 import ResumePreview from './ResumePreview';
 import ResumeHealth from './ResumeHealth';
 import StudioStatusLine from './StudioStatusLine';
+import ChromeModeToggle from './ChromeModeToggle';
 import ThemePicker from './ThemePicker';
 import LayoutSelector from './LayoutSelector';
 import ExportPanel from './ExportPanel';
@@ -281,6 +282,7 @@ export default function ResumeStudio() {
      can't lie about which theme should be committed. */
   const pendingThemeRef = useRef<ResumeTheme | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const editorPaneRef = useRef<HTMLDetailsElement>(null);
   const exportTriggerRef = useRef<HTMLButtonElement>(null);
   const helpTriggerRef = useRef<HTMLButtonElement>(null);
   /* Imperative handle for "Jump to line N" from the Resume Health panel.
@@ -298,9 +300,9 @@ export default function ResumeStudio() {
      event flows back here when the user taps the summary. The only
      non-user driver is the `hasResume` transition below — when a resume
      loads we auto-collapse so the preview is the first thing on mobile.
-     CSS forces the body visible on desktop (≥ 640px) regardless of
-     state, so the React-controlled `open` is genuinely just the mobile
-     accordion's open/closed state. */
+     CSS forces the body visible on the side-by-side desktop layout
+     (≥ 961px) regardless of state, so the React-controlled `open` is
+     genuinely just the stacked-layout accordion's open/closed state. */
   const [editorOpen, setEditorOpen] = useState<boolean>(true);
   /* Tracks the previous `hasResume` so we only auto-collapse/auto-open on
      a transition — leaving the user's mid-session toggles alone. */
@@ -309,6 +311,45 @@ export default function ResumeStudio() {
   /* Which tab the preview pane is showing (#85). Default to the resume
      itself; users switch to Health when they want feedback. */
   const [previewTab, setPreviewTab] = useState<PreviewTab>('preview');
+  /* The Preview/Health tablist uses roving tabindex, so per the WAI-ARIA
+     Tabs pattern Left/Right/Home/End must move selection + focus (#196). */
+  const previewTablistRef = useRef<HTMLDivElement>(null);
+  const handlePreviewTabsKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const order: PreviewTab[] = ['preview', 'health'];
+      const current = order.indexOf(previewTab);
+      let nextIndex: number;
+      switch (event.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+          nextIndex = (current + 1) % order.length;
+          break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          nextIndex = (current - 1 + order.length) % order.length;
+          break;
+        case 'Home':
+          nextIndex = 0;
+          break;
+        case 'End':
+          nextIndex = order.length - 1;
+          break;
+        default:
+          return;
+      }
+      // preventDefault marks the event handled so the window-level theme
+      // shortcut (←/→) backs off; stopPropagation is belt-and-braces.
+      event.preventDefault();
+      event.stopPropagation();
+      const next = order[nextIndex];
+      if (next !== previewTab) setPreviewTab(next);
+      // Automatic activation: focus follows selection to the chosen tab.
+      previewTablistRef.current
+        ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+        ?.[nextIndex]?.focus();
+    },
+    [previewTab],
+  );
 
   /** A resume is present once Markdown has been entered. */
   const hasResume = markdown.trim() !== '';
@@ -494,8 +535,9 @@ export default function ResumeStudio() {
    * a stale React render. Two transitions matter:                      *
    *                                                                   *
    *   - false → true (resume loaded): collapse the accordion so the    *
-   *     preview is the first thing the user sees on mobile. Desktop is *
-   *     unaffected — CSS forces the body visible at ≥ 640px.           *
+   *     preview is the first thing the user sees while stacked. Side-  *
+   *     by-side desktop is unaffected — CSS forces the body visible at *
+   *     ≥ 961px.                                                        *
    *   - true → false (cleared): re-open so the empty Phase 1 editor IS *
    *     visible again, including on mobile.                            *
    * ---------------------------------------------------------------- */
@@ -843,6 +885,11 @@ export default function ResumeStudio() {
       if (formatDocsOpen) return;
       if (printPreviewOpen) return;
 
+      // If a closer handler already acted on this key (e.g. the Preview/
+      // Health tablist's Arrow navigation, #196), don't also fire a global
+      // shortcut for it.
+      if (event.defaultPrevented) return;
+
       // Never hijack typing, and never fight browser/OS chords.
       if (isEditableTarget(event.target)) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
@@ -986,19 +1033,58 @@ export default function ResumeStudio() {
   }, []);
 
   const openFormatDocs = useCallback((trigger?: HTMLElement | null) => {
-    formatDocsTriggerRef.current = trigger ?? settingsTriggerRef.current;
+    if (trigger) {
+      formatDocsTriggerRef.current = trigger;
+    } else if (typeof document !== 'undefined') {
+      const active = document.activeElement;
+      formatDocsTriggerRef.current =
+        active instanceof HTMLElement ? active : settingsTriggerRef.current;
+    } else {
+      formatDocsTriggerRef.current = settingsTriggerRef.current;
+    }
     setFormatDocsOpen(true);
   }, []);
 
   /* Close the Markdown-format reference dialog (#157, #198) and return
      focus to the control that opened it. Settings still falls back to the
      gear because the drawer closes before this modal appears. */
+  /* Open the Markdown-format reference dialog (#157, #198) and remember the
+     control that opened it so focus can return there on close. It's reachable
+     from the Settings gear (workbench) AND the empty-state hero link, which
+     don't coexist — so capture the live opener rather than hard-coding one. */
+  /* Close the Markdown-format reference dialog and return focus to whatever
+     opened it (the hero link in Phase 1, the Settings gear in Phase 2 — the
+     latter as a fallback if the opener was never captured). */
   const closeFormatDocs = useCallback(() => {
     setFormatDocsOpen(false);
     window.setTimeout(() => {
       (formatDocsTriggerRef.current ?? settingsTriggerRef.current)?.focus();
       formatDocsTriggerRef.current = null;
     }, 0);
+  }, []);
+
+  /* The mobile Edit/Preview switch (#220). On the stacked layout the editor
+     accordion + preview live in one column, so these give a one-tap way to
+     jump between them: open/close the accordion (reusing `editorOpen`, the
+     single source of truth) and scroll the chosen pane into view. The scroll
+     is deferred a frame so the accordion has reflowed first. */
+  const showEditor = useCallback(() => {
+    setEditorOpen(true);
+    requestAnimationFrame(() => {
+      editorPaneRef.current?.scrollIntoView({
+        behavior: motionOk() ? 'smooth' : 'auto',
+        block: 'start',
+      });
+    });
+  }, []);
+  const showPreview = useCallback(() => {
+    setEditorOpen(false);
+    requestAnimationFrame(() => {
+      previewRef.current?.scrollIntoView({
+        behavior: motionOk() ? 'smooth' : 'auto',
+        block: 'start',
+      });
+    });
   }, []);
 
   /* Close the print-preview modal (#185) and return focus to the Preview
@@ -1259,6 +1345,11 @@ export default function ResumeStudio() {
         {loadAnnouncement}
       </p>
 
+      {/* App-chrome light/dark toggle (#192). Rendered unconditionally so
+          it's reachable on both the empty state and the loaded workbench;
+          floats to the top-right via CSS and is hidden from print. */}
+      <ChromeModeToggle />
+
       {/* ----- Empty-state hero (#127). Rendered ONLY when no resume is
            loaded; once a resume lands, the static AppHeader astro chrome
            returns (the body-level data-app-phase attribute drives the
@@ -1497,7 +1588,6 @@ export default function ResumeStudio() {
                 theme={theme}
                 template={template}
                 printMode={printMode}
-                onPrintModeChange={setPrintMode}
                 onClose={() => setExportOpen(false)}
                 triggerRef={exportTriggerRef}
                 previewRef={previewRef}
@@ -1541,12 +1631,15 @@ export default function ResumeStudio() {
             one-line summary when a resume is loaded (#100). The `open`
             attribute is set imperatively in a useLayoutEffect — passing
             it via JSX would make React fight the user's native summary
-            taps. On desktop, CSS forces the body visible regardless of
-            the `open` state, so the accordion is a no-op above 640px.
+            taps. On the side-by-side desktop layout CSS forces the body
+            visible regardless of the `open` state, so the accordion is a
+            no-op above 960px.
               - Phase 1 (no resume): open. The uploader IS the experience.
-              - Phase 2 (resume loaded): closed on mobile; CSS forces it
-                back open on viewports ≥ 640px so desktop is unaffected. */}
+              - Phase 2 (resume loaded): closed while the panes are
+                stacked; CSS forces it back open at ≥ 961px so the
+                side-by-side desktop layout is unaffected. */}
         <details
+          ref={editorPaneRef}
           className="studio__pane studio__pane--editor"
           aria-label="Markdown editor"
           data-print-hide
@@ -1676,6 +1769,8 @@ export default function ResumeStudio() {
               role="tablist"
               aria-label="Preview pane"
               data-print-hide
+              ref={previewTablistRef}
+              onKeyDown={handlePreviewTabsKeyDown}
             >
               <button
                 type="button"
@@ -1784,6 +1879,33 @@ export default function ResumeStudio() {
         />
       )}
 
+      {/* ----- Mobile Edit/Preview switch (#220) -----
+           A sticky, thumb-reachable one-tap toggle between the editor and
+           the preview. Only meaningful while the panes are stacked, so CSS
+           hides it on the side-by-side desktop layout (≥961px). Reuses
+           `editorOpen` — it's a view toggle (aria-pressed), not a tablist.
+           Hidden from print via data-print-hide. */}
+      {hasResume && (
+        <div className="studio__view-switch" role="group" aria-label="Editor and preview" data-print-hide>
+          <button
+            type="button"
+            className="studio__view-switch-btn"
+            aria-pressed={editorOpen}
+            onClick={showEditor}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            className="studio__view-switch-btn"
+            aria-pressed={!editorOpen}
+            onClick={showPreview}
+          >
+            Preview
+          </button>
+        </div>
+      )}
+
       {/* ----- Keyboard-shortcuts help overlay (#58). ----- */}
       {helpOpen && (
         <KeyboardHelp
@@ -1812,7 +1934,7 @@ export default function ResumeStudio() {
           onDeleteSnapshot={handleDeleteSnapshot}
           shortcutsEnabled={shortcutsEnabled}
           onOpenKeyboardHelp={() => setHelpOpen(true)}
-          onOpenFormatDocs={() => openFormatDocs(settingsTriggerRef.current)}
+          onOpenFormatDocs={openFormatDocs}
           onPreviousTheme={() => stepTheme(-1)}
           onNextTheme={() => stepTheme(1)}
           onRandomTheme={randomTheme}

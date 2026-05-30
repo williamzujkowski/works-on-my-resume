@@ -50,7 +50,7 @@ test('the hero is rendered on Phase 1 with title, kbd-chip tagline, and stat cou
 
 test('#198 the empty-state hero opens the Markdown format reference', async ({ page }) => {
   const hero = page.locator('.app-hero');
-  const trigger = hero.getByRole('button', { name: /^markdown format$/i });
+  const trigger = hero.getByRole('button', { name: /markdown format reference/i });
 
   await expect(trigger).toBeVisible();
   await trigger.click();

@@ -182,6 +182,7 @@ export default function PageFitIndicator({
 
   const labelId = useId();
   const popoverId = useId();
+  const sizeLabelId = useId();
 
   /* ---- One measurement pass. Reads the article we currently know about,
          OR re-queries the preview pane for one if the cached reference is
@@ -321,19 +322,13 @@ export default function PageFitIndicator({
     onBodySizeShiftChange(next);
   };
 
+  const shiftLabel =
+    bodySizeShift === 0
+      ? 'Default'
+      : `${bodySizeShift > 0 ? '+' : ''}${bodySizeShift}pt`;
+
   return (
     <div className="page-fit__size-control" data-print-hide>
-      <button
-        type="button"
-        className="page-fit__size-btn"
-        aria-label="Decrease body font size"
-        onClick={decreaseShift}
-        disabled={atMinShift}
-      >
-        <span aria-hidden="true">
-          A<span className="page-fit__size-btn-op">−</span>
-        </span>
-      </button>
       <div className={chipClass} ref={rootRef} data-print-hide>
         <button
           type="button"
@@ -443,20 +438,50 @@ export default function PageFitIndicator({
               />
               <span>Show page-break ruler on the preview</span>
             </label>
+
+            {/* Body-font nudge (#186), relocated from the toolbar into the
+                popover (#204) — it's a fit-tuning control, not a primary
+                action, and the popover gives room for a visible shift
+                readout the bare toolbar pair never had. */}
+            <div className="page-fit__size-row">
+              <span className="page-fit__size-label" id={sizeLabelId}>
+                Body text size
+              </span>
+              <div
+                className="page-fit__size-stepper"
+                role="group"
+                aria-labelledby={sizeLabelId}
+              >
+                <button
+                  type="button"
+                  className="page-fit__size-btn"
+                  aria-label="Decrease body font size"
+                  onClick={decreaseShift}
+                  disabled={atMinShift}
+                >
+                  <span aria-hidden="true">
+                    A<span className="page-fit__size-btn-op">−</span>
+                  </span>
+                </button>
+                <span className="page-fit__size-value" aria-live="polite">
+                  {shiftLabel}
+                </span>
+                <button
+                  type="button"
+                  className="page-fit__size-btn"
+                  aria-label="Increase body font size"
+                  onClick={increaseShift}
+                  disabled={atMaxShift}
+                >
+                  <span aria-hidden="true">
+                    A<span className="page-fit__size-btn-op">+</span>
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
-      <button
-        type="button"
-        className="page-fit__size-btn"
-        aria-label="Increase body font size"
-        onClick={increaseShift}
-        disabled={atMaxShift}
-      >
-        <span aria-hidden="true">
-          A<span className="page-fit__size-btn-op">+</span>
-        </span>
-      </button>
 
       {rulerOn && pane && article && rulerLineCount > 0 &&
         createPortal(
