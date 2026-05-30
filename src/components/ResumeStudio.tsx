@@ -299,9 +299,9 @@ export default function ResumeStudio() {
      event flows back here when the user taps the summary. The only
      non-user driver is the `hasResume` transition below — when a resume
      loads we auto-collapse so the preview is the first thing on mobile.
-     CSS forces the body visible on desktop (≥ 640px) regardless of
-     state, so the React-controlled `open` is genuinely just the mobile
-     accordion's open/closed state. */
+     CSS forces the body visible on the side-by-side desktop layout
+     (≥ 961px) regardless of state, so the React-controlled `open` is
+     genuinely just the stacked-layout accordion's open/closed state. */
   const [editorOpen, setEditorOpen] = useState<boolean>(true);
   /* Tracks the previous `hasResume` so we only auto-collapse/auto-open on
      a transition — leaving the user's mid-session toggles alone. */
@@ -534,8 +534,9 @@ export default function ResumeStudio() {
    * a stale React render. Two transitions matter:                      *
    *                                                                   *
    *   - false → true (resume loaded): collapse the accordion so the    *
-   *     preview is the first thing the user sees on mobile. Desktop is *
-   *     unaffected — CSS forces the body visible at ≥ 640px.           *
+   *     preview is the first thing the user sees while stacked. Side-  *
+   *     by-side desktop is unaffected — CSS forces the body visible at *
+   *     ≥ 961px.                                                        *
    *   - true → false (cleared): re-open so the empty Phase 1 editor IS *
    *     visible again, including on mobile.                            *
    * ---------------------------------------------------------------- */
@@ -1585,11 +1586,13 @@ export default function ResumeStudio() {
             one-line summary when a resume is loaded (#100). The `open`
             attribute is set imperatively in a useLayoutEffect — passing
             it via JSX would make React fight the user's native summary
-            taps. On desktop, CSS forces the body visible regardless of
-            the `open` state, so the accordion is a no-op above 640px.
+            taps. On the side-by-side desktop layout CSS forces the body
+            visible regardless of the `open` state, so the accordion is a
+            no-op above 960px.
               - Phase 1 (no resume): open. The uploader IS the experience.
-              - Phase 2 (resume loaded): closed on mobile; CSS forces it
-                back open on viewports ≥ 640px so desktop is unaffected. */}
+              - Phase 2 (resume loaded): closed while the panes are
+                stacked; CSS forces it back open at ≥ 961px so the
+                side-by-side desktop layout is unaffected. */}
         <details
           className="studio__pane studio__pane--editor"
           aria-label="Markdown editor"

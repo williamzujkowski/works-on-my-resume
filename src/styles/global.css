@@ -2316,10 +2316,12 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   }
 }
 
-/* The summary's filename pill is now mobile-only: desktop has the
-   document tab strip below, so we hide the duplicate in the summary
-   above 640px to avoid two file labels stacked one over the other. */
-@media (min-width: 641px) {
+/* The summary's filename pill is shown whenever the editor accordion is
+   active — i.e. across the whole single-column band (≤960px, matching the
+   split-collapse breakpoint, #205). Only the true side-by-side desktop
+   layout (≥961px) has the document tab strip below, so we hide the
+   duplicate summary pill there to avoid two stacked file labels. */
+@media (min-width: 961px) {
   .studio__pane-tab--mobile-only {
     display: none;
   }
@@ -5325,19 +5327,23 @@ details.studio__pane--editor {
   color: var(--ui-fg-muted);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 960px) {
   .studio__pane-summary-meta {
     display: inline-flex;
     align-items: center;
   }
 }
 
-/* Above 640px the accordion is a no-op: the body is visible regardless
-   of the `open` attribute, and the summary stops behaving as an
-   interactive disclosure. Modern Chromium uses a `::details-content`
-   pseudo-element to control disclosure; older engines simply set
-   `display: none` on non-summary children. We override both. */
-@media (min-width: 641px) {
+/* Only at the true side-by-side desktop layout (≥961px, matching the
+   single-column collapse at 960px, #205) is the accordion a no-op: the
+   body is visible regardless of the `open` attribute, and the summary
+   stops behaving as an interactive disclosure. Below that — including the
+   641–960px band where the panes are already stacked — the accordion is
+   live so the editor collapses above the preview instead of forcing the
+   user to scroll a full-height editor first. Modern Chromium uses a
+   `::details-content` pseudo-element to control disclosure; older engines
+   simply set `display: none` on non-summary children. We override both. */
+@media (min-width: 961px) {
   details.studio__pane--editor:not([open]) > .studio__pane-body {
     /* Force the body back into the flow when the element is "closed".
        This is the desktop pane behavior — `open` is a state we ignore
