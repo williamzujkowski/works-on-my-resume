@@ -2017,6 +2017,17 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   --editor-pad: var(--space-3);
 }
 
+/* iOS Safari auto-zooms the page (and leaves it zoomed + horizontally
+   pannable) whenever a focused input renders below 16px. The textarea is
+   the primary mobile editing surface, so on the ≤640px layout lift the
+   shared metric to exactly 16px — the gutter and highlight overlay read
+   the same variable, so line numbers stay aligned. (#193) */
+@media (max-width: 640px) {
+  :root {
+    --editor-font-size: 16px;
+  }
+}
+
 .editor {
   display: flex;
   flex-direction: column;
