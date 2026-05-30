@@ -4880,17 +4880,20 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .faded-sample__overlay {
-  /* Centered above the faded layer. `pointer-events: none` lets clicks
-     pass through to whatever is behind (there is nothing interactive
-     behind anyway, but the rule documents intent and keeps the layer from
-     swallowing accidental drag attempts on touch). */
+  /* Anchored near the TOP of the faded layer — around the sample's
+     title/summary band — rather than dead-centre, where on a tall pane
+     (mobile and desktop) the CTA sat too low to notice. `pointer-events:
+     none` lets clicks pass through to whatever is behind (nothing
+     interactive there, but the rule documents intent and keeps the layer
+     from swallowing accidental drag attempts on touch). */
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   pointer-events: none;
   padding: var(--space-4);
+  padding-top: clamp(3rem, 11vh, 6rem);
 }
 
 .faded-sample__cta {
