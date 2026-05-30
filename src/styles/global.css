@@ -789,6 +789,34 @@ body[data-app-phase='workbench'] .app-header {
     min-width: 2.75rem;
     min-height: 2.75rem;
   }
+
+  /* Custom-classed interactive controls that bypass `.btn` and stayed
+     ~22–36px on touch (#194). Give each a ≥44px hit area: scrolling-list
+     rows and the accordion summary grow vertically; inline chips and
+     square icon-buttons grow in both axes. WCAG 2.5.8 / comfortable
+     touch floor. */
+  .theme-picker__option,
+  .theme-picker__curated-item,
+  .snapshots-menu__item-load,
+  .studio__pane-header--summary {
+    min-height: 2.75rem;
+  }
+  .theme-picker__tag {
+    min-height: 2.75rem;
+    padding-block: 0.5rem;
+  }
+  .page-fit__size-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+  .page-fit__pill {
+    min-height: 2.75rem;
+  }
+  .page-fit__close,
+  .snapshots-menu__item-delete {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
 }
 
 .field-label {
@@ -5267,11 +5295,19 @@ details.studio__pane--editor {
     background-color 110ms ease;
 }
 
-.page-fit__size-btn:hover:not(:disabled),
+.page-fit__size-btn:hover:not(:disabled) {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+}
+
+/* Keep the global 2px focus ring — the hover background alone is only
+   ~1.1:1 against the toolbar and isn't a perceivable focus indicator
+   for a keyboard user (#194). */
 .page-fit__size-btn:focus-visible:not(:disabled) {
   color: var(--ui-fg);
   background: var(--ui-panel-hover);
-  outline: none;
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
 }
 
 .page-fit__size-btn:disabled {
