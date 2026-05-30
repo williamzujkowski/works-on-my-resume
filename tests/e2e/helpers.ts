@@ -164,15 +164,19 @@ export async function openThemePickerReady(page: Page): Promise<void> {
  * nav (prev/next/random), and the shortcut legend. Tests that interact with
  * any of those controls open the drawer first via this helper.
  *
- * Mobile (#131): on viewports < 640 px the gear icon is collapsed behind the
- * "More" toolbar menu. The helper opens that first when the gear isn't
- * already visible — keeps every test that drives the Settings drawer
- * working on both projects without per-test branching.
+ * Mobile (#235): on viewports ≤ 640 px the gear lives inside the mobile
+ * toolbar sheet behind the hamburger. The helper opens that first when the
+ * gear isn't already visible — keeps every test that drives the Settings
+ * drawer working on both projects without per-test branching. Opening the
+ * gear closes the sheet first (no stacked modals), so we wait on the
+ * Settings dialog itself, not the sheet.
  */
 export async function openSettingsDrawer(page: Page): Promise<void> {
-  const gear = page.getByRole('button', { name: /open settings/i });
+  let gear = page.getByRole('button', { name: /open settings/i });
   if (!(await gear.isVisible())) {
     await openMobileMoreMenu(page);
+    // The gear is the one inside the now-open sheet.
+    gear = page.getByRole('button', { name: /open settings/i });
   }
   await gear.click();
   const drawer = page.getByRole('dialog', { name: /^settings$/i });
@@ -180,15 +184,16 @@ export async function openSettingsDrawer(page: Page): Promise<void> {
 }
 
 /**
- * Open the mobile "More" toolbar menu (#131). On viewports < 640 px the
- * non-essential toolbar controls (Presets, LayoutSelector, ATS-exit pill,
- * Page-fit, Export, Settings gear) are hidden until the More trigger is
- * tapped. Tests that need to drive any of those controls on the
- * `mobile-iphone-13` project call this first.
+ * Open the mobile toolbar sheet (#235). On viewports ≤ 640 px the toolbar
+ * shows only the inline ThemePicker + a hamburger; every other control
+ * (Layout, Page-fit, Export, Save-as-PDF, theme-nav, Settings gear, the
+ * ChromeMode toggle) lives inside the sheet. Tests that need to drive any of
+ * those controls on the `mobile-iphone-13` project call this first.
  *
- * Idempotent: if the trigger is already expanded the call is a no-op.
- * Safe on desktop too (the trigger is `display: none` on >= 640 px, so the
- * visibility guard short-circuits).
+ * The hamburger's accessible name is preserved from the old #131 More trigger
+ * ("More toolbar actions") so existing callers keep working. Idempotent: if
+ * the sheet is already open the call is a no-op. Safe on desktop too — the
+ * hamburger isn't rendered there, so the visibility guard short-circuits.
  */
 export async function openMobileMoreMenu(page: Page): Promise<void> {
   const trigger = page.getByRole('button', { name: /more toolbar actions/i });
@@ -197,13 +202,15 @@ export async function openMobileMoreMenu(page: Page): Promise<void> {
   if (expanded === 'true') return;
   await trigger.click();
   await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  // Wait for the modal so callers can target controls inside it immediately.
+  await expect(page.getByRole('dialog', { name: /toolbar/i })).toBeVisible();
 }
 
 /**
- * Reveal a collapsible toolbar control on mobile by opening the More menu
- * first when the target is hidden behind it (#131). The helper looks up
- * the target by role/name and, if not visible, opens the mobile drawer.
- * On desktop the target is already visible inline so the call is a no-op.
+ * Reveal a toolbar control on mobile by opening the sheet first when the
+ * target is hidden behind the hamburger (#235). The helper looks up the
+ * target by role/name and, if not visible, opens the sheet. On desktop the
+ * target is already visible inline so the call is a no-op.
  */
 export async function revealToolbarControl(page: Page, name: RegExp): Promise<Locator> {
   const target = page.getByRole('button', { name });

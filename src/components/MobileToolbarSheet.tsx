@@ -9,11 +9,10 @@
  * Esc / click-outside / explicit close. It is the mobile mirror of
  * `SettingsDrawer`, slid in from the left rather than the right.
  *
- * This is PR 1 of #235: a SCAFFOLD that ships dark. The shell — overlay,
- * dialog, focus management, close — is here, but the body is intentionally
- * empty (a placeholder comment) and the component is NOT mounted anywhere
- * yet. The control groups (Export, Page, Appearance, More) and the trigger
- * wiring land in later PRs.
+ * #235 PR 2 wires this in: the control groups (Export, Page, Appearance,
+ * More) render as `children` and the hamburger trigger lives in the toolbar.
+ * The sheet itself stays a thin modal shell — overlay, dialog, focus
+ * management, close — so the caller composes the body.
  *
  * Accessibility
  * -------------
@@ -24,27 +23,40 @@
  *   - The caller restores focus to the hamburger button after close (parent
  *     owns the trigger ref, the sheet signals via `onClose`) — same contract
  *     ResumeStudio's other modals use.
+ *   - Nested popovers (ExportPanel, the Page-fit popover) host their own
+ *     focus-trap + Escape + outside-click. When focus is inside one of them
+ *     the sheet DEFERS its own Escape / outside-click so the inner overlay
+ *     closes first — the same guard SettingsDrawer uses for SnapshotsMenu.
  *
  * CSP
  * ---
  * No inline `style={...}` attributes. All visuals live in global.css under
  * `.mobile-sheet__*`.
  */
-import { useCallback, useEffect, useId, useRef } from 'react';
+import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react';
 import Icon from './Icon';
 
 /** Selector matching every focusable element for the focus trap. */
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/**
+ * Selector for the nested overlays the sheet must defer to on Escape /
+ * outside-click. Each owns its own focus-trap + dismissal; closing the
+ * sheet wholesale would feel like the dismissal skipped a level.
+ */
+const NESTED_POPOVER_SELECTOR = '.export-panel__dialog, .page-fit__popover';
+
 interface MobileToolbarSheetProps {
   /** Whether the sheet is open. Renders nothing when false. */
   open: boolean;
   /** Request the sheet be closed (Esc, click-outside, close button). */
   onClose: () => void;
+  /** The control groups (Export, Page, Appearance, More) rendered in the body. */
+  children: ReactNode;
 }
 
-export default function MobileToolbarSheet({ open, onClose }: MobileToolbarSheetProps) {
+export default function MobileToolbarSheet({ open, onClose, children }: MobileToolbarSheetProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const headingId = useId();
@@ -62,6 +74,19 @@ export default function MobileToolbarSheet({ open, onClose }: MobileToolbarSheet
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       if (event.key === 'Escape') {
+        // The Export panel and the Page-fit popover each own an Escape
+        // handler (a document-level listener) that closes themselves and
+        // restore focus to their trigger inside the sheet. While one is open,
+        // defer — closing the sheet wholesale would feel like Esc skipped a
+        // level. Detect by PRESENCE in the sheet's subtree, not by focus: the
+        // Page-fit popover leaves focus on its trigger (a sibling of the
+        // popover), so an activeElement.closest() check would miss it. This
+        // React handler bubbles BEFORE the popovers' document listeners, so
+        // the popover is still mounted here when its own Esc is about to fire.
+        const root = dialogRef.current;
+        if (root && root.querySelector(NESTED_POPOVER_SELECTOR)) {
+          return;
+        }
         event.stopPropagation();
         onClose();
         return;
@@ -95,7 +120,14 @@ export default function MobileToolbarSheet({ open, onClose }: MobileToolbarSheet
     <div
       className="mobile-sheet__overlay"
       onPointerDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        // A nested popover (Export panel / Page-fit) renders as a full-width
+        // bottom sheet layered ABOVE this overlay on mobile. While one is open,
+        // defer so its OWN outside-click handler closes it, not the whole
+        // sheet. Detect by presence (the Page-fit popover keeps focus on its
+        // trigger, so a focus check would miss it).
+        if (event.target !== event.currentTarget) return;
+        if (dialogRef.current?.querySelector(NESTED_POPOVER_SELECTOR)) return;
+        onClose();
       }}
     >
       <aside
@@ -122,9 +154,7 @@ export default function MobileToolbarSheet({ open, onClose }: MobileToolbarSheet
           </button>
         </header>
 
-        <div className="mobile-sheet__body">
-          {/* Groups (Export, Page, Appearance, More) added in #235 PR 2+. */}
-        </div>
+        <div className="mobile-sheet__body">{children}</div>
       </aside>
     </div>
   );

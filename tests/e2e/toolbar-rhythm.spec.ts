@@ -71,7 +71,12 @@ test('at 1280×800 the toolbar shows THEME, LAYOUT, FIT kicker labels', async ({
   await expect(pageFitPill).toHaveText(/Fits 1 page|Fit: \d\.\d pages/);
 });
 
-test('Save as PDF is the only .btn--primary in the toolbar', async ({ page }) => {
+test('Save as PDF is the only .btn--primary in the toolbar', async ({ page, isMobile }) => {
+  // On mobile (#235) Save-as-PDF moves into the toolbar sheet's Export group —
+  // the inline top bar carries only the picker + hamburger. The single-primary
+  // rhythm is a desktop-toolbar invariant.
+  test.skip(isMobile === true, 'Save-as-PDF lives in the sheet on mobile (#235)');
+
   await loadSampleResume(page);
   await waitForThemesReady(page);
 

@@ -63,7 +63,7 @@ test('the gear opens a drawer with the four documented section groups', async ({
   ).toBeVisible();
 });
 
-test('Escape closes the drawer and restores focus to the gear button', async ({ page }) => {
+test('Escape closes the drawer and restores focus to the opener', async ({ page }, testInfo) => {
   await openSettingsDrawer(page);
   const drawer = page.getByRole('dialog', { name: /^settings$/i });
   await expect(drawer).toBeVisible();
@@ -71,9 +71,17 @@ test('Escape closes the drawer and restores focus to the gear button', async ({ 
   await page.keyboard.press('Escape');
   await expect(drawer).toHaveCount(0);
 
-  // Focus returns to the gear button — keyboard users land where they
-  // opened it from.
-  await expect(page.getByRole('button', { name: /open settings/i })).toBeFocused();
+  /* Focus returns to the control the user opened the drawer from. On desktop
+     that's the inline gear. On mobile (#235) the gear lived inside the toolbar
+     sheet, which was closed when the drawer opened (no stacked modals), so the
+     gear is gone — focus falls back to the hamburger, the control that
+     re-opens that sheet. Either way the keyboard user lands somewhere sensible
+     and not on <body>. */
+  const opener =
+    testInfo.project.name === 'mobile-iphone-13'
+      ? page.getByRole('button', { name: /more toolbar actions/i })
+      : page.getByRole('button', { name: /open settings/i });
+  await expect(opener).toBeFocused();
 });
 
 test('click-outside the drawer dismisses it', async ({ page }, testInfo) => {

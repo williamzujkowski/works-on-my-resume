@@ -117,10 +117,10 @@ test('arrow keys still cycle themes after the toolbar reshape', async ({ page })
   await expect(page.locator('.theme-picker__trigger-name').first()).toHaveText('Dracula');
 
   // Park focus on a non-editable focusable element so global shortcuts fire.
-  // #128: the Random theme button moved into the Settings drawer; the
-  // Save-as-PDF button is a stable, always-visible non-editable toolbar
-  // anchor that serves the same purpose here.
-  await page.getByRole('button', { name: /^save as pdf$/i }).focus();
+  // #235: Save-as-PDF moved into the toolbar sheet on mobile; the ThemePicker
+  // trigger stays inline on BOTH projects and has no keydown handler of its
+  // own, so a plain ArrowRight bubbles to the global handler.
+  await page.getByRole('button', { name: /^theme /i }).focus();
 
   const before = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--resume-bg').trim(),

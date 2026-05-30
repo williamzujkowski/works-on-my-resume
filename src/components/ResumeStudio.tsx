@@ -60,6 +60,7 @@ import PageFitIndicator from './PageFitIndicator';
 import TailorForRole from './TailorForRole';
 import AppHero from './AppHero';
 import SettingsDrawer from './SettingsDrawer';
+import MobileToolbarSheet from './MobileToolbarSheet';
 import Icon from './Icon';
 import Toast from './Toast';
 import { wcagLevel } from '../utils/wcag';
@@ -205,16 +206,27 @@ export default function ResumeStudio() {
   /* ----- Keyboard-shortcut help overlay (#58) ----- */
   const [helpOpen, setHelpOpen] = useState(false);
 
-  /* ----- Mobile "More" menu (#131) -----
-     On viewports < 640px the toolbar wraps to four+ rows and pushes the
-     resume header out of frame. The fix collapses everything except
-     ThemePicker + Save-as-PDF behind a single "More" trigger that opens a
-     vertically-stacked drawer over the toolbar. State is a single boolean;
-     CSS does the heavy lifting via a data attribute on the toolbar root.
-     Default off so SSR and first-paint agree. */
-  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
-  const mobileMoreTriggerRef = useRef<HTMLButtonElement>(null);
-  const mobileMoreDrawerRef = useRef<HTMLDivElement>(null);
+  /* ----- Mobile toolbar sheet (#235) -----
+     On viewports ≤ 640px the toolbar shows ONLY the hamburger + the inline
+     ThemePicker. Everything else (Export / Page / Appearance / More groups)
+     folds into a left-anchored modal sheet (MobileToolbarSheet) behind the
+     hamburger — a true modal mirror of SettingsDrawer, not the old in-toolbar
+     reflow drawer (#131, now removed). State is a single boolean; the parent
+     owns the trigger ref so it can restore focus to the hamburger on close
+     (same contract closeSettings uses). Default off so SSR + first paint
+     agree. */
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
+
+  /* ----- Mobile-viewport flag (#235) -----
+     Drives which mount hosts the heavy toolbar controls: the inline toolbar
+     on desktop (≥ 641px, unchanged) vs. the MobileToolbarSheet on mobile
+     (≤ 640px). A single mount per control that MOVES by viewport — not a
+     duplicate — so ChromeModeToggle's local state and the Export / Page-fit
+     popovers' trigger anchoring stay correct. SSR-safe: defaults to desktop
+     (false) so the server render and first client paint agree; an effect
+     promotes it from `matchMedia` on mount and tracks live resizes. */
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
 
   /* ----- Settings drawer (#128) -----
      Right-anchored modal drawer that holds low-frequency controls (ATS
@@ -264,6 +276,10 @@ export default function ResumeStudio() {
 
   const themeSearchInputId = useId();
   const draftCheckboxId = useId();
+  /* Base id for the mobile toolbar sheet's group headings (#235). The
+     `${id}-export` / `-page` / `-appearance` / `-more` suffixes label each
+     <section> via aria-labelledby, mirroring SettingsDrawer's groups. */
+  const mobileSheetGroupId = useId();
   /* IDs the preview/health tab control uses for aria-controls + aria-labelledby
      so screen readers can announce the active tab and which region it owns. */
   const previewTabId = useId();
@@ -843,7 +859,23 @@ export default function ResumeStudio() {
      temporal-dead-zone error (#131 build fix). */
   const closeSettings = useCallback(() => {
     setSettingsOpen(false);
-    window.setTimeout(() => settingsTriggerRef.current?.focus(), 0);
+    window.setTimeout(() => {
+      // On desktop the gear is the opener and is still mounted. On mobile
+      // (#235) the gear lives inside the toolbar sheet, which was closed when
+      // the drawer opened (no stacked modals), so the gear is gone — fall
+      // back to the hamburger, the control that re-opens that sheet.
+      const target = settingsTriggerRef.current ?? mobileMenuTriggerRef.current;
+      target?.focus();
+    }, 0);
+  }, []);
+
+  /* On close of the mobile toolbar sheet (#235), restore focus to the
+     hamburger so a keyboard user lands where they started. Same parent-owns-
+     the-ref + setTimeout pattern as closeSettings — the sheet signals close
+     via onClose, the parent does the focus restore. */
+  const closeMobileMenu = useCallback(() => {
+    setMobileMenuOpen(false);
+    window.setTimeout(() => mobileMenuTriggerRef.current?.focus(), 0);
   }, []);
 
   /* ---------------------------------------------------------------- *
@@ -882,6 +914,7 @@ export default function ResumeStudio() {
       // Escape handler above short-circuits before this guard.
       if (helpOpen) return;
       if (settingsOpen) return;
+      if (mobileMenuOpen) return;
       if (formatDocsOpen) return;
       if (printPreviewOpen) return;
 
@@ -942,6 +975,7 @@ export default function ResumeStudio() {
     themePickerOpen,
     helpOpen,
     settingsOpen,
+    mobileMenuOpen,
     formatDocsOpen,
     printPreviewOpen,
     hasResume,
@@ -951,71 +985,35 @@ export default function ResumeStudio() {
   ]);
 
   /* ---------------------------------------------------------------- *
-   * Mobile More menu (#131): non-modal dismissal.                     *
-   * Outside-click closes the drawer; Escape closes it and restores    *
-   * focus to the trigger. The drawer is purely a mobile reorg, so we  *
-   * also auto-close when the viewport widens past 640px — otherwise   *
-   * a user rotating into landscape would be left looking at a stale   *
-   * fixed drawer covering a desktop layout that no longer needs it.   *
+   * Mobile-viewport flag (#235).                                      *
+   *                                                                   *
+   * Tracks the `(max-width: 640px)` breakpoint and drives which mount *
+   * hosts the heavy toolbar controls (inline toolbar on desktop, the  *
+   * MobileToolbarSheet on mobile). SSR-safe: the state defaults to    *
+   * desktop, and this effect promotes it from matchMedia after mount  *
+   * so the server render and first client paint agree. Live resizes / *
+   * orientation changes update it.                                    *
    * ---------------------------------------------------------------- */
   useEffect(() => {
-    if (!mobileMoreOpen) return;
-    function onPointerDown(event: PointerEvent) {
-      const target = event.target as Node;
-      if (mobileMoreDrawerRef.current?.contains(target)) return;
-      if (mobileMoreTriggerRef.current?.contains(target)) return;
-      setMobileMoreOpen(false);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== 'Escape') return;
-      /* The drawer hosts other popovers (Page-fit, Export, Settings).
-         Each of those owns its own Escape handler that closes itself and
-         restores focus to ITS trigger inside the drawer. Document-level
-         listeners are siblings, not ancestors, so `stopPropagation` from
-         a child popover does NOT prevent this one from also firing.
-         Guard by checking what just received focus: if focus landed on a
-         control INSIDE the drawer (a child popover closed), leave the
-         drawer open. Only close when focus is outside the drawer or
-         already on the More trigger itself. */
-      if (typeof document !== 'undefined') {
-        const active = document.activeElement;
-        if (
-          active instanceof HTMLElement &&
-          mobileMoreDrawerRef.current?.contains(active) &&
-          active !== mobileMoreTriggerRef.current
-        ) {
-          // A drawer-internal control just received focus — that's a
-          // child-popover-close, not a drawer-dismiss.
-          return;
-        }
-      }
-      setMobileMoreOpen(false);
-      mobileMoreTriggerRef.current?.focus();
-    }
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [mobileMoreOpen]);
-
-  useEffect(() => {
-    if (!mobileMoreOpen) return;
     if (typeof window === 'undefined') return;
-    const mql = window.matchMedia('(min-width: 640px)');
-    function handle(event: MediaQueryListEvent) {
-      if (event.matches) setMobileMoreOpen(false);
-    }
-    // Defensive: if the listener attaches after the user already crossed
-    // the breakpoint (e.g. via devtools snap), close immediately.
-    if (mql.matches) {
-      setMobileMoreOpen(false);
-      return;
-    }
-    mql.addEventListener('change', handle);
-    return () => mql.removeEventListener('change', handle);
-  }, [mobileMoreOpen]);
+    const mql = window.matchMedia('(max-width: 640px)');
+    const sync = () => setIsMobileViewport(mql.matches);
+    sync();
+    mql.addEventListener('change', sync);
+    return () => mql.removeEventListener('change', sync);
+  }, []);
+
+  /* The sheet is a mobile-only surface. If the viewport widens past 640px
+     while it's open (rotation into landscape, a desktop resize), close it —
+     otherwise the user is left looking at a stale modal over a desktop layout
+     that no longer needs it. The MobileToolbarSheet's own Esc / click-outside
+     / close-button handle the in-viewport dismissals; this only covers the
+     "the breakpoint moved out from under us" case. */
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    if (isMobileViewport) return;
+    setMobileMenuOpen(false);
+  }, [mobileMenuOpen, isMobileViewport]);
 
   /* On close of the help overlay, restore focus to whatever opened it.
      After the #128 consolidation the toolbar no longer carries a dedicated
@@ -1331,6 +1329,106 @@ export default function ResumeStudio() {
     );
   }
 
+  /* ---------------------------------------------------------------- *
+   * Shared toolbar controls (#235).                                   *
+   *                                                                   *
+   * These four controls each have ONE mount that the `isMobileViewport`*
+   * flag relocates: into the inline desktop toolbar below, or into the *
+   * MobileToolbarSheet's grouped body. Defined here as nodes so the   *
+   * exact same element (same refs, same handlers) renders in whichever *
+   * place the viewport selects — never both at once. The Export panel  *
+   * and the Page-fit popover anchor to their own triggers, so a single *
+   * mount keeps their popover positioning correct.                     *
+   * ---------------------------------------------------------------- */
+  const pageFitControl = (
+    <PageFitIndicator
+      previewRef={previewRef}
+      layout={template}
+      parsed={parsed}
+      printMode={printMode}
+      onPrintModeChange={setPrintMode}
+      bodySizeShift={bodySizeShift}
+      onBodySizeShiftChange={setBodySizeShift}
+    />
+  );
+
+  const layoutControl = (
+    <LayoutSelector templates={RESUME_TEMPLATES} current={template} onChange={changeTemplate} />
+  );
+
+  const previewButton = (
+    <button
+      type="button"
+      ref={printPreviewTriggerRef}
+      className="btn"
+      aria-haspopup="dialog"
+      aria-expanded={printPreviewOpen}
+      onClick={() => setPrintPreviewOpen(true)}
+      disabled={!parsed}
+    >
+      <Icon name="eye" size={14} />
+      Preview
+    </button>
+  );
+
+  const saveAsPdfButton = (
+    <button type="button" className="btn btn--primary" onClick={() => window.print()}>
+      <Icon name="file" size={14} />
+      Save as PDF
+    </button>
+  );
+
+  const exportControl = (
+    <div className="export-panel">
+      <button
+        type="button"
+        ref={exportTriggerRef}
+        className="btn"
+        aria-haspopup="dialog"
+        aria-expanded={exportOpen}
+        onClick={() => setExportOpen((open) => !open)}
+      >
+        Export
+        <Icon name="chevron-down" size={14} />
+      </button>
+      {exportOpen && (
+        <ExportPanel
+          markdown={markdown}
+          parsed={parsed}
+          theme={theme}
+          template={template}
+          printMode={printMode}
+          onClose={() => setExportOpen(false)}
+          triggerRef={exportTriggerRef}
+          previewRef={previewRef}
+        />
+      )}
+    </div>
+  );
+
+  const settingsButton = (
+    <button
+      type="button"
+      ref={settingsTriggerRef}
+      className="btn btn--icon"
+      aria-haspopup="dialog"
+      aria-expanded={settingsOpen}
+      onClick={() => {
+        // Close the sheet first when it's the opener (mobile) so the two
+        // modals never stack — the sheet's onClose restores focus to the
+        // hamburger, then the gear opens the Settings drawer on a clean
+        // stage. On desktop the sheet is never open, so this is a no-op
+        // toggle of a `false` flag.
+        setMobileMenuOpen(false);
+        setSettingsOpen(true);
+      }}
+      title="Settings"
+      aria-label="Open settings"
+    >
+      <Icon name="settings" />
+    </button>
+  );
+
   return (
     <div className="studio">
       {/* Polite live region — announces resume load / clear (#53). */}
@@ -1338,10 +1436,14 @@ export default function ResumeStudio() {
         {loadAnnouncement}
       </p>
 
-      {/* App-chrome light/dark toggle (#192). Rendered unconditionally so
-          it's reachable on both the empty state and the loaded workbench;
-          floats to the top-right via CSS and is hidden from print. */}
-      <ChromeModeToggle />
+      {/* App-chrome light/dark toggle (#192). Single mount that MOVES by
+          viewport (#235): floats to the top-right via CSS on desktop and on
+          the empty-state mobile screen (no toolbar to fold into yet), but
+          relocates INTO the mobile toolbar sheet's Appearance group once a
+          resume is loaded on a narrow viewport. One mount keeps its local
+          mode state coherent across the move — a duplicated pair would
+          desync. Hidden from print either way. */}
+      {!(isMobileViewport && hasResume) && <ChromeModeToggle />}
 
       {/* ----- Empty-state hero (#127). Rendered ONLY when no resume is
            loaded; once a resume lands, the static AppHeader astro chrome
@@ -1373,24 +1475,23 @@ export default function ResumeStudio() {
              Row 1 — theme & layout choice (presets, picker, layout, ATS).
              Row 2 — review aids & save/export (theme nav, page-fit, Save
                      as PDF, Export, Snapshots, shortcuts help). */}
-      {hasResume && (
+      {/* ----- Desktop toolbar (≥ 641px) -----
+           Byte-for-byte the #112 / #128 / #135 two-row inline layout. The
+           `studio__toolbar-collapsible` wrappers, hairline separators, row
+           break, and spacer all remain because the desktop rhythm tests lock
+           them in — #235 only changes the MOBILE path. Rendered only when the
+           viewport flag says desktop, so the heavy controls have a single
+           mount that the flag moves into the sheet on mobile. */}
+      {hasResume && !isMobileViewport && (
         <div
-          className={(() => {
-            const classes = ['studio__toolbar'];
-            if (previewMode === 'ats') classes.push('studio__toolbar--ats-active');
-            if (mobileMoreOpen) classes.push('studio__toolbar--more-open');
-            return classes.join(' ');
-          })()}
+          className={
+            previewMode === 'ats'
+              ? 'studio__toolbar studio__toolbar--ats-active'
+              : 'studio__toolbar'
+          }
           data-print-hide
-          data-mobile-more-open={mobileMoreOpen ? 'true' : 'false'}
-          ref={mobileMoreDrawerRef}
         >
-          {/* ----- Row 1: theme + layout choice -----
-              Wrappers carrying `studio__toolbar-collapsible` are
-              `display: contents` on desktop (transparent in flex layout)
-              but collapse into the mobile More drawer at < 640px (#131).
-              ThemePicker + Save-as-PDF are deliberately NOT wrapped so
-              they stay visible on mobile alongside the More trigger. */}
+          {/* ----- Row 1: theme + layout choice ----- */}
           <div className="studio__toolbar-themable">
             {/* Curated audience presets (#95) were removed in #132 — they
                 were redundant with the layout selector (a "Modern" preset
@@ -1398,10 +1499,6 @@ export default function ResumeStudio() {
                 stale the moment a user changed either bundled coordinate.
                 The theme picker's tag chips + WCAG badge are now the path
                 to taste-driven first impressions. */}
-
-            {/* ThemePicker — one of two controls that stay visible on
-                mobile (#131). Not wrapped in collapsible so the mobile
-                CSS leaves it alone. */}
             <ThemePicker
               themes={themes}
               themesLoading={!themesReady}
@@ -1414,20 +1511,12 @@ export default function ResumeStudio() {
               onOpenChange={setThemePickerOpen}
             />
 
-            {/* Hairline separator between THEME and LAYOUT (#135). Wrapped
-                in a `studio__toolbar-collapsible` span so the mobile More
-                drawer omits it alongside the LayoutSelector itself. */}
+            {/* Hairline separator between THEME and LAYOUT (#135). */}
             <span className="studio__toolbar-collapsible">
               <span className="studio__toolbar-sep" aria-hidden="true" />
             </span>
 
-            <span className="studio__toolbar-collapsible">
-              <LayoutSelector
-                templates={RESUME_TEMPLATES}
-                current={template}
-                onChange={changeTemplate}
-              />
-            </span>
+            <span className="studio__toolbar-collapsible">{layoutControl}</span>
           </div>
 
           {previewMode === 'ats' && (
@@ -1442,195 +1531,101 @@ export default function ResumeStudio() {
             </button>
           )}
 
-          {/* Hard row break (#112, #128). After the #128 consolidation Row 2
-              hosts only the review-and-export rhythm: page-fit pill, Save
-              as PDF (primary), Export, and a gear icon for the rest. ATS
-              toggle, snapshots, shortcut legend, theme prev/next/random,
-              and the keyboard help icon all moved into the Settings drawer
-              — discoverable via the gear, with keyboard shortcuts (← → r
-              / p e ?) still wired here so the drawer is discoverability,
-              not the only path. Tagged collapsible so the mobile More
-              drawer doesn't carry a phantom row break (#131). */}
+          {/* Hard row break (#112, #128). */}
           <span
             className="studio__toolbar-rowbreak studio__toolbar-collapsible"
             aria-hidden="true"
           />
 
           {/* ----- Row 2: review aids + save/export ----- */}
+          <span className="studio__toolbar-collapsible">{pageFitControl}</span>
 
-          {/* Page-fit indicator (#92). Reads `.resume-preview` height with
-              getBoundingClientRect, divides by US-Letter @ 0.6in content
-              height for a quick "Fits 1 page" / "Fit: 1.4 pages" signal.
-              Click opens a popover with per-section heights, 2-3 trim
-              suggestions, and a checkbox to overlay page-break ruler lines
-              on the preview. Sits next to Save-as-PDF so the estimate and
-              the export action read as a pair. */}
-          <span className="studio__toolbar-collapsible">
-            <PageFitIndicator
-              previewRef={previewRef}
-              layout={template}
-              parsed={parsed}
-              printMode={printMode}
-              onPrintModeChange={setPrintMode}
-              bodySizeShift={bodySizeShift}
-              onBodySizeShiftChange={setBodySizeShift}
-            />
-          </span>
-
-          {/* Hairline separator between FIT and the save/export cluster
-              (#135). Wrapped in a `studio__toolbar-collapsible` span so
-              the mobile More drawer omits it. */}
+          {/* Hairline separator between FIT and the save/export cluster (#135). */}
           <span className="studio__toolbar-collapsible">
             <span className="studio__toolbar-sep" aria-hidden="true" />
           </span>
 
-          {/* Soft spacer that anchors the save/export cluster to the right
-              edge of the row, matching the OKLCH reference layout.
-              Collapsible so the mobile More drawer doesn't carry a phantom
-              horizontal stretch (#131). */}
+          {/* Soft spacer anchoring the save/export cluster to the right edge. */}
           <div className="studio__toolbar-spacer studio__toolbar-collapsible" />
 
-          {/* Preview — additive sibling of Save-as-PDF (#185). Opens the
-              print-preview modal: a sandboxed iframe loaded from the same
-              standalone HTML export the Download HTML affordance writes,
-              with the print-mode radio threaded through so the page-fit
-              chip's mode dropdown and the modal stay in lockstep. The
-              direct Save-as-PDF shortcut below is preserved so power users
-              keep their one-click path; Preview is for the writer who
-              wants to see what the PDF will look like before committing.
+          {/* Preview — additive sibling of Save-as-PDF (#185). */}
+          <span className="studio__toolbar-collapsible">{previewButton}</span>
 
-              Wrapped in `studio__toolbar-collapsible` so the mobile More
-              drawer (#131) hides it inline and surfaces it inside the
-              drawer instead — keeps the closed mobile toolbar under the
-              100 px above-the-fold budget. ThemePicker + Save-as-PDF stay
-              inline on mobile as the documented exceptions. */}
-          <span className="studio__toolbar-collapsible">
-            <button
-              type="button"
-              ref={printPreviewTriggerRef}
-              className="btn"
-              aria-haspopup="dialog"
-              aria-expanded={printPreviewOpen}
-              onClick={() => setPrintPreviewOpen(true)}
-              disabled={!parsed}
-            >
-              <Icon name="eye" size={14} />
-              Preview
-            </button>
-          </span>
+          {/* Save as PDF — primary toolbar action (#90). */}
+          {saveAsPdfButton}
 
-          {/* Save as PDF — primary toolbar action (#90). A direct,
-              single-click path to the most common export. Lives as a peer
-              to the Export popover trigger (not inside it) because the
-              popover is for the long-tail exports and the radio-toggled
-              print modes; Save-as-PDF is the path the toolbar's loudest
-              button should ride. Calling window.print() picks up
-              document.body.dataset.printMode (set by the existing print
-              mode state) so the user's choice of conservative vs theme
-              print is honoured. Stays inline on mobile (#131). */}
-          <button type="button" className="btn btn--primary" onClick={() => window.print()}>
-            <Icon name="file" size={14} />
-            Save as PDF
-          </button>
-
-          {/* Hairline separator between Save-as-PDF and Export (#135).
-              Collapsible so the mobile drawer omits it. */}
+          {/* Hairline separator between Save-as-PDF and Export (#135). */}
           <span className="studio__toolbar-collapsible">
             <span className="studio__toolbar-sep" aria-hidden="true" />
           </span>
 
-          {/* Mobile "More" trigger (#131). `display: none` on desktop —
-              the toolbar already shows everything. On viewports < 640px
-              CSS reveals it and hides every `studio__toolbar-collapsible`
-              child, putting them inside an in-toolbar drawer that flows
-              on top of the resume preview when opened. `aria-haspopup="true"`
-              (not "menu", #221) because the revealed surface is a reflowed
-              set of buttons and dialog-triggers — not a `role="menu"` of
-              `menuitem`s, which would promise arrow-key menu navigation that
-              isn't there. The accessible name is intentionally stable across
-              open/closed states — `aria-expanded` carries the toggle signal
-              so the user's hook on the button doesn't move under them. */}
+          <span className="studio__toolbar-collapsible">{exportControl}</span>
+
+          {/* Hairline separator between Export and the Settings gear (#135). */}
+          <span className="studio__toolbar-collapsible">
+            <span className="studio__toolbar-sep" aria-hidden="true" />
+          </span>
+
+          {/* ----- Settings drawer trigger (#128) ----- */}
+          <span className="studio__toolbar-collapsible">{settingsButton}</span>
+        </div>
+      )}
+
+      {/* ----- Mobile toolbar (≤ 640px) -----
+           The closed top bar shows ONLY the hamburger + the inline
+           ThemePicker (which keeps its popover/revert state and stays
+           searchable). Everything else folds into the MobileToolbarSheet
+           behind the hamburger. The accessible name "More toolbar actions"
+           and `aria-expanded` are preserved from the old #131 More trigger so
+           the helpers + a11y tests keep targeting it; `aria-haspopup` is now
+           "dialog" because the surface is a true modal sheet, not a reflow. */}
+      {hasResume && isMobileViewport && (
+        <div
+          className={
+            previewMode === 'ats'
+              ? 'studio__toolbar studio__toolbar--ats-active'
+              : 'studio__toolbar'
+          }
+          data-print-hide
+        >
+          <ThemePicker
+            themes={themes}
+            themesLoading={!themesReady}
+            current={theme}
+            query={themeQuery}
+            onQueryChange={setThemeQuery}
+            onSelect={changeTheme}
+            searchInputId={themeSearchInputId}
+            open={themePickerOpen}
+            onOpenChange={setThemePickerOpen}
+          />
+
+          {/* ATS exit pill — kept inline in the mobile top bar too (#235) so
+              the "you're in ATS preview" affordance and its one-tap way out
+              stay visible without opening the sheet (the ATS toggle itself
+              lives in the Settings drawer, behind the gear in the sheet). */}
+          {previewMode === 'ats' && (
+            <button
+              type="button"
+              className="studio__ats-exit-pill"
+              onClick={() => changePreviewMode(false)}
+              aria-label="Exit ATS preview"
+            >
+              <Icon name="close" size={12} />
+              Exit ATS preview
+            </button>
+          )}
+
           <button
             type="button"
-            ref={mobileMoreTriggerRef}
-            className="btn studio__toolbar-more-trigger"
-            aria-haspopup="true"
-            aria-expanded={mobileMoreOpen}
+            ref={mobileMenuTriggerRef}
+            className="btn btn--icon studio__toolbar-hamburger"
+            aria-haspopup="dialog"
+            aria-expanded={mobileMenuOpen}
             aria-label="More toolbar actions"
-            onClick={() => setMobileMoreOpen((open) => !open)}
+            onClick={() => setMobileMenuOpen(true)}
           >
-            <span aria-hidden="true">More</span>
-            <Icon name={mobileMoreOpen ? 'close' : 'chevron-down'} size={14} />
-          </button>
-
-          <div className="export-panel studio__toolbar-collapsible">
-            <button
-              type="button"
-              ref={exportTriggerRef}
-              className="btn"
-              aria-haspopup="dialog"
-              aria-expanded={exportOpen}
-              onClick={() => setExportOpen((open) => !open)}
-            >
-              Export
-              <Icon name="chevron-down" size={14} />
-            </button>
-            {exportOpen && (
-              <ExportPanel
-                markdown={markdown}
-                parsed={parsed}
-                theme={theme}
-                template={template}
-                printMode={printMode}
-                onClose={() => setExportOpen(false)}
-                triggerRef={exportTriggerRef}
-                previewRef={previewRef}
-              />
-            )}
-          </div>
-
-          {/* Hairline separator between Export and the Settings gear
-              (#135). Collapsible so the mobile drawer omits it. */}
-          <span className="studio__toolbar-collapsible">
-            <span className="studio__toolbar-sep" aria-hidden="true" />
-          </span>
-
-          {/* ----- Settings drawer trigger (#128) -----
-              Rightmost slot of Row 2 on desktop. Opens the modal drawer
-              that holds the ATS toggle, draft autosave, clear workspace,
-              snapshots, theme nav, and the shortcut legend. On mobile
-              (#131) it collapses into the More menu — keyboard shortcuts
-              still discover the underlying actions, so a desktop user who
-              learned the chord set isn't left without a way in. */}
-          <span className="studio__toolbar-collapsible">
-            <button
-              type="button"
-              ref={settingsTriggerRef}
-              className="btn btn--icon"
-              aria-haspopup="dialog"
-              aria-expanded={settingsOpen}
-              onClick={() => setSettingsOpen(true)}
-              title="Settings"
-              aria-label="Open settings"
-            >
-              <Icon name="settings" />
-            </button>
-          </span>
-
-          {/* Bottom Close row (#221) — a thumb-reachable dismiss for the open
-              mobile drawer, in addition to the top chevron (the top-right
-              corner is the hardest one-handed reach). Shown only inside the
-              open drawer via CSS; display:none on desktop and in the closed
-              toolbar, so it never affects the above-the-fold budget. */}
-          <button
-            type="button"
-            className="studio__more-close"
-            onClick={() => {
-              setMobileMoreOpen(false);
-              mobileMoreTriggerRef.current?.focus();
-            }}
-          >
-            Close
+            <Icon name="menu" />
           </button>
         </div>
       )}
@@ -1949,6 +1944,113 @@ export default function ResumeStudio() {
           onNextTheme={() => stepTheme(1)}
           onRandomTheme={randomTheme}
         />
+      )}
+
+      {/* ----- Mobile toolbar sheet (#235). Left-anchored modal that hosts
+           every toolbar control except the inline ThemePicker, grouped under
+           section kickers (Export / Page / Appearance / More) like the
+           Settings drawer. The heavy controls are the SAME single mounts the
+           desktop toolbar would host — the `isMobileViewport` flag selects
+           which surface they render in, never both. Mounted only when open
+           AND on a narrow viewport. ----- */}
+      {hasResume && isMobileViewport && (
+        <MobileToolbarSheet open={mobileMenuOpen} onClose={closeMobileMenu}>
+          {/* ----- Export group ----- */}
+          <section
+            className="mobile-sheet__group"
+            aria-labelledby={`${mobileSheetGroupId}-export`}
+          >
+            <h3
+              id={`${mobileSheetGroupId}-export`}
+              className="mobile-sheet__group-title section-kicker"
+            >
+              Export
+            </h3>
+            <div className="mobile-sheet__group-body">
+              {saveAsPdfButton}
+              {previewButton}
+              {exportControl}
+            </div>
+          </section>
+
+          {/* ----- Page group ----- */}
+          <section className="mobile-sheet__group" aria-labelledby={`${mobileSheetGroupId}-page`}>
+            <h3
+              id={`${mobileSheetGroupId}-page`}
+              className="mobile-sheet__group-title section-kicker"
+            >
+              Page
+            </h3>
+            <div className="mobile-sheet__group-body">
+              {layoutControl}
+              {pageFitControl}
+            </div>
+          </section>
+
+          {/* ----- Appearance group -----
+              The single ChromeModeToggle mount relocates here on mobile (its
+              floating top-right render is suppressed above), alongside the
+              theme prev/next/random cluster mirrored from the Settings
+              drawer's theme-nav. The ←/→/r keyboard shortcuts stay wired in
+              ResumeStudio's global handler. */}
+          <section
+            className="mobile-sheet__group"
+            aria-labelledby={`${mobileSheetGroupId}-appearance`}
+          >
+            <h3
+              id={`${mobileSheetGroupId}-appearance`}
+              className="mobile-sheet__group-title section-kicker"
+            >
+              Appearance
+            </h3>
+            <div className="mobile-sheet__group-body">
+              <ChromeModeToggle />
+              <div className="settings-drawer__theme-nav" role="group" aria-label="Step themes">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => stepTheme(-1)}
+                  aria-label="Previous theme"
+                  title="Previous theme (←)"
+                >
+                  <Icon name="chevron-left" size={14} />
+                  <span>Previous</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => stepTheme(1)}
+                  aria-label="Next theme"
+                  title="Next theme (→)"
+                >
+                  <span>Next</span>
+                  <Icon name="chevron-right" size={14} />
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={randomTheme}
+                  aria-label="Random theme"
+                  title="Random theme (r)"
+                >
+                  <Icon name="shuffle" size={14} />
+                  <span>Random</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* ----- More group ----- */}
+          <section className="mobile-sheet__group" aria-labelledby={`${mobileSheetGroupId}-more`}>
+            <h3
+              id={`${mobileSheetGroupId}-more`}
+              className="mobile-sheet__group-title section-kicker"
+            >
+              More
+            </h3>
+            <div className="mobile-sheet__group-body">{settingsButton}</div>
+          </section>
+        </MobileToolbarSheet>
       )}
 
       {/* ----- Markdown format reference dialog (#157) -----
