@@ -3563,28 +3563,18 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   opacity: 0.7;
 }
 
-.export-panel__radio-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  border: 1px solid var(--ui-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2);
+/* Print-mode read-out (#200): the panel no longer edits the mode (the Fit
+   chip is canonical) — it just states which mode the HTML/PDF/ZIP exports
+   will bake and points the user at the control. */
+.export-panel__mode-note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ui-fg-muted);
 }
 
-.export-panel__radio {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-1);
-  font-size: 0.82rem;
-  cursor: pointer;
-}
-
-.export-panel__radio-hint {
-  display: block;
-  font-size: 0.72rem;
-  color: var(--ui-fg-subtle);
+.export-panel__mode-note strong {
+  color: var(--ui-fg);
+  font-weight: 600;
 }
 
 .export-panel__note {
