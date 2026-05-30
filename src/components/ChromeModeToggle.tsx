@@ -67,6 +67,18 @@ export default function ChromeModeToggle() {
   const select = useCallback((next: ChromeMode) => {
     setMode(next);
     setStoredChromeMode(next);
+    // Arm the chrome cross-fade (#219) for THIS user toggle only — never on
+    // first paint (the mount effect applies the mode without arming) and
+    // never on a resume re-theme (that writes --resume-*, not --ui-*, and
+    // doesn't pass through here). The CSS transition is scoped to
+    // `:root.chrome-mode-anim`; we add the class, flip the attribute, then
+    // drop the class after the transition. Skipped under reduced motion.
+    const root = document.documentElement;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (!reduce) {
+      root.classList.add('chrome-mode-anim');
+      window.setTimeout(() => root.classList.remove('chrome-mode-anim'), 280);
+    }
     applyChromeMode(next);
   }, []);
 
