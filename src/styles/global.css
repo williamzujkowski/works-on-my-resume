@@ -835,6 +835,34 @@ body[data-app-phase='workbench'] .app-header {
     min-width: 2.75rem;
     min-height: 2.75rem;
   }
+
+  /* Custom-classed interactive controls that bypass `.btn` and stayed
+     ~22–36px on touch (#194). Give each a ≥44px hit area: scrolling-list
+     rows and the accordion summary grow vertically; inline chips and
+     square icon-buttons grow in both axes. WCAG 2.5.8 / comfortable
+     touch floor. */
+  .theme-picker__option,
+  .theme-picker__curated-item,
+  .snapshots-menu__item-load,
+  .studio__pane-header--summary {
+    min-height: 2.75rem;
+  }
+  .theme-picker__tag {
+    min-height: 2.75rem;
+    padding-block: 0.5rem;
+  }
+  .page-fit__size-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+  .page-fit__pill {
+    min-height: 2.75rem;
+  }
+  .page-fit__close,
+  .snapshots-menu__item-delete {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
 }
 
 .field-label {
@@ -2139,6 +2167,17 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   --editor-pad: var(--space-3);
 }
 
+/* iOS Safari auto-zooms the page (and leaves it zoomed + horizontally
+   pannable) whenever a focused input renders below 16px. The textarea is
+   the primary mobile editing surface, so on the ≤640px layout lift the
+   shared metric to exactly 16px — the gutter and highlight overlay read
+   the same variable, so line numbers stay aligned. (#193) */
+@media (max-width: 640px) {
+  :root {
+    --editor-font-size: 16px;
+  }
+}
+
 .editor {
   display: flex;
   flex-direction: column;
@@ -3113,42 +3152,14 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 
 /* ------------------------------------------------------------------ */
 /* Theme controls                                                      */
+/*                                                                     */
+/* The standalone `ThemeControls` component (and its `.theme-controls*` */
+/* rules) was removed in #197 — its prev/next/random cluster was        */
+/* reimplemented inline in the Settings drawer (`.settings-drawer__     */
+/* theme-nav`), and "Copy theme link" moved into the Export panel in    */
+/* #112. The canonical WCAG signal lives in the preview pane header     */
+/* (#88); the picker still surfaces per-theme `.badge*` chips below.    */
 /* ------------------------------------------------------------------ */
-
-.theme-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-/* The prev / next / random cluster reads as one segmented control. */
-.theme-controls__nav {
-  display: flex;
-  gap: 0;
-}
-
-.theme-controls__nav .btn {
-  border-radius: 0;
-}
-
-.theme-controls__nav .btn:first-child {
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-}
-
-.theme-controls__nav .btn:last-child {
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.theme-controls__nav .btn:not(:first-child) {
-  margin-left: -1px;
-}
-
-/* `.theme-controls__current` and `.theme-controls__accent-dot` were
-   removed in #112 — the toolbar no longer hosts the dark/light + WCAG
-   contrast chips. The canonical WCAG signal lives in the preview pane
-   header (#88) instead. The picker still surfaces per-theme badges in
-   its option list, so `.badge*` rules below are kept intact. */
 
 .badge {
   display: inline-flex;
@@ -3573,6 +3584,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   gap: var(--space-3);
   width: min(30rem, 100%);
   max-height: 100%;
+  max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
   overflow-y: auto;
   padding: var(--space-5);
   background: var(--ui-bg-elevated);
@@ -3713,6 +3725,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   gap: var(--space-3);
   width: min(40rem, 100%);
   max-height: 100%;
+  max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
   overflow-y: auto;
   padding: var(--space-5);
   background: var(--ui-bg-elevated);
@@ -3804,6 +3817,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   gap: var(--space-4);
   width: min(40rem, 100%);
   max-height: 100%;
+  max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
   overflow-y: auto;
   padding: var(--space-5) var(--space-6);
   background: var(--ui-bg-elevated);
@@ -4070,6 +4084,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   gap: var(--space-3);
   width: min(60rem, 100%);
   max-height: 100%;
+  max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
   overflow: hidden;
   padding: var(--space-5);
   background: var(--ui-bg-elevated);
@@ -4183,6 +4198,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
     width: 100%;
     height: 100%;
     max-height: 100%;
+    max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
     border-radius: 0;
     padding: var(--space-4);
   }
@@ -4815,6 +4831,7 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   gap: var(--space-4);
   width: min(54rem, 100%);
   max-height: 100%;
+  max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
   overflow-y: auto;
   padding: var(--space-5);
   background: var(--ui-bg-elevated);
@@ -5002,17 +5019,20 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 }
 
 .faded-sample__overlay {
-  /* Centered above the faded layer. `pointer-events: none` lets clicks
-     pass through to whatever is behind (there is nothing interactive
-     behind anyway, but the rule documents intent and keeps the layer from
-     swallowing accidental drag attempts on touch). */
+  /* Anchored near the TOP of the faded layer — around the sample's
+     title/summary band — rather than dead-centre, where on a tall pane
+     (mobile and desktop) the CTA sat too low to notice. `pointer-events:
+     none` lets clicks pass through to whatever is behind (nothing
+     interactive there, but the rule documents intent and keeps the layer
+     from swallowing accidental drag attempts on touch). */
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   pointer-events: none;
   padding: var(--space-4);
+  padding-top: clamp(3rem, 11vh, 6rem);
 }
 
 .faded-sample__cta {
@@ -5389,11 +5409,19 @@ details.studio__pane--editor {
     background-color 110ms ease;
 }
 
-.page-fit__size-btn:hover:not(:disabled),
+.page-fit__size-btn:hover:not(:disabled) {
+  color: var(--ui-fg);
+  background: var(--ui-panel-hover);
+}
+
+/* Keep the global 2px focus ring — the hover background alone is only
+   ~1.1:1 against the toolbar and isn't a perceivable focus indicator
+   for a keyboard user (#194). */
 .page-fit__size-btn:focus-visible:not(:disabled) {
   color: var(--ui-fg);
   background: var(--ui-panel-hover);
-  outline: none;
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
 }
 
 .page-fit__size-btn:disabled {
@@ -6199,6 +6227,7 @@ details.studio__pane--editor {
   flex-direction: column;
   width: min(28rem, 100vw);
   max-height: 100vh;
+  max-height: 100dvh; /* dynamic viewport: keep drawers/modals clear of the mobile URL bar (#195) */
   background: var(--ui-bg-elevated);
   border-left: 1px solid var(--ui-border-strong);
   box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
@@ -6236,6 +6265,9 @@ details.studio__pane--editor {
   flex-direction: column;
   gap: var(--space-5);
   padding: var(--space-4);
+  /* Clear the iOS home indicator / bottom browser chrome so the About
+     row at the foot of the scroll region stays tappable (#195). */
+  padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
   overflow-y: auto;
   flex: 1;
 }
