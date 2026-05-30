@@ -31,26 +31,29 @@ import {
 } from './helpers';
 
 /**
- * Click the toolbar Preview button. On mobile the trigger collapses behind
- * the More drawer, so open that first when the trigger isn't already
- * visible. Idempotent and a no-op on desktop.
- */
-/**
- * The toolbar's "Preview" button — scoped to `.studio__toolbar` so it is not
- * confused with the mobile Edit/Preview view switch (#220), which also has a
- * "Preview" button but lives in `.studio__view-switch` at the foot of the
- * studio. On mobile the toolbar trigger sits inside the collapsed More drawer.
+ * The Export-group "Preview" button — distinct from the mobile Edit/Preview
+ * view switch (#220), which also has a "Preview" button but lives in
+ * `.studio__view-switch` at the foot of the studio. On desktop it sits inline
+ * in `.studio__toolbar`; on mobile (#235) it moves into the MobileToolbarSheet
+ * (`.mobile-sheet`). Scope to both hosts so the same matcher works on either
+ * project once `openPrintPreview` has revealed it.
  */
 function toolbarPreviewTrigger(page: Page) {
-  return page.locator('.studio__toolbar').getByRole('button', { name: /^preview$/i });
+  return page
+    .locator('.studio__toolbar, .mobile-sheet')
+    .getByRole('button', { name: /^preview$/i });
 }
 
+/**
+ * Click the Preview button. On mobile the trigger lives inside the toolbar
+ * sheet, so open that first when the trigger isn't already visible.
+ * Idempotent and a no-op on desktop.
+ */
 async function openPrintPreview(page: Page): Promise<void> {
-  const trigger = toolbarPreviewTrigger(page);
-  if (!(await trigger.isVisible())) {
+  if (!(await toolbarPreviewTrigger(page).isVisible())) {
     await openMobileMoreMenu(page);
   }
-  await trigger.click();
+  await toolbarPreviewTrigger(page).click();
 }
 
 /**

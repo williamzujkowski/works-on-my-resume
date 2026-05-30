@@ -108,11 +108,12 @@ test('arrow keys shuffle the theme when shortcuts are enabled and focus is non-e
   await expect(page.locator('.theme-picker__trigger-name').first()).toHaveText('Dracula');
 
   // Park focus on a non-editable, focusable element so `event.target` in the
-  // global keydown handler is definitely outside any text field. #128: the
-  // Random theme button moved into the Settings drawer; the Save-as-PDF
-  // button is a stable always-visible toolbar peer that serves the same
-  // role for parking focus here.
-  await page.getByRole('button', { name: /^save as pdf$/i }).focus();
+  // global keydown handler is definitely outside any text field. #235:
+  // Save-as-PDF moved into the toolbar sheet on mobile, so it's no longer an
+  // always-inline anchor; the ThemePicker trigger stays inline on BOTH
+  // projects, has no keydown handler of its own (a plain ArrowRight bubbles
+  // straight to the global handler), and is the natural park target here.
+  await page.getByRole('button', { name: /^theme /i }).focus();
 
   const beforeName = await page.locator('.theme-picker__trigger-name').first().textContent();
   const beforeBg = await readBgVar(page);

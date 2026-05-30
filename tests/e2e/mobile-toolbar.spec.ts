@@ -1,25 +1,27 @@
 /**
- * mobile-toolbar.spec.ts — mobile "More" menu invariants (#131).
+ * mobile-toolbar.spec.ts — mobile hamburger sheet invariants (#235).
  *
- * On phone-sized viewports the toolbar wraps to four+ rows and consumes
- * the entire above-the-fold viewport before the resume preview is even
- * visible. The fix (option 2 from the issue) collapses everything except
- * ThemePicker + Save-as-PDF behind a single "More" trigger that opens a
- * stacked drawer over the toolbar.
+ * On phone-sized viewports the two-row toolbar wraps badly and consumes the
+ * above-the-fold viewport before the resume preview is visible. PR 2 of #235
+ * replaces the old in-toolbar "More" reflow drawer (#131) with a true modal:
+ * the top bar shows ONLY a hamburger + the inline ThemePicker, and everything
+ * else folds into the left-anchored MobileToolbarSheet (role=dialog) behind
+ * the hamburger.
  *
  * Invariants locked in here:
  *
  *  1. At iPhone 13 (390×844): the closed toolbar's visible bounding-box
- *     height is < 100 px — the resume header is preserved above the fold
- *     on first load.
- *  2. A "More" trigger is visible on mobile (and only on mobile).
- *  3. Clicking the trigger reveals at least three of the previously
- *     collapsed controls (Presets, Layout, Page-fit, Export, Settings).
- *  4. At 1280×800 the inline toolbar layout is unchanged from the #112
- *     two-row layout — the More trigger is hidden and the previously
- *     collapsed controls are visible inline.
- *  5. The mobile drawer is dismissable by Escape, and dismissing it
- *     returns focus to the trigger (a11y contract for `aria-haspopup`).
+ *     height is < 100 px — the resume header is preserved above the fold.
+ *  2. A hamburger (accessible name "More toolbar actions", aria-haspopup
+ *     "dialog") is visible on mobile and only on mobile.
+ *  3. Clicking it opens a role=dialog sheet, focus moves inside, and the
+ *     sheet hosts the moved controls.
+ *  4. Escape / scrim / close button all dismiss the sheet and restore focus
+ *     to the hamburger.
+ *  5. ThemePicker + Save-as-PDF: the picker stays inline (visible without
+ *     opening the sheet); Save-as-PDF has MOVED inside the sheet.
+ *  6. At 1280×800 the inline two-row toolbar (#112) is intact and the
+ *     hamburger is absent.
  */
 import { test, expect } from '@playwright/test';
 import { clearAppStorage, loadSampleResume, waitForThemesReady } from './helpers';
@@ -46,118 +48,152 @@ test.describe('mobile (iPhone 13)', () => {
     expect.soft(box!.height).toBeLessThan(ABOVE_THE_FOLD_BUDGET_PX);
   });
 
-  test('a More trigger is visible and controls a popup', async ({ page }) => {
+  test('a hamburger is visible and controls a dialog', async ({ page }) => {
     await loadSampleResume(page);
     await waitForThemesReady(page);
 
-    const moreTrigger = page.getByRole('button', { name: /more toolbar actions/i });
-    await expect(moreTrigger).toBeVisible();
-    // aria-haspopup is "true", not "menu" (#221): the drawer holds buttons and
-    // dialog-triggers, not a role=menu of menuitems.
-    await expect(moreTrigger).toHaveAttribute('aria-haspopup', 'true');
-    await expect(moreTrigger).toHaveAttribute('aria-expanded', 'false');
+    const hamburger = page.getByRole('button', { name: /more toolbar actions/i });
+    await expect(hamburger).toBeVisible();
+    // aria-haspopup is now "dialog" (#235): the hamburger opens a modal sheet,
+    // not the old in-toolbar reflow drawer.
+    await expect(hamburger).toHaveAttribute('aria-haspopup', 'dialog');
+    await expect(hamburger).toHaveAttribute('aria-expanded', 'false');
   });
 
-  test('the open drawer offers a bottom Close row that dismisses and restores focus (#221)', async ({
-    page,
-  }) => {
+  test('clicking the hamburger opens the sheet and moves focus into it', async ({ page }) => {
     await loadSampleResume(page);
     await waitForThemesReady(page);
 
-    const moreTrigger = page.getByRole('button', { name: /more toolbar actions/i });
-    await moreTrigger.click();
-    await expect(moreTrigger).toHaveAttribute('aria-expanded', 'true');
+    const hamburger = page.getByRole('button', { name: /more toolbar actions/i });
+    await hamburger.click();
+    await expect(hamburger).toHaveAttribute('aria-expanded', 'true');
 
-    // The thumb-reachable Close row at the foot of the drawer.
-    const closeRow = page.locator('.studio__more-close');
-    await expect(closeRow).toBeVisible();
-    await closeRow.click();
-
-    await expect(moreTrigger).toHaveAttribute('aria-expanded', 'false');
-    await expect(moreTrigger).toBeFocused();
-    await expect(closeRow).toBeHidden();
+    const sheet = page.getByRole('dialog', { name: /toolbar/i });
+    await expect(sheet).toBeVisible();
+    // Focus lands inside the sheet (on its Close button per the modal contract).
+    const closeButton = sheet.getByRole('button', { name: /close toolbar menu/i });
+    await expect(closeButton).toBeFocused();
   });
 
-  test('opening More reveals at least three of: Presets, Layout, Page-fit, Export, Settings', async ({
-    page,
-  }) => {
+  test('the sheet hosts the moved toolbar controls', async ({ page }) => {
     await loadSampleResume(page);
     await waitForThemesReady(page);
 
-    const moreTrigger = page.getByRole('button', { name: /more toolbar actions/i });
-    await moreTrigger.click();
-    await expect(moreTrigger).toHaveAttribute('aria-expanded', 'true');
+    const hamburger = page.getByRole('button', { name: /more toolbar actions/i });
+    await hamburger.click();
+    const sheet = page.getByRole('dialog', { name: /toolbar/i });
+    await expect(sheet).toBeVisible();
 
-    /* Each candidate is a real interactive control already in the toolbar;
-       we look for them inside the toolbar after the drawer opens. The
-       assertion is "≥ 3 of the 5 are now visible" — that's the floor the
-       issue spec sets so this test doesn't bind to the exact roster which
-       has shifted between #128 (Settings drawer) and #131 (mobile More). */
-    const toolbar = page.locator('.studio__toolbar');
+    /* The sheet should carry the bulk of the toolbar roster. Assert a FLOOR
+       (≥ 6 of the candidates) rather than the exact set, so the test doesn't
+       bind to incidental layout churn. Candidates span every group:
+       Export (Save-as-PDF / Preview / Export), Page (Layout / Page-fit),
+       Appearance (ChromeMode radios / theme-nav), More (Settings). */
     const candidates = [
-      // LayoutSelector root has class `layout-selector`.
-      toolbar.locator('.layout-selector'),
-      // PageFitIndicator's root carries `page-fit` (the indicator pill).
-      toolbar.locator('.page-fit'),
-      // The Export popover trigger is a labelled button.
-      toolbar.getByRole('button', { name: /^export$/i }),
-      // The Settings gear is a labelled icon button.
-      toolbar.getByRole('button', { name: /open settings/i }),
+      sheet.getByRole('button', { name: /save as pdf/i }),
+      sheet.getByRole('button', { name: /^preview$/i }),
+      sheet.getByRole('button', { name: /^export$/i }),
+      sheet.locator('.layout-selector'),
+      sheet.locator('.page-fit'),
+      sheet.getByRole('radio', { name: /auto appearance/i }),
+      sheet.getByRole('button', { name: /previous theme/i }),
+      sheet.getByRole('button', { name: /random theme/i }),
+      sheet.getByRole('button', { name: /open settings/i }),
     ];
 
     let visibleCount = 0;
     for (const candidate of candidates) {
       if (await candidate.first().isVisible()) visibleCount++;
     }
-    // Floor of 3 of the 4 remaining secondary controls (#132 dropped Presets).
-    expect(visibleCount).toBeGreaterThanOrEqual(3);
+    expect(visibleCount).toBeGreaterThanOrEqual(6);
   });
 
-  test('ThemePicker + Save-as-PDF stay visible without opening More', async ({ page }) => {
+  test('Save-as-PDF lives inside the sheet, not inline', async ({ page }) => {
     await loadSampleResume(page);
     await waitForThemesReady(page);
 
-    /* These are the two "always inline on mobile" controls per the issue
-       spec. They are the highest-frequency actions and must not require
-       a tap into the More menu. The picker's accessible name still
-       starts with "theme " on mobile (the kicker is visually hidden but
-       remains in the accessibility tree). */
+    // Closed top bar: Save-as-PDF is NOT inline (it moved into the sheet).
+    await expect(page.getByRole('button', { name: /save as pdf/i })).toHaveCount(0);
+
+    // Open the sheet — now it's present, inside the dialog.
+    await page.getByRole('button', { name: /more toolbar actions/i }).click();
+    const sheet = page.getByRole('dialog', { name: /toolbar/i });
+    await expect(sheet.getByRole('button', { name: /save as pdf/i })).toBeVisible();
+  });
+
+  test('ThemePicker stays inline without opening the sheet', async ({ page }) => {
+    await loadSampleResume(page);
+    await waitForThemesReady(page);
+
+    /* The picker is the one heavy control that stays in the top bar (it owns
+       its own popover/revert state and must stay searchable). Its accessible
+       name still starts with "theme " on mobile — the kicker is visually
+       hidden but remains in the accessibility tree. */
     await expect(page.getByRole('button', { name: /^theme /i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /save as pdf/i })).toBeVisible();
   });
 
-  test('Escape closes the drawer and restores focus to the More trigger', async ({ page }) => {
+  test('the close button dismisses the sheet and restores focus to the hamburger', async ({
+    page,
+  }) => {
     await loadSampleResume(page);
     await waitForThemesReady(page);
 
-    const moreTrigger = page.getByRole('button', { name: /more toolbar actions/i });
-    await moreTrigger.click();
-    await expect(moreTrigger).toHaveAttribute('aria-expanded', 'true');
+    const hamburger = page.getByRole('button', { name: /more toolbar actions/i });
+    await hamburger.click();
+    const sheet = page.getByRole('dialog', { name: /toolbar/i });
+    await sheet.getByRole('button', { name: /close toolbar menu/i }).click();
+
+    await expect(hamburger).toHaveAttribute('aria-expanded', 'false');
+    await expect(hamburger).toBeFocused();
+    await expect(page.getByRole('dialog', { name: /toolbar/i })).toHaveCount(0);
+  });
+
+  test('the scrim (click-outside) dismisses the sheet and restores focus', async ({ page }) => {
+    await loadSampleResume(page);
+    await waitForThemesReady(page);
+
+    const hamburger = page.getByRole('button', { name: /more toolbar actions/i });
+    await hamburger.click();
+    await expect(page.getByRole('dialog', { name: /toolbar/i })).toBeVisible();
+
+    // The overlay's onPointerDown dismisses only when the pointer lands on the
+    // overlay ITSELF (not the sheet). Dispatch a pointerdown straight at the
+    // overlay element so the test doesn't depend on the exact scrim-strip width.
+    await page.locator('.mobile-sheet__overlay').dispatchEvent('pointerdown');
+
+    await expect(hamburger).toHaveAttribute('aria-expanded', 'false');
+    await expect(hamburger).toBeFocused();
+  });
+
+  test('Escape closes the sheet and restores focus to the hamburger', async ({ page }) => {
+    await loadSampleResume(page);
+    await waitForThemesReady(page);
+
+    const hamburger = page.getByRole('button', { name: /more toolbar actions/i });
+    await hamburger.click();
+    await expect(hamburger).toHaveAttribute('aria-expanded', 'true');
 
     await page.keyboard.press('Escape');
 
-    /* The button's accessible name flips when the drawer is open vs closed;
-       after Escape we look for the closed-state label. */
-    const reclosed = page.getByRole('button', { name: /more toolbar actions/i });
-    await expect(reclosed).toHaveAttribute('aria-expanded', 'false');
-    await expect(reclosed).toBeFocused();
+    await expect(hamburger).toHaveAttribute('aria-expanded', 'false');
+    await expect(hamburger).toBeFocused();
   });
 });
 
 test.describe('desktop (1280×800)', () => {
   test.skip(({ isMobile }) => isMobile === true, 'desktop two-row layout invariants');
 
-  test('the More trigger is hidden — inline toolbar is unchanged from #112', async ({ page }) => {
+  test('the hamburger is absent — inline toolbar is unchanged from #112', async ({ page }) => {
     await loadSampleResume(page);
     await waitForThemesReady(page);
 
-    /* The More button exists in the DOM but is CSS-hidden on desktop. */
-    const moreTrigger = page.locator('.studio__toolbar-more-trigger');
-    await expect(moreTrigger).toHaveCount(1);
-    await expect(moreTrigger).toBeHidden();
+    /* The hamburger is only rendered on the mobile path — on desktop it isn't
+       in the DOM at all (the heavy controls live inline). */
+    await expect(page.getByRole('button', { name: /more toolbar actions/i })).toHaveCount(0);
+    await expect(page.locator('.studio__toolbar-hamburger')).toHaveCount(0);
 
-    /* And the controls that would otherwise live in the More drawer are
-       all visible inline. (#132: Presets row removed — used to live here.) */
+    /* And the controls that fold into the sheet on mobile are all visible
+       inline here. (#132: Presets row removed — used to live here.) */
     const toolbar = page.locator('.studio__toolbar');
     await expect(toolbar.locator('.layout-selector')).toBeVisible();
     await expect(toolbar.locator('.page-fit')).toBeVisible();

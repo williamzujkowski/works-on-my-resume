@@ -1249,14 +1249,6 @@ body[data-app-phase='workbench'] .app-header {
   flex-shrink: 0;
 }
 
-/* Inside the mobile More drawer the column stacking already separates
-   rows — a horizontal hairline between them would read as decoration. */
-@media (max-width: 639.98px) {
-  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-sep {
-    display: none;
-  }
-}
-
 /* Hard row-break for the toolbar (#112). `flex-basis: 100%` forces the
    next sibling onto a new flex line regardless of remaining horizontal
    room, so the toolbar reads as two grouped rows on wide viewports
@@ -1319,72 +1311,33 @@ body[data-app-phase='workbench'] .app-header {
 }
 
 /* ------------------------------------------------------------------ */
-/* Mobile "More" menu (#131).                                          */
+/* Toolbar collapsible wrappers (#135).                                */
 /*                                                                     */
-/* On viewports < 640px the toolbar wraps to four+ rows on first load   */
-/* and pushes the resume header out of frame entirely. The fix:        */
-/* collapse everything except ThemePicker + Save-as-PDF behind a       */
-/* single More trigger that opens a stacked drawer over the toolbar.   */
-/*                                                                     */
-/* Desktop (≥ 640px):                                                   */
-/*   - `.studio__toolbar-collapsible` is `display: contents` — the      */
-/*     wrapper is transparent in flex layout, no visual change.         */
-/*   - `.studio__toolbar-more-trigger` is `display: none` — the         */
-/*     toolbar already shows everything inline.                         */
-/*                                                                     */
-/* Mobile (< 640px):                                                    */
-/*   - `.studio__toolbar-collapsible` is `display: none` by default —   */
-/*     only ThemePicker + Save-as-PDF + the More trigger remain inline. */
-/*   - `.studio__toolbar-more-trigger` is `display: inline-flex`.       */
-/*   - When `[data-mobile-more-open='true']` lands on the toolbar root, */
-/*     the collapsible wrappers become full-width flex blocks stacked   */
-/*     in a column, layered over the resume preview via the toolbar's   */
-/*     own (now elevated) z-index.                                      */
+/* On the desktop toolbar (≥ 641px) the controls are wrapped in        */
+/* `studio__toolbar-collapsible` spans so the kicker rhythm and        */
+/* separators read as one continuous row. The wrapper is               */
+/* `display: contents` — transparent in the flex flow, its children    */
+/* participate in the toolbar's layout as if the wrapper weren't there.*/
+/* The mobile toolbar (#235) doesn't render these wrappers at all; the */
+/* heavy controls move into the MobileToolbarSheet instead, so there's */
+/* no mobile reflow here anymore.                                      */
 /* ------------------------------------------------------------------ */
 
 .studio__toolbar-collapsible {
-  /* `display: contents` keeps the wrapper transparent in the toolbar's
-     flex flow on desktop — its children participate in the parent's
-     layout as if the wrapper weren't there. */
   display: contents;
 }
 
-/* Default (desktop): the mobile More trigger is invisible. */
-.studio__toolbar-more-trigger {
-  display: none;
-}
-
-/* Bottom Close row (#221) — hidden by default (desktop + closed mobile
-   toolbar); revealed only inside the open mobile drawer below. */
-.studio__more-close {
-  display: none;
-}
-
-@media (max-width: 639.98px) {
-  /* Hide every opt-in collapsible toolbar element by default. */
-  .studio__toolbar-collapsible {
-    display: none;
-  }
-
-  /* Reveal the More trigger and tighten its mobile spacing. */
-  .studio__toolbar-more-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    margin-left: auto;
-  }
-
-  /* Mobile budget: the closed toolbar must stay under ~100 px so the
-     resume header is preserved above the fold (#131 acceptance test).
-     ThemePicker's desktop `min-width: 12rem` forces a wrap on a 390 px
-     viewport alongside the Save-as-PDF + More buttons. Drop the floor
-     here so the three controls fit on a single row, and shrink the
-     trigger's padding + label kicker to claw back a bit more space.
-
-     ThemePicker is the elastic item: `flex: 1 1 0` makes it consume the
-     leftover width and shrink as needed; the inner trigger gets
-     `min-width: 0` + `width: 100%` so the ellipsis kicks in instead of
-     overflowing. Save-as-PDF + More are `flex-shrink: 0` (intrinsic). */
+/* ------------------------------------------------------------------ */
+/* Mobile top bar (#235).                                              */
+/*                                                                     */
+/* On viewports ≤ 640px the toolbar renders ONLY the inline            */
+/* ThemePicker + a hamburger; everything else lives in the             */
+/* MobileToolbarSheet. The picker is the elastic item — `flex: 1 1 0`  */
+/* lets it consume the leftover width and ellipsize so the closed top  */
+/* bar stays under the ~100px above-the-fold budget. The hamburger is  */
+/* intrinsic (`flex-shrink: 0`).                                       */
+/* ------------------------------------------------------------------ */
+@media (max-width: 640px) {
   .studio__toolbar .theme-picker {
     flex: 1 1 0;
     min-width: 0;
@@ -1398,8 +1351,8 @@ body[data-app-phase='workbench'] .app-header {
 
   /* Hide the "theme" kicker visually but keep it in the accessibility
      tree — the trigger's accessible name remains "theme <NAME>" so the
-     existing journey + helpers tests that look for `/^theme /i` still
-     find the button on the mobile-iphone-13 project. */
+     journey + helpers tests that look for `/^theme /i` still find the
+     button on the mobile-iphone-13 project. */
   .studio__toolbar .theme-picker__trigger-kicker {
     position: absolute;
     width: 1px;
@@ -1412,107 +1365,9 @@ body[data-app-phase='workbench'] .app-header {
     border: 0;
   }
 
-  .studio__toolbar .btn--primary,
-  .studio__toolbar .studio__toolbar-more-trigger {
+  .studio__toolbar-hamburger {
     flex-shrink: 0;
-  }
-
-  /* When the user opens the drawer, the toolbar restructures:
-       - flex direction becomes column so the kept controls + drawer
-         contents stack instead of clipping
-       - z-index is bumped so the drawer overlays the preview pane
-       - `studio__toolbar-collapsible` wrappers become full-width
-         block-level slots so each control reads as a row */
-  .studio__toolbar[data-mobile-more-open='true'] {
-    flex-direction: column;
-    align-items: stretch;
-    z-index: 6;
-    /* Cap the drawer to the viewport and scroll internally (#221) — a tall
-       roster on a short phone used to overflow with no scroll affordance.
-       dvh keeps it clear of the mobile URL bar; safe-area clears the home
-       indicator. */
-    max-height: 82dvh;
-    overflow-y: auto;
-    padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
-  }
-
-  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-collapsible {
-    display: block;
-    width: 100%;
-  }
-
-  /* The Row-1 themable wrapper is `display: contents` (transparent in
-     flex layout); inside it the picker is a direct child but Presets +
-     LayoutSelector are wrapped in collapsibles. When the drawer opens we
-     keep its `display: contents` shape so its children flow into the
-     toolbar's column directly. */
-  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-themable {
-    display: contents;
-  }
-
-  /* The collapsible children of the themable wrapper should stretch
-     full-width as well — they were `display: contents` siblings of the
-     picker, now they're column rows. */
-  .studio__toolbar[data-mobile-more-open='true']
-    .studio__toolbar-themable
-    .studio__toolbar-collapsible
-    > * {
-    width: 100%;
-  }
-
-  /* The row-break spans `flex-basis: 100%` for the desktop two-row
-     layout; in the mobile drawer that becomes redundant (the column
-     already separates rows) and visually empty. Keep it hidden. */
-  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-rowbreak {
-    display: none;
-  }
-
-  /* The spacer is `flex: 1` on desktop to push the save/export cluster
-     to the right edge. In the column drawer it would just consume
-     vertical space — collapse it. */
-  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-spacer {
-    display: none;
-  }
-
-  /* The export popover trigger button reads better as a full-width row
-     than as an inline pill in the drawer; same for the settings gear
-     (which becomes a labelled row via aria-label being read by AT —
-     visually it remains the icon). Save-as-PDF (`.btn--primary`) is
-     kept inline above so it stays the loud, single-click action. */
-  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-collapsible .btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  /* Make the More trigger sit on its own row above the drawer body so
-     the close affordance and the drawer contents read as a coherent
-     panel rather than a wrapped row. */
-  .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-more-trigger {
-    margin-left: 0;
-    align-self: flex-end;
-  }
-
-  /* Reveal the bottom Close row as a full-width, thumb-reachable dismiss at
-     the foot of the open drawer (#221). */
-  .studio__toolbar[data-mobile-more-open='true'] .studio__more-close {
-    display: block;
-    width: 100%;
-    margin-top: var(--space-1);
-    padding: 0.7rem;
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.03em;
-    color: var(--ui-fg-muted);
-    background: var(--ui-panel);
-    border: 1px solid var(--ui-border);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-  }
-
-  .studio__toolbar[data-mobile-more-open='true'] .studio__more-close:hover {
-    color: var(--ui-fg);
-    background: var(--ui-panel-hover);
+    margin-left: auto;
   }
 }
 
@@ -3530,6 +3385,27 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
     top: calc(100% + var(--space-2));
     z-index: 30;
     width: 22rem;
+  }
+}
+
+/* On phones the Export panel opens from inside the MobileToolbarSheet
+   (#235). The 22rem sheet can't host a wide popover, so render it as a
+   full-width bottom sheet that escapes the sheet's bounds and layers ABOVE
+   its overlay (z-index 100). max-height + scroll keeps the long download
+   roster reachable; the safe-area inset clears the home indicator. The
+   panel keeps its own focus-trap / Esc / outside-click, and the sheet
+   defers to it while focus is inside. */
+@media (max-width: 640px) {
+  .export-panel__dialog {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 110;
+    width: auto;
+    max-height: 85dvh;
+    overflow-y: auto;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
   }
 }
 
@@ -6127,6 +6003,27 @@ details.studio__pane--editor {
   }
 }
 
+/* On phones the Page-fit pill opens from inside the MobileToolbarSheet
+   (#235). Render the popover as a full-width bottom sheet that escapes the
+   22rem sheet and layers ABOVE its overlay (z-index 100), mirroring the
+   Export panel treatment. The popover keeps its own Esc / outside-click /
+   close button; the sheet defers while focus is inside it. */
+@media (max-width: 640px) {
+  .page-fit__popover {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    top: auto;
+    left: auto;
+    z-index: 110;
+    width: auto;
+    max-height: 85dvh;
+    overflow-y: auto;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  }
+}
+
 /* ----- Ruler overlay -----
    Portal-mounted into the preview pane (`.studio__pane-body`), absolutely
    positioned over the rendered `.resume-preview` article. Each line is a
@@ -6577,6 +6474,61 @@ details.studio__pane--editor {
   padding: var(--space-4);
   overflow-y: auto;
   flex: 1;
+}
+
+/* ----- Sheet groups (#235) -----
+   Export / Page / Appearance / More, each headed by a `.section-kicker`
+   and holding its controls as a column of full-width rows. Mirrors the
+   Settings drawer's group rhythm. */
+.mobile-sheet__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mobile-sheet__group-title {
+  margin-bottom: var(--space-1);
+}
+
+.mobile-sheet__group-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+}
+
+/* Every direct interactive control in a group reads as a full-width row:
+   the Save-as-PDF / Preview buttons, the Export trigger wrapper, the
+   Settings gear, the LayoutSelector + Page-fit chips. The Export trigger
+   and Page-fit pill are nested one level (their own root wrapper), so
+   stretch those wrappers too. */
+.mobile-sheet__group-body > .btn,
+.mobile-sheet__group-body > .export-panel,
+.mobile-sheet__group-body > .export-panel > .btn,
+.mobile-sheet__group-body > .layout-selector,
+.mobile-sheet__group-body > .page-fit__size-control {
+  width: 100%;
+}
+
+.mobile-sheet__group-body > .btn,
+.mobile-sheet__group-body > .export-panel > .btn {
+  justify-content: center;
+}
+
+/* The Export panel root is `position: relative` to anchor its popover; in
+   the sheet the popover becomes a bottom sheet (below), so the relative
+   context is harmless. Keep the trigger row stretched. */
+.mobile-sheet__group-body > .export-panel {
+  position: relative;
+}
+
+/* The ChromeModeToggle is a pill cluster — let it sit left-aligned at its
+   intrinsic width rather than stretching the radiogroup edge to edge. */
+.mobile-sheet__group-body > .chrome-mode {
+  align-self: flex-start;
 }
 
 /* ------------------------------------------------------------------ */

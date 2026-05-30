@@ -12,7 +12,7 @@
  *     <html> and persists; Auto clears it; the choice survives a reload.
  */
 import { test, expect } from '@playwright/test';
-import { clearAppStorage, waitForThemesReady } from './helpers';
+import { clearAppStorage, loadSampleResume, openMobileMoreMenu, waitForThemesReady } from './helpers';
 
 /** WCAG relative luminance for an `#rrggbb` string. */
 function luminance(hex: string): number {
@@ -106,6 +106,18 @@ test('toggle: Light/Dark set data-chrome-mode and persist; Auto clears it', asyn
 
   const readStored = () =>
     page.evaluate(() => window.localStorage.getItem('womr:chrome-mode'));
+
+  /* On mobile (#235) the ChromeModeToggle relocates from its floating
+     top-right slot into the toolbar sheet's Appearance group once a resume is
+     loaded — so the toggle only lives in the sheet on the loaded workbench.
+     Load the sample + open the sheet so the mobile path exercises the moved
+     mount; if a radio is already visible (desktop, or the empty-state mobile
+     float) the open is a no-op. The 3-state model (Auto/Light/Dark) is
+     unchanged. */
+  await loadSampleResume(page);
+  if (!(await page.getByRole('radio', { name: /dark appearance/i }).isVisible())) {
+    await openMobileMoreMenu(page);
+  }
 
   await page.getByRole('radio', { name: /dark appearance/i }).click();
   await expect(html).toHaveAttribute('data-chrome-mode', 'dark');
