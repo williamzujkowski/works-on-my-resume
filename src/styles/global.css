@@ -910,16 +910,16 @@ body[data-app-phase='workbench'] .app-header {
 /* ------------------------------------------------------------------ */
 /* Chrome light/dark toggle (#192).                                    */
 /*                                                                     */
-/* A small Auto / Light / Dark segmented control fixed to the top-right */
-/* corner so it's reachable on both the empty state and the workbench   */
-/* without competing with the toolbar. z-index sits above scrolling     */
-/* chrome but below modal overlays (z 100) so dialogs still cover it.   */
+/* A small Auto / Light / Dark segmented control that sits in normal    */
+/* flow at the top of the studio, right-aligned. It is the studio's     */
+/* first child, so it appears above the hero (empty state) and above    */
+/* the toolbar (workbench) — reachable in both phases WITHOUT floating   */
+/* over and obscuring the toolbar's top-right controls (an earlier      */
+/* `position: fixed` version blocked taps on the More/Export/gear       */
+/* triggers on narrow screens).                                         */
 /* ------------------------------------------------------------------ */
 .chrome-mode {
-  position: fixed;
-  top: var(--space-3);
-  right: var(--space-3);
-  z-index: 50;
+  align-self: flex-end;
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -958,12 +958,6 @@ body[data-app-phase='workbench'] .app-header {
   background: var(--ui-accent);
 }
 
-/* Reserve room in the workbench header so its file chip clears the
-   floating toggle. The empty state has no header, so nothing to clear. */
-body[data-app-phase='workbench'] .app-header {
-  padding-right: 13rem;
-}
-
 /* Mobile / touch: collapse to icon-only (each button keeps an aria-label)
    and grow the hit area toward the comfortable touch floor. */
 @media (max-width: 640px) {
@@ -983,9 +977,6 @@ body[data-app-phase='workbench'] .app-header {
     min-width: 2.4rem;
     min-height: 2.4rem;
     justify-content: center;
-  }
-  body[data-app-phase='workbench'] .app-header {
-    padding-right: 7.5rem;
   }
 }
 
