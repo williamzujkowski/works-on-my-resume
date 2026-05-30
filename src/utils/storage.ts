@@ -281,6 +281,54 @@ export function setStoredCareerStage(stage: CareerStage): void {
   }
 }
 
+/**
+ * Namespaced key for the app-chrome light/dark preference (#192). Like the
+ * theme/template/career-stage slugs this is a UI preference with no personal
+ * data. NOTE: the no-flash inline script in `BaseLayout.astro` cannot import
+ * this module (it runs in <head> before the bundle), so it hard-codes the
+ * same literal `'womr:chrome-mode'` — keep the two in sync.
+ */
+const CHROME_MODE_KEY = 'womr:chrome-mode';
+
+/**
+ * Chrome appearance preference. `'auto'` tracks the OS (the default);
+ * `'light'`/`'dark'` force a chrome palette regardless of the OS setting.
+ * This governs only the app shell (`--ui-*`), never the resume theme.
+ */
+export type ChromeMode = 'auto' | 'light' | 'dark';
+
+/** True when `value` is a known chrome mode. */
+function isChromeMode(value: unknown): value is ChromeMode {
+  return value === 'auto' || value === 'light' || value === 'dark';
+}
+
+/**
+ * Read the persisted chrome-mode preference, or `null` when nothing is
+ * stored / storage is unavailable / the value is unrecognised. Callers
+ * substitute `'auto'` as the default so a legacy value can't wedge the UI.
+ */
+export function getStoredChromeMode(): ChromeMode | null {
+  const store = safeLocalStorage();
+  if (!store) return null;
+  try {
+    const value = store.getItem(CHROME_MODE_KEY);
+    return isChromeMode(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Persist the chosen chrome mode. Best-effort; silently no-ops on failure. */
+export function setStoredChromeMode(mode: ChromeMode): void {
+  const store = safeLocalStorage();
+  if (!store) return;
+  try {
+    store.setItem(CHROME_MODE_KEY, mode);
+  } catch {
+    /* no-op: persistence is best-effort only */
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Resume version snapshots (#94)                                      */
 /* ------------------------------------------------------------------ */

@@ -27,7 +27,10 @@ export type IconName =
   | 'plus'
   | 'layers'
   | 'settings'
-  | 'eye';
+  | 'eye'
+  | 'sun'
+  | 'moon'
+  | 'monitor';
 
 interface IconProps {
   name: IconName;
@@ -154,6 +157,22 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
       <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  /* Light-mode glyph — a sun with eight rays. */
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+    </>
+  ),
+  /* Dark-mode glyph — a crescent moon. */
+  moon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />,
+  /* Auto / follow-OS glyph — a desktop monitor. */
+  monitor: (
+    <>
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <path d="M8 21h8M12 17v4" />
     </>
   ),
 };
