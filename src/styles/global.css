@@ -272,9 +272,16 @@ a {
  */
 .reveal {
   animation: reveal-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  /* Header + notice arrive close together; the heavier workbench settles a
-     beat later (see #studio override) so the eye lands top-down. */
-  animation-delay: calc(var(--i, 0) * 70ms);
+  /* First child (header) has no delay. The stagger is set per-position via
+     :nth-child below — NOT an inline `style="--i"`, which would violate the
+     strict style-src (#243). Header + notice arrive close together; the
+     heavier workbench settles a beat later so the eye lands top-down. */
+  animation-delay: 0ms;
+}
+
+/* Privacy notice (2nd reveal child) arrives just after the header. */
+.app-shell > .reveal:nth-child(2) {
+  animation-delay: 70ms;
 }
 
 /* The studio reveal wrapper must keep filling the shell like the old
@@ -4363,11 +4370,11 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   color: var(--ui-fg-muted);
 }
 
-/* Print-mode radio group. Shape mirrors `.export-panel__radio-group`
-   so the visual language of "print mode = a small pair of radios"
-   stays consistent between the Export panel and this modal — they're
-   driving the same state. Horizontal on desktop to keep the chrome
-   above the iframe compact; stacks on mobile. */
+/* Print-mode radio group — the mode-comparison control inside the
+   print-preview modal. (The Export panel's own radios were removed in
+   #200/#201; the canonical print-mode control is the Fit chip's select.)
+   Horizontal on desktop to keep the chrome above the iframe compact;
+   stacks on mobile. */
 .print-preview-dialog__modes {
   display: flex;
   flex-direction: row;

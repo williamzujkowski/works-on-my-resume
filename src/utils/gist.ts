@@ -121,8 +121,8 @@ function pickDefaultIndex(files: GistFile[]): number {
 
 /**
  * Internal helper: issue the single anonymous GET to GitHub and return the
- * parsed `files` map. Shared by `fetchGistFiles` (and, via that,
- * `fetchGistMarkdown`) so the network behaviour stays in exactly one place.
+ * parsed `files` map. Used by `fetchGistFiles` so the network behaviour stays
+ * in exactly one place.
  *
  * Throws a friendly `Error` on any failure mode — callers surface
  * `error.message` directly in the UI.
@@ -211,8 +211,7 @@ function normaliseFiles(apiFiles: Record<string, GistApiFile | null>): GistFile[
  *
  * This is the multi-file-aware entry point added in #76 — the picker UI
  * uses it to show every file as an option while still defaulting to the
- * smartest guess. `fetchGistMarkdown` (below) remains the single-file
- * back-compat wrapper.
+ * smartest guess. It is the single network entry point for gist import.
  *
  * Throws a friendly `Error` on any failure mode — callers surface
  * `error.message` directly in the UI.
@@ -245,27 +244,4 @@ export async function fetchGistFiles(
   }
 
   return { files, defaultIndex };
-}
-
-/**
- * Back-compat wrapper: returns just the heuristically-picked file's body
- * and filename, matching the pre-#76 contract. Implemented as a thin
- * wrapper over `fetchGistFiles` so the network behaviour, error messages,
- * and pick heuristic stay in exactly one place.
- *
- * Prefer `fetchGistFiles` for any caller that wants to expose the
- * multi-file picker; this signature exists only to keep older callers
- * compiling without a forced edit.
- *
- * @param url The gist URL the user pasted.
- */
-export async function fetchGistMarkdown(
-  url: string,
-): Promise<{ markdown: string; filename: string }> {
-  const { files, defaultIndex } = await fetchGistFiles(url);
-  const picked = files[defaultIndex];
-  return {
-    markdown: picked.content,
-    filename: picked.filename || 'gist.md',
-  };
 }
