@@ -174,3 +174,34 @@ test('clear: returns to the empty Phase 1 state', async ({ page }, testInfo) => 
   await expect(page.getByRole('button', { name: /open settings/i })).toHaveCount(0);
   await expect(page.locator('.app-hero')).toHaveCount(1);
 });
+
+test('tablet band (#205): editor accordion stays live below 961px so the preview leads', async ({
+  page,
+}, testInfo) => {
+  // Resize the desktop project into the single-column-but-not-phone band
+  // (641–960px), where the editor used to be force-expanded above a
+  // full-height preview.
+  test.skip(
+    testInfo.project.name !== 'chromium-desktop',
+    'drives the 641–960px band by resizing the desktop project',
+  );
+
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto('');
+
+  const editorDetails = page.locator('details.studio__pane--editor');
+  await loadSampleResume(page);
+
+  // The accordion must be CLOSED here — previously CSS forced it open in
+  // this band, stranding the whole editor above the preview.
+  await expect(editorDetails).not.toHaveAttribute('open', /.*/);
+  await expect(page.getByLabel(/markdown source/i)).not.toBeVisible();
+  await expect(
+    editorDetails.locator('summary.studio__pane-header--summary'),
+  ).toContainText(/\d+ lines? · edit/);
+
+  // Widening to the true side-by-side desktop layout (≥961px) forces the
+  // editor body visible again regardless of the accordion state.
+  await page.setViewportSize({ width: 1280, height: 1024 });
+  await expect(page.getByLabel(/markdown source/i)).toBeVisible();
+});
