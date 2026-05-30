@@ -1347,6 +1347,12 @@ body[data-app-phase='workbench'] .app-header {
   display: none;
 }
 
+/* Bottom Close row (#221) — hidden by default (desktop + closed mobile
+   toolbar); revealed only inside the open mobile drawer below. */
+.studio__more-close {
+  display: none;
+}
+
 @media (max-width: 639.98px) {
   /* Hide every opt-in collapsible toolbar element by default. */
   .studio__toolbar-collapsible {
@@ -1414,6 +1420,13 @@ body[data-app-phase='workbench'] .app-header {
     flex-direction: column;
     align-items: stretch;
     z-index: 6;
+    /* Cap the drawer to the viewport and scroll internally (#221) — a tall
+       roster on a short phone used to overflow with no scroll affordance.
+       dvh keeps it clear of the mobile URL bar; safe-area clears the home
+       indicator. */
+    max-height: 82dvh;
+    overflow-y: auto;
+    padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
   }
 
   .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-collapsible {
@@ -1470,6 +1483,29 @@ body[data-app-phase='workbench'] .app-header {
   .studio__toolbar[data-mobile-more-open='true'] .studio__toolbar-more-trigger {
     margin-left: 0;
     align-self: flex-end;
+  }
+
+  /* Reveal the bottom Close row as a full-width, thumb-reachable dismiss at
+     the foot of the open drawer (#221). */
+  .studio__toolbar[data-mobile-more-open='true'] .studio__more-close {
+    display: block;
+    width: 100%;
+    margin-top: var(--space-1);
+    padding: 0.7rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--ui-fg-muted);
+    background: var(--ui-panel);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+  }
+
+  .studio__toolbar[data-mobile-more-open='true'] .studio__more-close:hover {
+    color: var(--ui-fg);
+    background: var(--ui-panel-hover);
   }
 }
 

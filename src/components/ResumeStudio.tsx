@@ -1543,17 +1543,18 @@ export default function ResumeStudio() {
               the toolbar already shows everything. On viewports < 640px
               CSS reveals it and hides every `studio__toolbar-collapsible`
               child, putting them inside an in-toolbar drawer that flows
-              on top of the resume preview when opened. The button is a
-              proper `<button aria-haspopup="menu" aria-expanded>` so AT
-              users can navigate the same way as the export popover. The
-              accessible name is intentionally stable across open/closed
-              states — `aria-expanded` carries the toggle signal so the
-              user's hook on the button doesn't move under them. */}
+              on top of the resume preview when opened. `aria-haspopup="true"`
+              (not "menu", #221) because the revealed surface is a reflowed
+              set of buttons and dialog-triggers — not a `role="menu"` of
+              `menuitem`s, which would promise arrow-key menu navigation that
+              isn't there. The accessible name is intentionally stable across
+              open/closed states — `aria-expanded` carries the toggle signal
+              so the user's hook on the button doesn't move under them. */}
           <button
             type="button"
             ref={mobileMoreTriggerRef}
             className="btn studio__toolbar-more-trigger"
-            aria-haspopup="menu"
+            aria-haspopup="true"
             aria-expanded={mobileMoreOpen}
             aria-label="More toolbar actions"
             onClick={() => setMobileMoreOpen((open) => !open)}
@@ -1615,6 +1616,22 @@ export default function ResumeStudio() {
               <Icon name="settings" />
             </button>
           </span>
+
+          {/* Bottom Close row (#221) — a thumb-reachable dismiss for the open
+              mobile drawer, in addition to the top chevron (the top-right
+              corner is the hardest one-handed reach). Shown only inside the
+              open drawer via CSS; display:none on desktop and in the closed
+              toolbar, so it never affects the above-the-fold budget. */}
+          <button
+            type="button"
+            className="studio__more-close"
+            onClick={() => {
+              setMobileMoreOpen(false);
+              mobileMoreTriggerRef.current?.focus();
+            }}
+          >
+            Close
+          </button>
         </div>
       )}
 
