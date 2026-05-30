@@ -46,14 +46,36 @@ test.describe('mobile (iPhone 13)', () => {
     expect.soft(box!.height).toBeLessThan(ABOVE_THE_FOLD_BUDGET_PX);
   });
 
-  test('a More trigger is visible and controls a menu popup', async ({ page }) => {
+  test('a More trigger is visible and controls a popup', async ({ page }) => {
     await loadSampleResume(page);
     await waitForThemesReady(page);
 
     const moreTrigger = page.getByRole('button', { name: /more toolbar actions/i });
     await expect(moreTrigger).toBeVisible();
-    await expect(moreTrigger).toHaveAttribute('aria-haspopup', 'menu');
+    // aria-haspopup is "true", not "menu" (#221): the drawer holds buttons and
+    // dialog-triggers, not a role=menu of menuitems.
+    await expect(moreTrigger).toHaveAttribute('aria-haspopup', 'true');
     await expect(moreTrigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('the open drawer offers a bottom Close row that dismisses and restores focus (#221)', async ({
+    page,
+  }) => {
+    await loadSampleResume(page);
+    await waitForThemesReady(page);
+
+    const moreTrigger = page.getByRole('button', { name: /more toolbar actions/i });
+    await moreTrigger.click();
+    await expect(moreTrigger).toHaveAttribute('aria-expanded', 'true');
+
+    // The thumb-reachable Close row at the foot of the drawer.
+    const closeRow = page.locator('.studio__more-close');
+    await expect(closeRow).toBeVisible();
+    await closeRow.click();
+
+    await expect(moreTrigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(moreTrigger).toBeFocused();
+    await expect(closeRow).toBeHidden();
   });
 
   test('opening More reveals at least three of: Presets, Layout, Page-fit, Export, Settings', async ({
