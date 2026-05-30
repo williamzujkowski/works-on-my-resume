@@ -1581,7 +1581,6 @@ export default function ResumeStudio() {
                 theme={theme}
                 template={template}
                 printMode={printMode}
-                onPrintModeChange={setPrintMode}
                 onClose={() => setExportOpen(false)}
                 triggerRef={exportTriggerRef}
                 previewRef={previewRef}
