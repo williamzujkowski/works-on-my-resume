@@ -48,6 +48,7 @@ import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor';
 import ResumePreview from './ResumePreview';
 import ResumeHealth from './ResumeHealth';
 import StudioStatusLine from './StudioStatusLine';
+import ChromeModeToggle from './ChromeModeToggle';
 import ThemePicker from './ThemePicker';
 import LayoutSelector from './LayoutSelector';
 import ExportPanel from './ExportPanel';
@@ -1253,6 +1254,11 @@ export default function ResumeStudio() {
       <p className="visually-hidden" aria-live="polite">
         {loadAnnouncement}
       </p>
+
+      {/* App-chrome light/dark toggle (#192). Rendered unconditionally so
+          it's reachable on both the empty state and the loaded workbench;
+          floats to the top-right via CSS and is hidden from print. */}
+      <ChromeModeToggle />
 
       {/* ----- Empty-state hero (#127). Rendered ONLY when no resume is
            loaded; once a resume lands, the static AppHeader astro chrome
