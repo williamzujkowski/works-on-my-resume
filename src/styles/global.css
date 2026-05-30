@@ -1155,8 +1155,11 @@ body[data-app-phase='workbench'] .app-header {
   }
   .chrome-mode__option {
     padding: 0.5rem;
-    min-width: 2.4rem;
-    min-height: 2.4rem;
+    /* 2.75rem (~44px) — the comfortable touch floor the rest of the app
+       uses; 2.4rem fell under it. The toggle now lives in the
+       MobileToolbarSheet on mobile, but the selector is unchanged (#241). */
+    min-width: 2.75rem;
+    min-height: 2.75rem;
     justify-content: center;
   }
 }
@@ -1528,6 +1531,25 @@ body[data-app-phase='workbench'] .app-header {
   color: var(--ui-fg);
 }
 
+/* Preview-pane header overflow at 360px (#238). The header is a non-wrapping
+   flex row (dots + Preview/Health tablist + theme name + WCAG badge) and can't
+   fit on the narrowest phones. Lowest-risk fix: drop the decorative window
+   dots (purely ornamental, aria-hidden), and let a long theme name truncate
+   with an ellipsis instead of forcing overflow that clips the tablist. The
+   44px tablist touch size is left untouched. */
+@media (max-width: 640px) {
+  .studio__pane-header .studio__pane-dots {
+    display: none;
+  }
+
+  .studio__pane-theme-name {
+    max-width: 10ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 /* ----- WCAG conformance badge (#88) -----
    Glyph + literal carry the meaning; the colour reinforces but never
    carries the signal alone. Three flavours map to AAA / AA / fails. */
@@ -1678,9 +1700,13 @@ body[data-app-phase='workbench'] .app-header {
   }
 
   /* Lift the status line so it stacks above the switch instead of
-     colliding with it (both pin to the viewport bottom). */
+     colliding with it (both pin to the viewport bottom). The switch's
+     own height includes env(safe-area-inset-bottom) (its padding-bottom),
+     so on notched phones it grows past a flat 3.75rem and the two bars
+     overlap. Share the safe-area term so the lift tracks the switch
+     height (#236). */
   .studio__statusline {
-    bottom: 3.75rem;
+    bottom: calc(3.75rem + env(safe-area-inset-bottom));
   }
 }
 
