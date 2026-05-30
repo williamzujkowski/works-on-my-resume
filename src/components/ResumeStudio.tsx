@@ -1031,14 +1031,27 @@ export default function ResumeStudio() {
     }, 0);
   }, []);
 
-  /* Close the Markdown-format reference dialog (#157) and return focus to
-     the Settings gear — that's the only trigger that opens it (the drawer
-     closes itself first, so the gear is the natural landing spot for
-     keyboard users). */
+  /* Open the Markdown-format reference dialog (#157, #198) and remember the
+     control that opened it so focus can return there on close. It's reachable
+     from the Settings gear (workbench) AND the empty-state hero link, which
+     don't coexist — so capture the live opener rather than hard-coding one. */
+  const formatDocsTriggerRef = useRef<HTMLElement | null>(null);
+  const openFormatDocs = useCallback(() => {
+    if (typeof document !== 'undefined') {
+      const active = document.activeElement;
+      formatDocsTriggerRef.current = active instanceof HTMLElement ? active : null;
+    }
+    setFormatDocsOpen(true);
+  }, []);
+
+  /* Close the Markdown-format reference dialog and return focus to whatever
+     opened it (the hero link in Phase 1, the Settings gear in Phase 2 — the
+     latter as a fallback if the opener was never captured). */
   const closeFormatDocs = useCallback(() => {
     setFormatDocsOpen(false);
     window.setTimeout(() => {
-      settingsTriggerRef.current?.focus();
+      (formatDocsTriggerRef.current ?? settingsTriggerRef.current)?.focus();
+      formatDocsTriggerRef.current = null;
     }, 0);
   }, []);
 
@@ -1314,6 +1327,7 @@ export default function ResumeStudio() {
           themeCount={themes.length}
           layoutCount={RESUME_TEMPLATES.length}
           templateCount={STARTER_TEMPLATE_COUNT}
+          onOpenFormatDocs={openFormatDocs}
         />
       )}
 
@@ -1861,7 +1875,7 @@ export default function ResumeStudio() {
           onDeleteSnapshot={handleDeleteSnapshot}
           shortcutsEnabled={shortcutsEnabled}
           onOpenKeyboardHelp={() => setHelpOpen(true)}
-          onOpenFormatDocs={() => setFormatDocsOpen(true)}
+          onOpenFormatDocs={openFormatDocs}
           onPreviousTheme={() => stepTheme(-1)}
           onNextTheme={() => stepTheme(1)}
           onRandomTheme={randomTheme}
