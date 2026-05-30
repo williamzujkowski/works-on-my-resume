@@ -138,6 +138,7 @@ export default function AppHero({
   return (
     <section className="app-hero" aria-label="Welcome to Works on My Resume">
       <div className="app-hero__brand">
+        <p className="app-hero__kicker section-kicker">Local-first résumé studio</p>
         <h1 className="app-hero__title">Works on My Resume</h1>
       </div>
 
