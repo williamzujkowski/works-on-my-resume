@@ -282,6 +282,7 @@ export default function ResumeStudio() {
      can't lie about which theme should be committed. */
   const pendingThemeRef = useRef<ResumeTheme | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const editorPaneRef = useRef<HTMLDetailsElement>(null);
   const exportTriggerRef = useRef<HTMLButtonElement>(null);
   const helpTriggerRef = useRef<HTMLButtonElement>(null);
   /* Imperative handle for "Jump to line N" from the Resume Health panel.
@@ -1055,6 +1056,30 @@ export default function ResumeStudio() {
     }, 0);
   }, []);
 
+  /* The mobile Edit/Preview switch (#220). On the stacked layout the editor
+     accordion + preview live in one column, so these give a one-tap way to
+     jump between them: open/close the accordion (reusing `editorOpen`, the
+     single source of truth) and scroll the chosen pane into view. The scroll
+     is deferred a frame so the accordion has reflowed first. */
+  const showEditor = useCallback(() => {
+    setEditorOpen(true);
+    requestAnimationFrame(() => {
+      editorPaneRef.current?.scrollIntoView({
+        behavior: motionOk() ? 'smooth' : 'auto',
+        block: 'start',
+      });
+    });
+  }, []);
+  const showPreview = useCallback(() => {
+    setEditorOpen(false);
+    requestAnimationFrame(() => {
+      previewRef.current?.scrollIntoView({
+        behavior: motionOk() ? 'smooth' : 'auto',
+        block: 'start',
+      });
+    });
+  }, []);
+
   /* Close the print-preview modal (#185) and return focus to the Preview
      button that opened it. Mirrors the other modal-close patterns above. */
   const closePrintPreview = useCallback(() => {
@@ -1608,6 +1633,7 @@ export default function ResumeStudio() {
                 stacked; CSS forces it back open at ≥ 961px so the
                 side-by-side desktop layout is unaffected. */}
         <details
+          ref={editorPaneRef}
           className="studio__pane studio__pane--editor"
           aria-label="Markdown editor"
           data-print-hide
@@ -1845,6 +1871,33 @@ export default function ResumeStudio() {
           previewRef={previewRef}
           wcag={theme.contrast}
         />
+      )}
+
+      {/* ----- Mobile Edit/Preview switch (#220) -----
+           A sticky, thumb-reachable one-tap toggle between the editor and
+           the preview. Only meaningful while the panes are stacked, so CSS
+           hides it on the side-by-side desktop layout (≥961px). Reuses
+           `editorOpen` — it's a view toggle (aria-pressed), not a tablist.
+           Hidden from print via data-print-hide. */}
+      {hasResume && (
+        <div className="studio__view-switch" role="group" aria-label="Editor and preview" data-print-hide>
+          <button
+            type="button"
+            className="studio__view-switch-btn"
+            aria-pressed={editorOpen}
+            onClick={showEditor}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            className="studio__view-switch-btn"
+            aria-pressed={!editorOpen}
+            onClick={showPreview}
+          >
+            Preview
+          </button>
+        </div>
       )}
 
       {/* ----- Keyboard-shortcuts help overlay (#58). ----- */}

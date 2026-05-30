@@ -1727,6 +1727,65 @@ body[data-app-phase='workbench'] .app-header {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Mobile Edit/Preview switch (#220).                                  */
+/*                                                                     */
+/* A sticky, thumb-reachable one-tap toggle between the stacked editor */
+/* and preview. Only meaningful while the panes are single-column, so  */
+/* it's hidden on the side-by-side desktop layout (≥961px). It sits at */
+/* the very bottom; the status line is lifted above it so they stack   */
+/* rather than overlap (both are sticky-bottom).                       */
+/* ------------------------------------------------------------------ */
+.studio__view-switch {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .studio__view-switch {
+    position: sticky;
+    bottom: 0;
+    z-index: 7;
+    display: flex;
+    gap: 2px;
+    margin-top: var(--space-2);
+    padding: var(--space-2);
+    /* Clear the iOS home indicator on notched phones. */
+    padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
+    background: var(--ui-bg-elevated);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-pop);
+  }
+
+  .studio__view-switch-btn {
+    flex: 1;
+    min-height: 2.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--ui-fg-muted);
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition:
+      background-color 110ms ease,
+      color 110ms ease;
+  }
+
+  .studio__view-switch-btn[aria-pressed='true'] {
+    color: var(--ui-accent-contrast);
+    background: var(--ui-accent);
+  }
+
+  /* Lift the status line so it stacks above the switch instead of
+     colliding with it (both pin to the viewport bottom). */
+  .studio__statusline {
+    bottom: 3.75rem;
+  }
+}
+
 /* Each segment carries a trailing `│` separator via `::after`. The last
    one is suppressed below — using `:last-child` keeps the rule honest
    when a segment is conditionally absent (cursor missing, dirty off,
