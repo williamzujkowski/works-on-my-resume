@@ -30,7 +30,8 @@ export type IconName =
   | 'eye'
   | 'sun'
   | 'moon'
-  | 'monitor';
+  | 'monitor'
+  | 'menu';
 
 interface IconProps {
   name: IconName;
@@ -173,6 +174,15 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <rect x="2" y="3" width="20" height="14" rx="2" />
       <path d="M8 21h8M12 17v4" />
+    </>
+  ),
+  /* Three horizontal bars — the universal "menu" glyph. Used by the mobile
+     toolbar hamburger trigger (#235). */
+  menu: (
+    <>
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
     </>
   ),
 };

@@ -6509,6 +6509,77 @@ details.studio__pane--editor {
 }
 
 /* ------------------------------------------------------------------ */
+/* Mobile toolbar sheet (#235)                                         */
+/*                                                                     */
+/* Left-anchored modal sheet that will host the toolbar controls       */
+/* behind a single hamburger trigger on narrow viewports. Mirrors the  */
+/* Settings drawer's modal contract (dimmed overlay, focus trap, Esc + */
+/* click-outside close), but slides in from the left instead of the    */
+/* right. Scaffold-only in PR 1 — ships dark, wired in a later PR.     */
+/* ------------------------------------------------------------------ */
+
+.mobile-sheet__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: flex-start;
+  background: rgba(38, 26, 14, 0.42);
+  animation: kbd-help-fade 140ms ease-out;
+}
+
+@keyframes mobile-sheet-slide {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.mobile-sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(22rem, 100vw);
+  max-height: 100dvh;
+  background: var(--ui-bg-elevated);
+  border-right: 1px solid var(--ui-border-strong);
+  box-shadow: var(--ui-inset-highlight), var(--shadow-pop);
+  /* Clear the iOS home indicator / bottom browser chrome (#195). */
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: mobile-sheet-slide 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mobile-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.mobile-sheet__title {
+  /* Editorial-shift (#163): the sheet's H2 is prose, so it reads in the
+     serif display register — same treatment as the Settings drawer title. */
+  font-family: var(--font-serif);
+  font-size: 1.18rem;
+  font-weight: 700;
+  color: var(--ui-fg);
+}
+
+.mobile-sheet__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ------------------------------------------------------------------ */
 /* Settings drawer (#128)                                              */
 /*                                                                     */
 /* Right-anchored modal drawer hosting low-frequency controls (ATS,    */
