@@ -309,6 +309,45 @@ export default function ResumeStudio() {
   /* Which tab the preview pane is showing (#85). Default to the resume
      itself; users switch to Health when they want feedback. */
   const [previewTab, setPreviewTab] = useState<PreviewTab>('preview');
+  /* The Preview/Health tablist uses roving tabindex, so per the WAI-ARIA
+     Tabs pattern Left/Right/Home/End must move selection + focus (#196). */
+  const previewTablistRef = useRef<HTMLDivElement>(null);
+  const handlePreviewTabsKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const order: PreviewTab[] = ['preview', 'health'];
+      const current = order.indexOf(previewTab);
+      let nextIndex: number;
+      switch (event.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+          nextIndex = (current + 1) % order.length;
+          break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          nextIndex = (current - 1 + order.length) % order.length;
+          break;
+        case 'Home':
+          nextIndex = 0;
+          break;
+        case 'End':
+          nextIndex = order.length - 1;
+          break;
+        default:
+          return;
+      }
+      // preventDefault marks the event handled so the window-level theme
+      // shortcut (←/→) backs off; stopPropagation is belt-and-braces.
+      event.preventDefault();
+      event.stopPropagation();
+      const next = order[nextIndex];
+      if (next !== previewTab) setPreviewTab(next);
+      // Automatic activation: focus follows selection to the chosen tab.
+      previewTablistRef.current
+        ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+        ?.[nextIndex]?.focus();
+    },
+    [previewTab],
+  );
 
   /** A resume is present once Markdown has been entered. */
   const hasResume = markdown.trim() !== '';
@@ -842,6 +881,11 @@ export default function ResumeStudio() {
       if (settingsOpen) return;
       if (formatDocsOpen) return;
       if (printPreviewOpen) return;
+
+      // If a closer handler already acted on this key (e.g. the Preview/
+      // Health tablist's Arrow navigation, #196), don't also fire a global
+      // shortcut for it.
+      if (event.defaultPrevented) return;
 
       // Never hijack typing, and never fight browser/OS chords.
       if (isEditableTarget(event.target)) return;
@@ -1670,6 +1714,8 @@ export default function ResumeStudio() {
               role="tablist"
               aria-label="Preview pane"
               data-print-hide
+              ref={previewTablistRef}
+              onKeyDown={handlePreviewTabsKeyDown}
             >
               <button
                 type="button"
