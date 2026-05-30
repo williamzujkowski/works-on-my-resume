@@ -140,3 +140,32 @@ test('arrow keys do NOT shuffle the theme when focus is in the editor', async ({
   const after = await readBgVar(page);
   expect(after).toBe(before);
 });
+
+test('Preview/Health tablist: Arrow keys move selection without shuffling the theme', async ({
+  page,
+}) => {
+  const preview = page.getByRole('tab', { name: 'Preview' });
+  const health = page.getByRole('tab', { name: 'Health' });
+  await expect(preview).toHaveAttribute('aria-selected', 'true');
+
+  // The tablist's roving tabindex shares the ←/→ keys with the global theme
+  // shuffle. Snapshot the theme so we can prove the shuffle did NOT fire.
+  const bg = await readBgVar(page);
+
+  await preview.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(health).toHaveAttribute('aria-selected', 'true');
+  await expect(health).toBeFocused();
+  expect(await readBgVar(page)).toBe(bg);
+
+  await page.keyboard.press('ArrowLeft');
+  await expect(preview).toHaveAttribute('aria-selected', 'true');
+  await expect(preview).toBeFocused();
+  expect(await readBgVar(page)).toBe(bg);
+
+  // Home/End jump to the ends.
+  await page.keyboard.press('End');
+  await expect(health).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(preview).toBeFocused();
+});
