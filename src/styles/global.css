@@ -1907,6 +1907,19 @@ body[data-app-phase='workbench'] .app-header {
    read as filename · HEALTH · ●. Match the toolbar's 640 px breakpoint
    so the chrome shifts together. */
 @media (max-width: 640px) {
+  .studio__statusline {
+    position: static;
+    bottom: auto;
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  .studio__statusline-seg--filename {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .studio__statusline-seg--filename .studio__statusline-value {
+    max-width: min(18ch, 100%);
+  }
   .studio__statusline-seg--cursor,
   .studio__statusline-seg--lines,
   .studio__statusline-seg--fit,

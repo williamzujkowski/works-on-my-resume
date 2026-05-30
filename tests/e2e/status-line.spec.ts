@@ -66,6 +66,50 @@ test('the status line mounts when a resume is loaded and shows the filename + li
   await expect(line.locator('.studio__statusline-seg--health')).toContainText(/\d+\s+(JR|MID|SR)/);
 });
 
+test('#199 mobile status line is static and does not hide filename overflow in a scroll strip', async ({
+  page,
+}, testInfo) => {
+  test.skip(isMobileProject(testInfo) === false, 'mobile status-line behavior only');
+  await page.setViewportSize({ width: 360, height: 740 });
+
+  const longName = 'avery-quinn-principal-platform-engineer-extra-long-resume-file-name.md';
+  await page.locator('input[type="file"][accept=".md,.markdown,.txt"]').setInputFiles({
+    name: longName,
+    mimeType: 'text/markdown',
+    buffer: Buffer.from(
+      [
+        '---',
+        'name: Avery Quinn',
+        'title: Principal Platform Engineer',
+        'email: avery@example.com',
+        '---',
+        '',
+        '## Summary',
+        'Platform engineer focused on resilient developer tooling.',
+      ].join('\n'),
+    ),
+  });
+
+  const line = await statusLine(page);
+  await expect(line).toHaveCSS('position', 'static');
+  await expect(line).toHaveCSS('overflow-x', 'hidden');
+
+  const filename = line.locator('.studio__statusline-seg--filename .studio__statusline-value');
+  await expect(filename).toHaveAttribute('title', longName);
+  await expect(filename).toHaveCSS('overflow', 'hidden');
+  await expect(filename).toHaveCSS('text-overflow', 'ellipsis');
+
+  const metrics = await line.evaluate((node) => ({
+    clientWidth: node.clientWidth,
+    scrollWidth: node.scrollWidth,
+    pageWidth: document.documentElement.clientWidth,
+    pageScrollWidth: document.documentElement.scrollWidth,
+  }));
+
+  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
+  expect(metrics.pageScrollWidth).toBeLessThanOrEqual(metrics.pageWidth + 1);
+});
+
 test('the lines segment counts the markdown lines (desktop only)', async ({
   page,
 }, testInfo) => {
