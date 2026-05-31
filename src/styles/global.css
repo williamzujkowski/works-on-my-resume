@@ -1419,6 +1419,26 @@ body[data-app-phase='workbench'] .app-header {
   .studio__split {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  /* Edit/Preview jump targets must clear the sticky bottom switch (#242).
+     On the stacked layout the document scrolls and `.studio__view-switch`
+     is pinned to the bottom edge; a `scrollIntoView({ block: 'start' })`
+     on a pane — or the editor's line-jump scroll — could otherwise land
+     content (the last lines of whichever pane the user taps to) underneath
+     it. Reserving scroll-padding on the scroll root keeps every
+     scroll-into-view inside the switch, and a matching scroll-margin on the
+     pane keeps the pane itself from butting against it. The reserved space
+     equals the switch height: the 2.75rem button + its 0.5rem×2 padding
+     (≈3.75rem) plus its 0.5rem top margin, atop the iOS home-indicator
+     safe-area inset. Desktop (≥961px), where the switch is hidden and the
+     panes sit side by side, is unaffected. */
+  :root {
+    scroll-padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+  }
+
+  .studio__pane {
+    scroll-margin-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+  }
 }
 
 .studio__pane {
