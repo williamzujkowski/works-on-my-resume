@@ -3053,6 +3053,28 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   cursor: pointer;
   text-align: left;
   font-size: 0.82rem;
+  /* Lazy-render off-screen rows (#83). The picker mounts ~465 option rows
+     into the scrolling list, and laying out + painting all of them on open
+     was the dominant open-cost on slow hardware. `content-visibility: auto`
+     lets the browser skip layout/paint for rows scrolled out of the
+     `.theme-picker__list` viewport while keeping every row in the DOM — so
+     search filtering, roving-tabindex keyboard nav, selection, contrast
+     badges, and ARIA all keep working unchanged (no windowing, no DOM
+     restructure, no new dependency → no size-budget impact). Scoped to the
+     option row only; the curated tiles and search/legend chrome are
+     untouched.
+
+     `contain-intrinsic-size` supplies a placeholder height for not-yet-
+     rendered rows so the scrollbar and scroll position stay stable and
+     arrow-key scrolling doesn't jump. The estimate matches a real row:
+     0.8rem padding (0.4rem × 2) around a 1.1rem swatch + ~0.125rem borders
+     ≈ 2rem. `scroll-margin` gives a content-hidden row a small gutter when
+     `scrollIntoView({ block: 'nearest' })` brings it on-screen during
+     keyboard roving, so the active row is never flush against the clipped
+     edge. */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 2rem;
+  scroll-margin: 0.25rem 0;
   /* Match the tactile baseline of the curated tiles — it was an instant
      hover before (#219). */
   transition:
