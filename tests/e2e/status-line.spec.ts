@@ -49,9 +49,21 @@ test('the status line is not mounted in Phase 1 (no resume loaded)', async ({ pa
   await expect(page.locator('.studio__statusline')).toHaveCount(0);
 });
 
-test('the status line mounts when a resume is loaded and shows the filename + lines + health', async ({
+test('the status line is hidden on mobile when a resume is loaded (#237/#199)', async ({
   page,
-}) => {
+}, testInfo) => {
+  test.skip(!isMobileProject(testInfo), 'status line is desktop-only chrome now');
+  await loadSampleResume(page);
+  // The element may still mount, but it must not be visible — the editor tab
+  // strip / Health tab / Fit chip carry its signals, and a second pinned bar
+  // stole editing height. Only the Edit/Preview switch pins to the bottom.
+  await expect(page.locator('.studio__statusline')).toBeHidden();
+});
+
+test('the status line mounts when a resume is loaded and shows the filename + lines + health (desktop only)', async ({
+  page,
+}, testInfo) => {
+  test.skip(isMobileProject(testInfo), 'status line is hidden on mobile (#237/#199)');
   await loadSampleResume(page);
 
   const line = await statusLine(page);
@@ -144,9 +156,10 @@ test('the cursor segment updates as the user moves the caret (desktop only)', as
   await expect(line.locator('.studio__statusline-seg--cursor')).toContainText(/L1:[2-9]\d*|L1:1\d+/);
 });
 
-test('the ●draft indicator appears when the buffer diverges from the loaded baseline', async ({
+test('the ●draft indicator appears when the buffer diverges from the loaded baseline (desktop only)', async ({
   page,
-}) => {
+}, testInfo) => {
+  test.skip(isMobileProject(testInfo), 'status line is hidden on mobile (#237/#199)');
   await loadSampleResume(page);
   await expandMobileEditor(page);
 
