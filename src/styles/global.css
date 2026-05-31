@@ -2009,6 +2009,14 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
   font-size: 0.82rem;
 }
 
+@media (max-width: 640px) {
+  .uploader__gist-input {
+    flex-basis: 100%;
+    min-width: 0;
+    width: 100%;
+  }
+}
+
 .uploader__gist-disclosure {
   display: flex;
   align-items: flex-start;
@@ -2163,6 +2171,14 @@ body[data-app-phase='hero'] .uploader__actions .btn--primary {
 .uploader__gist-preview-picker-select:focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .uploader__gist-preview-picker-select {
+    flex-basis: 100%;
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 /* ----- Opt-in draft persistence toggle (#32) ----- */
