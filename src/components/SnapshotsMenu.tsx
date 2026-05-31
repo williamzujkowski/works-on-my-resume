@@ -19,6 +19,7 @@
  */
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ResumeSnapshot } from '../utils/storage';
+import { usePopover } from '../utils/usePopover';
 import Icon from './Icon';
 
 interface SnapshotsMenuProps {
@@ -99,45 +100,20 @@ export default function SnapshotsMenu({
     }
   }, [open]);
 
-  /* Dismiss on outside-click — same non-modal pattern as the export
-     popover. Don't fight focus restoration; the trigger button is the
-     natural restore target since the user clicked it to open.
-
-     Escape is handled separately, on the popover element itself (see
-     `handlePopoverKeyDown` below) rather than on `document`. When the
-     popover lives inside the Settings drawer (or the mobile toolbar
-     sheet → drawer), a document-level Escape listener is a SIBLING of
-     the drawer's React keydown handler, so `stopPropagation` there could
-     not reliably stop the drawer from ALSO closing — Esc could skip a
-     level or close both at once (#207). Scoping the handler to the
-     popover puts it on the React bubbling path INTO the drawer, so
-     `stopPropagation` genuinely halts the drawer's handler. */
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(event: PointerEvent) {
-      const target = event.target as Node;
-      if (popoverRef.current?.contains(target)) return;
-      if (triggerRef.current?.contains(target)) return;
-      setOpen(false);
-    }
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-    };
-  }, [open]);
-
-  /* Escape closes ONLY this popover and restores focus to the trigger.
-     Attached to the popover `div` so the React `stopPropagation` keeps
-     the keydown from bubbling up to a host drawer/sheet's own Escape
-     handler — closing the inner popover first, leaving the drawer open
-     until a second Escape (#207). */
-  const handlePopoverKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      setOpen(false);
-      triggerRef.current?.focus();
-    }
-  }, []);
+  /* Non-modal dismiss/focus plumbing (#202, formerly the #207 reference
+     pattern): outside-click closes on a document pointerdown; Escape is
+     scoped to the popover ELEMENT via `popoverProps.onKeyDown` so its
+     `stopPropagation` halts a host drawer/sheet's own Escape — the inner
+     popover closes first, the drawer stays open until a second Escape (#207).
+     Focus restores to the trigger on Escape; an outside-click leaves focus
+     where the pointer landed, as before. */
+  const onClose = useCallback(() => setOpen(false), []);
+  const { popoverProps } = usePopover({
+    open,
+    onClose,
+    containerRef: popoverRef,
+    triggerRef,
+  });
 
   const handleSave = useCallback(() => {
     const trimmed = pendingName.trim();
@@ -230,7 +206,7 @@ export default function SnapshotsMenu({
           role="dialog"
           aria-modal="false"
           aria-labelledby={headingId}
-          onKeyDown={handlePopoverKeyDown}
+          onKeyDown={popoverProps.onKeyDown}
         >
           <div className="snapshots-menu__save">
             <label id={headingId} className="snapshots-menu__save-label" htmlFor={nameInputId}>

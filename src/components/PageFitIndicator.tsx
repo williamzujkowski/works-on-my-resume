@@ -36,6 +36,7 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { usePopover } from '../utils/usePopover';
 import type { ParsedResume, PrintMode, ResumeTemplate } from '../types';
 import {
   estimatePages,
@@ -236,26 +237,29 @@ export default function PageFitIndicator({
     return () => observer.disconnect();
   }, [previewRef, measure]);
 
-  /* When the popover is open, close on outside click / Esc. */
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
+  /* Non-modal dismiss/focus plumbing (#202).
+
+     Outside-click containment is the WHOLE chip (`rootRef`) — it wraps the
+     trigger, the print-mode `<select>`, AND the popover — so clicking the
+     trigger or the mode dropdown never self-closes. The ruler overlay is
+     `createPortal`ed OUTSIDE `rootRef` into the preview pane and is
+     deliberately NOT listed as an extra-inside element, so a pointer-down on
+     the ruler reads as "outside" and closes the popover — preserving the
+     historical behavior.
+
+     Escape moves from the old document-level listener onto the popover
+     ELEMENT (`popoverProps.onKeyDown`, via `popoverRef`'s div). The
+     element-scoped `stopPropagation` lets a host MobileToolbarSheet defer so
+     the popover closes first (#207) — the document-level Escape this replaced
+     could not. Focus restores to the trigger on Escape; the explicit close
+     button restores inline below. */
+  const onClose = useCallback(() => setOpen(false), []);
+  const { popoverProps } = usePopover({
+    open,
+    onClose,
+    containerRef: rootRef,
+    triggerRef,
+  });
 
   const severity: FitSeverity = useMemo(() => fitSeverity(pages), [pages]);
   const label = useMemo(() => formatPagesLabel(pages), [pages]);
@@ -329,7 +333,19 @@ export default function PageFitIndicator({
 
   return (
     <div className="page-fit__size-control" data-print-hide>
-      <div className={chipClass} ref={rootRef} data-print-hide>
+      {/* Escape is scoped to the chip wrapper (which holds the trigger, the
+          mode select, AND the popover) rather than the popover div, because
+          on open PageFit leaves focus on the TRIGGER — a sibling of the
+          popover — so a keydown there never bubbles into the popover. The
+          chip is the nearest common ancestor of both, and the hook's `open`
+          guard keeps `stopPropagation` from firing while the popover is
+          closed (so a host sheet's Escape still works then). */}
+      <div
+        className={chipClass}
+        ref={rootRef}
+        data-print-hide
+        onKeyDown={popoverProps.onKeyDown}
+      >
         <button
           type="button"
           ref={triggerRef}
@@ -374,6 +390,7 @@ export default function PageFitIndicator({
             id={popoverId}
             className="page-fit__popover"
             role="dialog"
+            aria-modal="false"
             aria-label="Page fit details"
           >
             <div className="page-fit__popover-head">
