@@ -896,11 +896,12 @@ export default function ResumeStudio() {
         if (exportOpen) setExportOpen(false);
         if (themePickerOpen) setThemePickerOpen(false);
         // The Settings drawer (#128) owns its own Escape handling — focus
-        // trap, nested-popover deference (SnapshotsMenu's inner popover
-        // closes BEFORE the drawer does). Calling closeSettings() from
-        // the global handler would race that logic and skip the popover-
-        // level Esc step. The drawer's own onClose path restores focus
-        // to the gear button when it closes.
+        // trap, plus the nested SnapshotsMenu popover whose own Escape
+        // handler is scoped to its element and stops propagation so its
+        // inner popover closes BEFORE the drawer does (#207). Calling
+        // closeSettings() from the global handler would race that logic and
+        // skip the popover-level Esc step. The drawer's own onClose path
+        // restores focus to the gear button when it closes.
         if (isEditableTarget(event.target)) {
           (event.target as HTMLElement).blur();
         }

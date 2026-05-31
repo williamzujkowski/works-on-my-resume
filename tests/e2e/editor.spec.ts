@@ -51,7 +51,7 @@ test('Insert section appends an Experience entry skeleton', async ({ page }) => 
      menu, with entries grouped and document-ordered. Every snippet now
      lives behind the same trigger. */
   await page.getByRole('button', { name: /^insert section$/i }).click();
-  await page.getByRole('menuitem', { name: /experience entry/i }).click();
+  await page.getByRole('button', { name: /experience entry/i }).click();
 
   const value = await textarea.inputValue();
   // The snippet must include the canonical placeholder heading and a bullet.
@@ -72,13 +72,15 @@ test('Insert section menu is keyboard-reachable (#154)', async ({ page }) => {
   await trigger.focus();
   await page.keyboard.press('Enter');
 
-  // With the menu open the first entry must be a real menuitem.
-  const menu = page.getByRole('menu', { name: /insert a resume section/i });
+  // With the popover open the entries are plain buttons inside a labelled
+  // group (#203 dropped the false `role="menu"`/`menuitem` contract — the
+  // list never implemented arrow-key roving).
+  const menu = page.getByRole('group', { name: /insert a resume section/i });
   await expect(menu).toBeVisible();
 
-  // Tab into the menu and pick Education with Enter — verifies that
+  // Tab into the popover and pick Education with Enter — verifies that
   // every item is reachable through the standard Tab order.
-  await page.getByRole('menuitem', { name: /education entry/i }).focus();
+  await page.getByRole('button', { name: /education entry/i }).focus();
   await page.keyboard.press('Enter');
 
   const value = await textarea.inputValue();
@@ -94,7 +96,7 @@ test('picking any snippet on an empty editor auto-prepends frontmatter (#97)', a
 
   // Pick a non-frontmatter snippet through the unified menu (#154).
   await page.getByRole('button', { name: /^insert section$/i }).click();
-  await page.getByRole('menuitem', { name: /experience entry/i }).click();
+  await page.getByRole('button', { name: /experience entry/i }).click();
 
   const value = await textarea.inputValue();
   // Frontmatter must lead the document, with the canonical identity keys,
@@ -112,7 +114,7 @@ test('picking the frontmatter snippet itself does not double up (#97)', async ({
   await textarea.click();
 
   await page.getByRole('button', { name: /^insert section$/i }).click();
-  await page.getByRole('menuitem', { name: /frontmatter \(identity header\)/i }).click();
+  await page.getByRole('button', { name: /frontmatter \(identity header\)/i }).click();
 
   const value = await textarea.inputValue();
   // The frontmatter block opens the document exactly once.
@@ -133,7 +135,7 @@ test('snippets do not prepend frontmatter when content already exists (#97)', as
   await textarea.click();
 
   await page.getByRole('button', { name: /^insert section$/i }).click();
-  await page.getByRole('menuitem', { name: /experience entry/i }).click();
+  await page.getByRole('button', { name: /experience entry/i }).click();
 
   const value = await textarea.inputValue();
   // No frontmatter was injected — the document still opens with the heading.
@@ -177,9 +179,11 @@ test('bullet-rewrite tray surfaces and inserts a sibling bullet above the origin
   // Open the tray. We expect at least the Verb-upgrade and Add-metric
   // candidates given the weak "Helped" opener.
   await trigger.click();
-  const tray = page.getByRole('menu', { name: /bullet rewrite suggestions/i });
+  // #203: the tray is a labelled `role="group"` of plain buttons, not a
+  // `role="menu"` (it never implemented arrow-key roving).
+  const tray = page.getByRole('group', { name: /bullet rewrite suggestions/i });
   await expect(tray).toBeVisible();
-  const verbUpgrade = tray.getByRole('menuitem', { name: /verb upgrade.*helped.*led/i });
+  const verbUpgrade = tray.getByRole('button', { name: /verb upgrade.*helped.*led/i });
   await expect(verbUpgrade).toBeVisible();
 
   // Click the verb-upgrade candidate — the resulting document must carry

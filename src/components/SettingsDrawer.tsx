@@ -143,20 +143,18 @@ export default function SettingsDrawer({
   /* Trap focus + Escape entirely within the dialog. Same pattern as
      KeyboardHelp + ExampleDialog so behavior across the three modals is
      identical from the user's perspective.
-     One nuance: the Snapshots group hosts a nested popover with its own
-     Escape handler (close the popover, not the drawer). If focus is
-     currently inside that nested popover, defer to its handler — closing
-     the drawer wholesale would feel like Esc skipped a level. */
+
+     The Snapshots group hosts a nested popover (SnapshotsMenu) with its
+     own Escape handler. As of #207 that handler is scoped to the popover
+     element itself and calls `stopPropagation`, so an Escape originating
+     inside the popover never bubbles up to THIS handler — the popover
+     closes first, the drawer stays open, and a second Escape closes the
+     drawer. No focus-based deference is needed here anymore (the old
+     `activeElement.closest('.snapshots-menu__popover')` guard relied on a
+     document-level listener race that #207 removed). */
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       if (event.key === 'Escape') {
-        const active = document.activeElement;
-        if (active instanceof Element && active.closest('.snapshots-menu__popover')) {
-          // Let the SnapshotsMenu's own Escape handler run — it closes the
-          // popover and restores focus to the snapshots trigger. The drawer
-          // stays open so the user can see the saved row.
-          return;
-        }
         event.stopPropagation();
         onClose();
         return;
