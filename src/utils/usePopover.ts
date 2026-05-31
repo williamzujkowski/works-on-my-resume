@@ -58,19 +58,6 @@ export interface UsePopoverOptions {
    */
   triggerRef?: RefObject<HTMLButtonElement | null>;
   /**
-   * Extra elements (resolved lazily on each pointer-down) that should ALSO
-   * count as "inside" — i.e. a pointer-down on one of them must NOT close the
-   * popover. Used for DOM that lives OUTSIDE `containerRef` but is logically
-   * part of the popover, e.g. a portalled overlay. Return `null` for an entry
-   * that is not currently mounted.
-   *
-   * Conversely, to make a region OUTSIDE the container close the popover even
-   * though it visually overlaps (PageFit's ruler portal), simply do NOT list
-   * it here — it then reads as "outside" and a pointer-down closes, which is
-   * the historical behavior we preserve.
-   */
-  getExtraInside?: () => ReadonlyArray<HTMLElement | null>;
-  /**
    * Focus restoration policy. The Escape path ALWAYS restores focus to the
    * trigger (a keyboard user must never be stranded). This option controls
    * restoration for the OTHER close paths (outside-click, an explicit close
@@ -118,7 +105,6 @@ export function usePopover({
   onClose,
   containerRef,
   triggerRef,
-  getExtraInside,
   restoreFocus: restorePolicy = 'escape',
 }: UsePopoverOptions): UsePopover {
   const restoreFocus = useCallback(() => {
@@ -150,25 +136,19 @@ export function usePopover({
   );
 
   /* Outside-click dismissal on a document `pointerdown`. A target inside the
-     container, the trigger, or any caller-supplied extra-inside element is
-     exempt; everything else closes. Listener is only attached while open. */
+     container or the trigger is exempt; everything else closes. Listener is
+     only attached while open. */
   useEffect(() => {
     if (!open) return;
     function onPointerDown(event: PointerEvent) {
       const target = event.target as Node;
       if (containerRef.current?.contains(target)) return;
       if (triggerRef?.current?.contains(target)) return;
-      const extra = getExtraInside?.() ?? [];
-      for (const el of extra) {
-        if (el?.contains(target)) return;
-      }
       onClose();
     }
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
-    // `getExtraInside` is read fresh inside the handler, so a stable ref to it
-    // is enough; callers pass an inline arrow that closes over current state.
-  }, [open, onClose, containerRef, triggerRef, getExtraInside]);
+  }, [open, onClose, containerRef, triggerRef]);
 
   /* `'unmount'` policy: restore focus to the trigger when this hook unmounts.
      The Export panel is mounted only while open, so its unmount IS its close —
