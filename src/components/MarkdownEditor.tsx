@@ -893,7 +893,7 @@ export default function MarkdownEditor({
         </label>
 
         <div className="editor__bar-controls">
-          {/* ----- Unified Insert-section menu (#154) -----
+          {/* ----- Unified Insert-section menu (#154, #203) -----
               Before #154 the editor exposed TWO insert affordances: an
               always-visible row of "quick-insert" toolbar buttons (#70)
               for Experience + Education, plus a popover for the long
@@ -901,16 +901,20 @@ export default function MarkdownEditor({
               section. We collapsed both into a single popover here,
               grouped into "Frontmatter", "Always" and "Optional"
               headings, with entries ordered by where each section
-              appears in the canonical document layout. The popover
-              continues to use the `role="menu"` shape; group headings
-              wrap their items in `role="group"` so the labels are
-              announced as section dividers, not focusable menu items. */}
+              appears in the canonical document layout.
+
+              #203: this is a click-only list, NOT a WAI-ARIA menu — it
+              never implemented arrow-key roving / first-item focus, so
+              `role="menu"` (and `role="menuitem"`) was a false ARIA
+              contract. We render it as a labelled `role="group"` of plain
+              buttons instead. Escape still closes it and restores trigger
+              focus; the trigger advertises a popover via `aria-expanded`
+              rather than `aria-haspopup="menu"`. */}
           <div className="editor__snippet" ref={snippetWrapRef}>
             <button
               type="button"
               ref={snippetTriggerRef}
               className="btn btn--ghost editor__snippet-trigger"
-              aria-haspopup="menu"
               aria-expanded={snippetOpen}
               aria-controls={snippetOpen ? snippetMenuId : undefined}
               onClick={() => setSnippetOpen((open) => !open)}
@@ -922,7 +926,7 @@ export default function MarkdownEditor({
               <ul
                 id={snippetMenuId}
                 className="editor__snippet-menu"
-                role="menu"
+                role="group"
                 aria-label="Insert a resume section"
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') {
@@ -956,7 +960,6 @@ export default function MarkdownEditor({
                           <li key={snippet.id} role="none" className="editor__snippet-li">
                             <button
                               type="button"
-                              role="menuitem"
                               className="editor__snippet-item"
                               onClick={() => insertSnippet(snippet)}
                             >
@@ -1059,21 +1062,26 @@ export default function MarkdownEditor({
         </div>
       </div>
 
-      {/* ----- Bullet-rewrite affordance (#93) -----
+      {/* ----- Bullet-rewrite affordance (#93, #203) -----
           Appears only when the caret is on an Experience bullet that has
           at least one applicable rewrite. Renders below the textarea —
           a single trigger button that opens a tray of 2-3 candidate
           rewrites. ESC closes the tray and returns focus to the trigger.
           A click on a candidate inserts a new sibling bullet above the
           original through the same value/onChange path as the snippet
-          inserter, so there's no separate state-mutation pathway. */}
+          inserter, so there's no separate state-mutation pathway.
+
+          #203: like the Insert-section list, this tray is click-only and
+          never implemented arrow-key roving, so `role="menu"` /
+          `role="menuitem"` was a false ARIA contract. It is a labelled
+          `role="group"` of plain buttons; Escape still closes it and
+          restores trigger focus. */}
       {rewriteContext && (
         <div className="editor__rewrite" ref={rewriteWrapRef}>
           <button
             type="button"
             ref={rewriteTriggerRef}
             className="btn btn--ghost editor__rewrite-trigger"
-            aria-haspopup="menu"
             aria-expanded={rewriteTrayOpen}
             aria-controls={rewriteTrayOpen ? rewriteTrayId : undefined}
             onClick={() => setRewriteTrayOpen((open) => !open)}
@@ -1088,7 +1096,7 @@ export default function MarkdownEditor({
             <ul
               id={rewriteTrayId}
               className="editor__rewrite-tray"
-              role="menu"
+              role="group"
               aria-label="Bullet rewrite suggestions"
               onKeyDown={(event) => {
                 if (event.key === 'Escape') {
@@ -1101,7 +1109,6 @@ export default function MarkdownEditor({
                 <li key={candidate.id} role="none" className="editor__rewrite-li">
                   <button
                     type="button"
-                    role="menuitem"
                     className="editor__rewrite-item"
                     onClick={() => applyRewrite(candidate)}
                   >
