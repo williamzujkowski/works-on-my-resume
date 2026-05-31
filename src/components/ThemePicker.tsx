@@ -36,6 +36,7 @@ import {
   findTheme,
   loadAllThemesAsync,
 } from '../utils/themes';
+import { usePopover } from '../utils/usePopover';
 import { wcagLevel } from '../utils/wcag';
 import Icon from './Icon';
 
@@ -350,22 +351,34 @@ export default function ThemePicker({
     if (active) preview(active);
   }, [open, activeSlug, rendered, preview]);
 
-  /* Close on outside-click. */
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        onOpenChange(false);
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [open, onOpenChange]);
+  /* Non-modal dismiss/focus plumbing (#202). Outside-click containment is the
+     whole `theme-picker` root (`rootRef` wraps the trigger AND the popover),
+     so clicking the trigger never self-closes — its own toggle owns that.
+     Escape is scoped to the popover ELEMENT via `popoverProps.onKeyDown`
+     (focus sits on the search input inside the popover on open, so the
+     keydown bubbles to it); `stopPropagation` there preserves any host
+     deference (#207) and keeps the search field's own arrow/Enter roving
+     intact. Closing via Escape restores focus to the trigger and lets the
+     open-effect cleanup revert an uncommitted hover preview.
 
-  function close(restoreFocus = true) {
+     `triggerRef` is passed so the hook can own focus-restore (the `close()`
+     helper and the Escape path both route through `restoreFocus`). It also
+     lives inside `rootRef`, so the container's `contains` check already
+     exempts it from the outside-click test. The default `restoreFocus:
+     'escape'` policy means an outside-click does NOT restore focus — matching
+     the prior behavior where the picker only restored on Escape / selection. */
+  const onClose = useCallback(() => onOpenChange(false), [onOpenChange]);
+  const { popoverProps, restoreFocus } = usePopover({
+    open,
+    onClose,
+    containerRef: rootRef,
+    triggerRef,
+  });
+
+  function close(focusTrigger = true) {
     // The open-effect cleanup reverts any preview when committedRef is false.
     onOpenChange(false);
-    if (restoreFocus) triggerRef.current?.focus();
+    if (focusTrigger) restoreFocus();
   }
 
   function choose(theme: ResumeTheme) {
@@ -377,11 +390,10 @@ export default function ThemePicker({
   }
 
   function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      close();
-      return;
-    }
+    // Escape is handled by the popover element's `onKeyDown` (the shared
+    // usePopover handler), which the keydown bubbles up to from this input —
+    // closing the picker, reverting any uncommitted preview, and restoring
+    // focus to the trigger. This handler keeps ONLY the roving/search keys.
     if (rendered.length === 0) return;
     if (event.key === 'ArrowDown') {
       event.preventDefault();
@@ -432,7 +444,13 @@ export default function ThemePicker({
       </button>
 
       {open && (
-        <div className="theme-picker__popover" role="dialog" aria-label="Choose a theme">
+        <div
+          className="theme-picker__popover"
+          role="dialog"
+          aria-modal="false"
+          aria-label="Choose a theme"
+          onKeyDown={popoverProps.onKeyDown}
+        >
           {/* Curated "Starting points" row (#183).
               Eight hand-picked themes the writer can land on in one click. Hidden
               when the user has narrowed the picker with a search query or any tag

@@ -31,6 +31,7 @@ import {
   downloadThemeCss,
 } from '../utils/export';
 import { downloadJsonResume, toJsonResume } from '../utils/jsonresume';
+import { usePopover } from '../utils/usePopover';
 import Icon from './Icon';
 
 interface ExportPanelProps {
@@ -120,31 +121,26 @@ export default function ExportPanel({
     }
   }, [theme.slug]);
 
-  /* On open: focus the first actionable control (not the Close button). */
+  /* On open: focus the first actionable control (not the Close button). This
+     is the panel's UNIQUE open-focus behavior, so it stays in the component;
+     the shared hook owns only dismiss + focus-RESTORE. */
   useEffect(() => {
     firstControlRef.current?.focus();
   }, []);
 
-  /* On close: restore focus to the trigger that opened the panel. */
-  useEffect(() => {
-    const trigger = triggerRef.current;
-    return () => {
-      trigger?.focus();
-    };
-  }, [triggerRef]);
-
-  /* Non-modal dismissal: close on a pointer-down outside the panel and its
-     trigger. Escape is handled on the dialog's own keydown. */
-  useEffect(() => {
-    function onPointerDown(event: PointerEvent) {
-      const target = event.target as Node;
-      if (dialogRef.current?.contains(target)) return;
-      if (triggerRef.current?.contains(target)) return;
-      onClose();
-    }
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [onClose, triggerRef]);
+  /* Non-modal dismiss/focus plumbing (#202). The panel is mounted only while
+     open, so the hook runs with `open: true` and uses the `'unmount'` restore
+     policy — focus returns to the trigger on EVERY close path (Escape, the
+     close button, outside-click), reproducing the old unmount-cleanup restore.
+     Escape is scoped to the dialog ELEMENT via `popoverProps.onKeyDown` so its
+     `stopPropagation` lets a host MobileToolbarSheet defer (#207). */
+  const { popoverProps } = usePopover({
+    open: true,
+    onClose,
+    containerRef: dialogRef,
+    triggerRef,
+    restoreFocus: 'unmount',
+  });
 
   return (
     <div
@@ -153,12 +149,7 @@ export default function ExportPanel({
       role="dialog"
       aria-modal="false"
       aria-labelledby={headingId}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          event.stopPropagation();
-          onClose();
-        }
-      }}
+      onKeyDown={popoverProps.onKeyDown}
     >
       <div className="export-panel__header">
         <h2 id={headingId} className="export-panel__title">
