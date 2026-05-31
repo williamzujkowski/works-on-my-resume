@@ -1699,14 +1699,14 @@ body[data-app-phase='workbench'] .app-header {
     background: var(--ui-accent);
   }
 
-  /* Lift the status line so it stacks above the switch instead of
-     colliding with it (both pin to the viewport bottom). The switch's
-     own height includes env(safe-area-inset-bottom) (its padding-bottom),
-     so on notched phones it grows past a flat 3.75rem and the two bars
-     overlap. Share the safe-area term so the lift tracks the switch
-     height (#236). */
+  /* The status line is hidden entirely on phones (#237, #199): its signals
+     are already covered — filename in the editor tab strip, HEALTH via the
+     Health tab, FIT via the Fit chip in the hamburger — so a second pinned
+     bottom bar only stole editing height and could hide overflow content.
+     The Edit/Preview switch is the sole bottom bar on mobile now. (This
+     supersedes the #236 lift — with the line gone there's nothing to stack.) */
   .studio__statusline {
-    bottom: calc(3.75rem + env(safe-area-inset-bottom));
+    display: none;
   }
 }
 
@@ -1827,33 +1827,10 @@ body[data-app-phase='workbench'] .app-header {
   font-weight: 600;
 }
 
-/* Mobile collapse: hide the lower-priority segments and let the modeline
-   read as filename · HEALTH · ●. Match the toolbar's 640 px breakpoint
-   so the chrome shifts together. */
-@media (max-width: 640px) {
-  .studio__statusline-seg--cursor,
-  .studio__statusline-seg--lines,
-  .studio__statusline-seg--fit,
-  .studio__statusline-seg--words,
-  .studio__statusline-seg--wcag {
-    display: none;
-  }
-  /* The compact form drops the word "draft", leaving just the bullet. */
-  .studio__statusline-seg--draft .studio__statusline-value {
-    font-size: 0;
-  }
-  .studio__statusline-seg--draft .studio__statusline-dot {
-    font-size: 0.85rem;
-  }
-  /* On the compact form the HEALTH kicker shortens to "H". */
-  .studio__statusline-seg--health .studio__statusline-kicker {
-    font-size: 0;
-  }
-  .studio__statusline-seg--health .studio__statusline-kicker::before {
-    content: 'H';
-    font-size: 0.62rem;
-  }
-}
+/* The whole status line is hidden ≤640px (see the display:none rule above,
+   #237/#199), so the former per-segment mobile-collapse rules — and their
+   font-size:0 kicker tricks — are gone. The status line is a desktop-only
+   modeline now. */
 
 /* Let the editor pane body grow so its textarea can fill the shared
    height — no dead space beside a tall preview (#52). */
