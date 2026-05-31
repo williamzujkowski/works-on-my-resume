@@ -244,6 +244,34 @@
   text-underline-offset: 2px;
 }
 
+/* In-document link tap targets on touch (#240). The .btn/picker coarse-pointer
+   rules in global.css don't reach resume-document anchors, which sit at ~18-20px
+   tall hit areas — under the 44px floor. Grow the vertical hit area WITHOUT
+   changing the printed output: this block is gated under (pointer: coarse),
+   a screen-only feature that print never matches (no @media screen wrapper
+   needed). The visible text size is unchanged; only the tappable region grows.
+   */
+@media (pointer: coarse) {
+  /* Body links stay inline so mid-sentence wrapping is unaffected; a taller
+     line-box plus block padding stretches the hit area vertically. Negative
+     margins pull that padding back out of the flow so stacked text lines keep
+     their original rhythm. */
+  .resume-preview a {
+    line-height: 1.9;
+    padding-block: 0.55rem;
+    margin-block: -0.55rem;
+  }
+
+  /* Contact-meta anchors sit in their own flex row (no surrounding prose to
+     reflow), so inline-block + symmetric padding is the cleanest way to reach
+     ~44px without touching glyph size. */
+  .resume-preview__contact-meta a {
+    display: inline-block;
+    padding-block: 0.7rem;
+    margin-block: -0.7rem;
+  }
+}
+
 .resume-preview strong {
   color: var(--resume-accent-2, #8a3ffc);
   font-weight: 700;

@@ -49,9 +49,21 @@ test('the status line is not mounted in Phase 1 (no resume loaded)', async ({ pa
   await expect(page.locator('.studio__statusline')).toHaveCount(0);
 });
 
-test('the status line mounts when a resume is loaded and shows the filename + lines + health', async ({
+test('the status line is hidden on mobile when a resume is loaded (#237/#199)', async ({
   page,
-}) => {
+}, testInfo) => {
+  test.skip(!isMobileProject(testInfo), 'status line is desktop-only chrome now');
+  await loadSampleResume(page);
+  // The element may still mount, but it must not be visible — the editor tab
+  // strip / Health tab / Fit chip carry its signals, and a second pinned bar
+  // stole editing height. Only the Edit/Preview switch pins to the bottom.
+  await expect(page.locator('.studio__statusline')).toBeHidden();
+});
+
+test('the status line mounts when a resume is loaded and shows the filename + lines + health (desktop only)', async ({
+  page,
+}, testInfo) => {
+  test.skip(isMobileProject(testInfo), 'status line is hidden on mobile (#237/#199)');
   await loadSampleResume(page);
 
   const line = await statusLine(page);
@@ -64,50 +76,6 @@ test('the status line mounts when a resume is loaded and shows the filename + li
   // Score is a 0–100 integer; the stage glyph is JR | MID | SR. The
   // composite regex is loose enough not to depend on the exact rubric.
   await expect(line.locator('.studio__statusline-seg--health')).toContainText(/\d+\s+(JR|MID|SR)/);
-});
-
-test('#199 mobile status line is static and does not hide filename overflow in a scroll strip', async ({
-  page,
-}, testInfo) => {
-  test.skip(isMobileProject(testInfo) === false, 'mobile status-line behavior only');
-  await page.setViewportSize({ width: 360, height: 740 });
-
-  const longName = 'avery-quinn-principal-platform-engineer-extra-long-resume-file-name.md';
-  await page.locator('input[type="file"][accept=".md,.markdown,.txt"]').setInputFiles({
-    name: longName,
-    mimeType: 'text/markdown',
-    buffer: Buffer.from(
-      [
-        '---',
-        'name: Avery Quinn',
-        'title: Principal Platform Engineer',
-        'email: avery@example.com',
-        '---',
-        '',
-        '## Summary',
-        'Platform engineer focused on resilient developer tooling.',
-      ].join('\n'),
-    ),
-  });
-
-  const line = await statusLine(page);
-  await expect(line).toHaveCSS('position', 'static');
-  await expect(line).toHaveCSS('overflow-x', 'hidden');
-
-  const filename = line.locator('.studio__statusline-seg--filename .studio__statusline-value');
-  await expect(filename).toHaveAttribute('title', longName);
-  await expect(filename).toHaveCSS('overflow', 'hidden');
-  await expect(filename).toHaveCSS('text-overflow', 'ellipsis');
-
-  const metrics = await line.evaluate((node) => ({
-    clientWidth: node.clientWidth,
-    scrollWidth: node.scrollWidth,
-    pageWidth: document.documentElement.clientWidth,
-    pageScrollWidth: document.documentElement.scrollWidth,
-  }));
-
-  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
-  expect(metrics.pageScrollWidth).toBeLessThanOrEqual(metrics.pageWidth + 1);
 });
 
 test('the lines segment counts the markdown lines (desktop only)', async ({
@@ -188,9 +156,10 @@ test('the cursor segment updates as the user moves the caret (desktop only)', as
   await expect(line.locator('.studio__statusline-seg--cursor')).toContainText(/L1:[2-9]\d*|L1:1\d+/);
 });
 
-test('the ●draft indicator appears when the buffer diverges from the loaded baseline', async ({
+test('the ●draft indicator appears when the buffer diverges from the loaded baseline (desktop only)', async ({
   page,
-}) => {
+}, testInfo) => {
+  test.skip(isMobileProject(testInfo), 'status line is hidden on mobile (#237/#199)');
   await loadSampleResume(page);
   await expandMobileEditor(page);
 
